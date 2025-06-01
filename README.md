@@ -274,73 +274,160 @@ DQNAgent 클래스는 심층 Q 네트워크를 구현하여 패킷에 대한 최
 5. 경험 메모리에 저장
 6. 경험 리플레이를 통한 모델 업데이트
 
-## 🔄 모듈 간 통합 및 데이터 흐름(수정 예정)
+## 🔄 모듈 간 통합 및 데이터 흐름
 
-본 시스템의 데이터 흐름 및 모듈 간 통합은 다음과 같은 과정으로 이루어집니다:
+본 시스템의 데이터 흐름은 IDS 폴더 내의 모듈들이 유기적으로 연동되어 작동합니다:
 
 ```mermaid
-flowchart LR
-    subgraph 데이터수집["1. 데이터 수집 단계"]
-        packet["packet_collector.py"]
-        traffic["TrafficGeneratorApp.py"]
-        packet --> traffic
+flowchart TB
+    subgraph UI["사용자 인터페이스"]
+        main_ui["data_preparation.py<br/>메인 UI 진입점"]
+        packet_collector["scripts/components/<br/>packet_collector.py<br/>패킷 수집 GUI"]
+        traffic_gen["scripts/components/<br/>TrafficGeneratorApp.py<br/>트래픽 생성기"]
+        preprocess["scripts/components/<br/>DataPreprocessingApp.py<br/>데이터 전처리 UI"]
     end
 
-    subgraph 전처리["2. 데이터 전처리 단계"]
-        preprocess["DataPreprocessingApp.py"]
-        feature["특성 추출 및 가공"]
-        preprocess --> feature
+    subgraph Core["핵심 모듈 (modules/)"]
+        packet_capture["packet_capture.py<br/>PacketCaptureCore<br/>실시간 패킷 캡처"]
+        ml_models["ml_models.py<br/>MLTrainingWindow<br/>랜덤 포레스트 모델"]
+        rl_module["reinforcement_learning.py<br/>NetworkEnv & DQNAgent<br/>강화학습 환경"]
+        defense["defense_mechanism.py<br/>DefenseManager<br/>방어 메커니즘"]
+        suricata["suricata_manager.py<br/>SuricataManager<br/>IDS 엔진 통합"]
+        utils["utils.py<br/>유틸리티 함수"]
     end
 
-    subgraph 모델학습["3. 모델 학습 단계"]
-        ml["ml_models.py"]
-        evaluation["성능 평가 및 시각화"]
-        ml --> evaluation
+    subgraph Agent["메인 에이전트"]
+        ids_agent["IDSAgent_RL.py<br/>통합 침입탐지 에이전트"]
     end
 
-    subgraph 강화학습["4. 강화학습 통합 단계"]
-        env["NetworkEnv"]
-        dqn["DQNAgent"]
-        env --> dqn
+    subgraph DataFlow["데이터 플로우"]
+        raw_packets["원시 패킷 데이터"]
+        processed_data["전처리된 데이터"]
+        rf_predictions["RF 예측 확률"]
+        rl_actions["RL 행동 결정"]
+        defense_actions["방어 조치"]
     end
 
-    subgraph 실시간적용["5. 실시간 적용 단계"]
-        agent["IDSAgent_RL.py"]
-        response["위협 탐지 및 자동 대응"]
-        agent --> response
-    end
+    %% UI 연결
+    main_ui --> packet_collector
+    main_ui --> traffic_gen
+    main_ui --> preprocess
 
-    데이터수집 --> 전처리
-    전처리 --> 모델학습
-    모델학습 --> 강화학습
-    강화학습 --> 실시간적용
+    %% 데이터 수집 플로우
+    packet_collector --> packet_capture
+    traffic_gen --> raw_packets
+    packet_capture --> raw_packets
+
+    %% 데이터 처리 플로우
+    raw_packets --> preprocess
+    preprocess --> processed_data
+
+    %% ML 플로우
+    processed_data --> ml_models
+    ml_models --> rf_predictions
+
+    %% RL 플로우
+    rf_predictions --> rl_module
+    processed_data --> rl_module
+    rl_module --> rl_actions
+
+    %% 방어 메커니즘 플로우
+    rl_actions --> defense
+    rf_predictions --> defense
+    suricata --> defense
+    defense --> defense_actions
+
+    %% 메인 에이전트 통합
+    ids_agent --> packet_capture
+    ids_agent --> ml_models
+    ids_agent --> rl_module
+    ids_agent --> defense
+    ids_agent --> utils
+
+    %% 유틸리티 사용
+    packet_capture --> utils
+    ml_models --> utils
+    defense --> utils
+
+    classDef uiClass fill:#e1f5fe,stroke:#01579b,stroke-width:2px;
+    classDef coreClass fill:#f3e5f5,stroke:#4a148c,stroke-width:2px;
+    classDef agentClass fill:#ffebee,stroke:#b71c1c,stroke-width:3px;
+    classDef dataClass fill:#e8f5e9,stroke:#1b5e20,stroke-width:2px;
     
-    classDef nodeText fill:#f2f2f2,stroke:#333,stroke-width:1px,color:black;
-    class packet,traffic,preprocess,feature,ml,evaluation,env,dqn,agent,response nodeText;
-    
-    classDef subgraphText fill:transparent,color:black;
-    class 데이터수집,전처리,모델학습,강화학습,실시간적용 subgraphText;
+    class main_ui,packet_collector,traffic_gen,preprocess uiClass;
+    class packet_capture,ml_models,rl_module,defense,suricata,utils coreClass;
+    class ids_agent agentClass;
+    class raw_packets,processed_data,rf_predictions,rl_actions,defense_actions dataClass;
 ```
 
+### 📊 상세 데이터 흐름 프로세스
+
 1. **데이터 수집 단계**:
-   - `packet_collector.py`를 통해 네트워크 패킷 캡처
-   - `TrafficGeneratorApp.py`를 통한 인공 트래픽 생성
+   - `IDS/scripts/components/packet_collector.py`: GUI를 통한 네트워크 인터페이스 선택 및 패킷 수집 시작
+   - `IDS/modules/packet_capture.py`: Scapy를 이용한 실시간 패킷 캡처 엔진
+   - `IDS/scripts/components/TrafficGeneratorApp.py`: 테스트용 다양한 유형의 트래픽 생성
 
 2. **데이터 전처리 단계**:
-   - `DataPreprocessingApp.py`를 통해 데이터 정제 및 변환
-   - 랜덤 포레스트 분류를 위한 특성 추출 및 가공
+   - `IDS/scripts/components/DataPreprocessingApp.py`: 수집된 원시 패킷 데이터를 ML에 적합한 형태로 변환
+   - 특성 추출: IP 주소, 프로토콜, 패킷 길이, TTL, 플래그 등
+   - 정규화 및 인코딩 처리
 
-3. **모델 학습 단계**:
-   - `ml_models.py`에서 랜덤 포레스트 모델 학습
-   - 학습된 모델의 성능 평가 및 시각화
+3. **머신러닝 모델 단계**:
+   - `IDS/modules/ml_models.py`: 
+     - RandomForestClassifier를 이용한 패킷 분류
+     - 모델 학습, 평가, 저장 기능
+     - 예측 확률값을 강화학습의 입력으로 제공
 
 4. **강화학습 통합 단계**:
-   - `reinforcement_learning.py`의 NetworkEnv 환경에서 랜덤 포레스트 예측 결과 활용
-   - DQNAgent를 통한 행동 정책 학습
+   - `IDS/modules/reinforcement_learning.py`:
+     - NetworkEnv: 네트워크 환경 시뮬레이션
+     - DQNAgent: Deep Q-Network 기반 의사결정
+     - 상태(State): 패킷 특성 + RF 예측 확률
+     - 행동(Action): 허용(0), 차단(1), 모니터링(2)
 
-5. **실시간 적용 단계**:
-   - `IDSAgent_RL.py`에서 학습된 모델을 실시간 패킷에 적용
-   - 잠재적 위협 탐지 및 자동 대응
+5. **방어 메커니즘 단계**:
+   - `IDS/modules/defense_mechanism.py`:
+     - IP 기반 차단/허용 리스트 관리
+     - 위협 레벨별 자동 대응
+     - 로깅 및 알림 시스템
+   - `IDS/modules/suricata_manager.py`:
+     - 고성능 모드에서 Suricata IDS 엔진 통합
+     - 규칙 기반 심층 패킷 검사
+
+6. **통합 실행 단계**:
+   - `IDS/IDSAgent_RL.py`:
+     - 모든 모듈을 통합하여 실시간 침입 탐지 수행
+     - 멀티스레딩을 통한 동시 처리
+     - 주기적인 모델 업데이트 및 성능 모니터링
+
+### 🔗 모듈 간 의존성
+
+```mermaid
+graph LR
+    A[IDSAgent_RL.py] --> B[packet_capture.py]
+    A --> C[ml_models.py]
+    A --> D[reinforcement_learning.py]
+    A --> E[defense_mechanism.py]
+    A --> F[utils.py]
+    
+    C --> D
+    D --> E
+    E --> G[suricata_manager.py]
+    
+    B --> F
+    C --> F
+    E --> F
+    
+    H[data_preparation.py] --> I[packet_collector.py]
+    H --> J[TrafficGeneratorApp.py]
+    H --> K[DataPreprocessingApp.py]
+    
+    I --> B
+    K --> C
+    
+    style A fill:#ff6b6b
+    style H fill:#4ecdc4
+```
 
 ## 🏗️ 전체 시스템 아키텍처
 
