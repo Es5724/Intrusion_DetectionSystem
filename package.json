@@ -4,8 +4,7 @@
   "description": "랜덤 포레스트와 강화학습을 이용한 네트워크 침입 탐지 시스템",
   "main": "Intrusion_DetectionSystem/IDSAgent_RL.py",
   "scripts": {
-    "start": "python Intrusion_DetectionSystem/IDSAgent_RL.py",
-    "taskmaster": "npx task-master-ai"
+    "start": "python Intrusion_DetectionSystem/IDSAgent_RL.py"
   },
   "keywords": [
     "intrusion-detection",
@@ -17,7 +16,6 @@
   "author": "",
   "license": "MIT",
   "devDependencies": {
-    "task-master-ai": "^0.13.2"
   },
   "dependencies": {
     "abort-controller": "^3.0.0",

@@ -2,40 +2,41 @@
 
 <div align="center">
   <img src="https://img.shields.io/badge/Language-Python-blue" alt="Language">
+  <img src="https://img.shields.io/badge/Language-C-yellow" alt="Language">
   <img src="https://img.shields.io/badge/Framework-PyTorch-orange" alt="Framework">
   <img src="https://img.shields.io/badge/AI-Reinforcement%20Learning-brightgreen" alt="AI">
 </div>
 
 ## 0. 📑목차
 
-1. [📌프로젝트 개요](#1-프로젝트-개요)
-2. [👥팀원 정보](#2-팀원-정보)
-3. [🏗️프로젝트 구조](#️3-프로젝트-구조)
-4. [🛠️사용된 모듈](#️4-사용된-모듈)
-5. [💻](#5-)
-
-5. [🔄AI 에이전트 작동 방식](#-ai-에이전트-작동-방식)
-6. [🌟하이브리드 접근 방식의 특징](#-하이브리드-접근-방식의-특징)
-7. [💻주요 시스템 구성 요소](#-주요-시스템-구성-요소)
-8. [🧠강화학습 관련 클래스 및 메서드](#-강화학습-관련-클래스-및-메서드)
-9. [🔄모듈 간 통합 및 데이터 흐름](#-모듈-간-통합-및-데이터-흐름)
-10. [🏗️전체 시스템 아키텍처](#️-전체-시스템-아키텍처)
-11. [📋프로그램 작동법](#-프로그램-작동법)
-12. [🔮향후 개발 계획](#-향후-개발-계획)
+1. [프로젝트 개요](#1-프로젝트-개요)
+2. [팀원 정보](#2-팀원-정보)
+3. [프로젝트 구조](#️3-프로젝트-구조)
+4. [사용된 모듈](#️4-사용된-모듈)
+5. [AI 에이전트 작동 방식](#-ai-에이전트-작동-방식)
+6. [하이브리드 접근 방식의 특징](#-하이브리드-접근-방식의-특징)
+7. [주요 시스템 구성 요소](#-주요-시스템-구성-요소)
+8. [강화학습 관련 클래스 및 메서드](#-강화학습-관련-클래스-및-메서드)
+9. [모듈 간 통합 및 데이터 흐름](#-모듈-간-통합-및-데이터-흐름)
+10. [전체 시스템 아키텍처](#️-전체-시스템-아키텍처)
+11. [프로그램 작동법](#-프로그램-작동법)
+12. [메모리 최적화 전략](#-메모리-최적화-전략)
+13. [운영 모드](#-운영-모드)
+14. [향후 개발 계획](#-향후-개발-계획)
 
 ## 1. 📌프로젝트 개요
 
-### 💡핵심 개념
 
-실시간으로 네트워크 보안 취약점을 탐지하고 자동으로 대응하는 AI 기반 침입 탐지 시스템이다.   
-랜덤 포레스트와 강화학습의 장점을 결합한 하이브리드 접근 방식을 통해 기존 방식보다 높은 정확도와 적응성을 제공 한다.
+
+실시간으로 네트워크 보안 취약점을 탐지하고 자동으로 대응하는 AI 기반 침입 탐지 시스템입니다.   
+랜덤 포레스트와 강화학습의 장점을 결합한 하이브리드 접근 방식을 통해 기존 방식보다 높은 정확도와 적응성을 제공 합니다..
 
 ## 2. 👥팀원 정보
 
 - **안상수[팀장]**: 시스템 설계, 메인프로그래밍
-- **신명재[팀원]**: 데이터 학습, 문서작업
-- **민인영[팀원]**: 데이터 학습, 이미지 시각화
-- **최준형[팀원]**: 데이터 학습, 백엔드작업
+- **신명재[팀원]**: 데이터 학습, 문서작업, 피드백 및 시각화 웹앱 제작
+- **민인영[팀원]**: 데이터 학습, 이미지 시각화, 피드백 및 시각화 웹앱 제작
+- **최준형[팀원]**: 데이터 학습, 피드백 및 시각화 웹앱 제작
 
 ## 3. 🏗️프로젝트 구조
 
@@ -56,13 +57,32 @@
     ├── 📄 reinforcement_learning.py     # 강화학습 구현
     ├── 📄 ml_models.py                  # 머신러닝 모델
     ├── 📄 packet_capture.py             # 패킷 캡처 기능
+    ├── 📄 defense_mechanism.py          # 방어 메커니즘 모듈
+    ├── 📄 suricata_manager.py           # 수리카타 통합 관리 모듈
     └── 📄 utils.py                      # 유틸리티 함수
+```
+
+### IDS 구현 구조
+```
+📁 IDS/
+├── IDSAgent_RL.py          # 메인 에이전트 파일
+├── 📁 modules/
+│   ├── defense_mechanism.py # 방어 메커니즘 모듈
+│   ├── suricata_manager.py  # 수리카타 통합 관리 모듈
+│   ├── utils.py             # 유틸리티 함수
+│   ├── packet_capture.py    # 패킷 캡처 모듈 
+│   ├── reinforcement_learning.py # 강화학습 모듈
+│   └── ml_models.py         # 머신러닝 모델 모듈
+├── 📁 logs/                    # 로그 디렉토리
+├── 📁 data_set/                # 학습 데이터 세트
+├── 📁 config/                  # 설정 파일
+└── 📁 rules/                   # 수리카타 규칙 파일
 ```
 
 ## 4. 🛠️사용된 모듈
 
 ### 데이터 분석 모듈
-- **pandas**
+- **pandas(메모리 사용 최적화로 인한 미사용 예정)**
     - 데이터 조작 및 분석을 위한 Python 라이브러리로, DataFrame과 Series 자료구조 제공
     - 패킷 데이터 로드, CSV 파일 처리, 결측치 처리, 범주형 데이터 인코딩 및 데이터 전처리 파이프라인 구축에 활용
 - **numpy**
@@ -140,6 +160,16 @@ flowchart TD
 - 실시간 의사결정 및 자동화된 대응
 - 지속적인 학습을 통한 성능 향상
 
+### 시스템 아키텍처
+
+이 시스템은 랜덤 포레스트 알고리즘과 강화학습(RL)을 결합한 하이브리드 침입 탐지 시스템입니다. 주요 구성 요소:
+
+1. **패킷 캡처 모듈**: 네트워크 인터페이스에서 실시간 패킷 캡처
+2. **랜덤 포레스트 모델**: 패킷 분석 및 침입 탐지 수행
+3. **강화학습 에이전트**: 탐지된 위협에 대한 최적 대응 결정
+4. **방어 메커니즘**: 위협 수준에 따른 자동 대응 조치
+5. **수리카타 통합**: 고성능 모드에서 외부 IDS 엔진 활용
+
 ## 💻 주요 시스템 구성 요소
 
 ### IDSAgent_RL 통합 에이전트 (IDSAgent_RL.py)
@@ -160,6 +190,23 @@ flowchart TD
 5. 데이터 저장 및 처리
 6. 모델 학습 및 적용
 7. 위협 탐지 및 대응
+
+### 자동 방어 기능
+
+시스템은 위협 수준에 따라 다음과 같은 자동 방어 조치를 취합니다:
+
+1. **높은 위협 (신뢰도 0.9 이상)**
+   - IP 주소 영구 차단
+   - 관리자에게 긴급 알림 발송
+   - 추가 보안 조치 실행
+
+2. **중간 위협 (신뢰도 0.8 이상)**
+   - IP 주소 임시 차단 (30분)
+   - 관리자에게 표준 알림 발송
+
+3. **낮은 위협 (신뢰도 0.7 이상)**
+   - 해당 트래픽 모니터링 강화
+   - 기록 및 로깅 강화
 
 ### 데이터 준비 및 처리 모듈 (data_preparation.py)
 
@@ -227,7 +274,7 @@ DQNAgent 클래스는 심층 Q 네트워크를 구현하여 패킷에 대한 최
 5. 경험 메모리에 저장
 6. 경험 리플레이를 통한 모델 업데이트
 
-## 🔄 모듈 간 통합 및 데이터 흐름
+## 🔄 모듈 간 통합 및 데이터 흐름(수정 예정)
 
 본 시스템의 데이터 흐름 및 모듈 간 통합은 다음과 같은 과정으로 이루어집니다:
 
@@ -300,70 +347,140 @@ flowchart LR
 이 프로젝트의 전체 아키텍처는 데이터 수집, 전처리, 학습 및 실시간 적용의 통합된 파이프라인을 형성합니다:
 
 ```mermaid
-flowchart TB
-    main["IDSAgent_RL.py 메인 에이전트"]
+flowchart TD
+    %% 메인 에이전트
+    main["IDSAgent_RL.py<br/>메인 에이전트"]
     
-    main --> data
-    main --> model
-    main --> realtime
+    %% 첫 번째 레벨 - 핵심 기능
+    mode["모드 선택<br/>(Lightweight/Performance)"]
+    capture["패킷 캡처 시작"]
+    defense_init["방어 메커니즘 활성화"]
+    utils["utils.py<br/>유틸리티"]
     
-    %% 모듈 배치
-    subgraph data["데이터 수집 모듈"]
-        direction LR
-        collector["packet_collector.py"] --> generator["TrafficGeneratorApp"]
-    end
+    %% 두 번째 레벨 - 데이터 수집
+    packet_capture["packet_capture.py<br/>PacketCaptureCore"]
+    data_prep["data_preparation.py<br/>통합 데이터 준비 UI"]
     
-    subgraph preprocess["데이터 전처리 모듈"]
-        direction LR
-        preprocessing["DataPreprocessingApp"] --> features["특성 추출 및 변환"]
-    end
+    %% 세 번째 레벨 - GUI 컴포넌트
+    packet_collector["packet_collector.py<br/>패킷 수집 GUI"]
+    traffic_gen["TrafficGeneratorApp.py<br/>트래픽 생성기"]
+    preprocess_app["DataPreprocessingApp.py<br/>데이터 전처리"]
     
-    subgraph model["모델 학습 모듈"]
-        direction LR
-        ml["ml_models.py"] --> rf["랜덤 포레스트 학습"] --> eval["성능 평가 및 시각화"]
-    end
+    %% 네 번째 레벨 - 머신러닝
+    ml_models["ml_models.py<br/>MLTrainingWindow"]
+    rf_model["랜덤 포레스트<br/>모델 학습"]
+    rf_predict["예측 확률<br/>Feature 추가"]
     
-    subgraph rl["강화학습 모듈"]
-        direction LR
-        env["NetworkEnv"] --> agent["DQNAgent"] --> train["모델 학습 및 평가"]
-    end
+    %% 다섯 번째 레벨 - 강화학습
+    rl_env["NetworkEnv<br/>환경 구성"]
+    dqn_agent["DQNAgent<br/>심층 Q-네트워크"]
+    rl_train["train_rl_agent<br/>에이전트 학습"]
     
-    subgraph realtime["실시간 적용 모듈"]
-        direction LR
-        reinforce["reinforcement_learning"] --> dqn["DQN 에이전트 적용"] --> detect["위협 탐지 및 대응"]
-    end
+    %% 여섯 번째 레벨 - 방어 메커니즘
+    defense_mech["defense_mechanism.py<br/>DefenseManager"]
+    suricata["suricata_manager.py<br/>Suricata 통합"]
+    actions["자동 대응<br/>(차단/모니터링/허용)"]
     
-    subgraph ui["사용자 인터페이스 모듈"]
-        direction LR
-        prep["data_preparation.py"] --> components["GUI 컴포넌트"] --> visual["시각화 및 보고"]
-    end
+    %% 일곱 번째 레벨 - 실시간 처리
+    capture_thread["패킷 캡처 스레드"]
+    process_thread["패킷 처리 스레드"]
+    monitor_thread["모니터링 스레드"]
+    train_thread["학습 스레드"]
     
-    %% 모듈 간 연결
-    data --> preprocess
-    preprocess --> model
-    model --> realtime
-    model --> rl
-    rl --> realtime
-    realtime --> ui
+    %% 메인 연결 (수직 구조)
+    main --> mode
+    main --> capture
+    main --> defense_init
+    main --> utils
+    
+    %% 데이터 수집 연결
+    capture --> packet_capture
+    capture --> data_prep
+    
+    %% GUI 컴포넌트 연결
+    data_prep --> packet_collector
+    data_prep --> traffic_gen
+    data_prep --> preprocess_app
+    packet_capture --> packet_collector
+    
+    %% 머신러닝 연결
+    packet_collector --> ml_models
+    preprocess_app --> ml_models
+    ml_models --> rf_model
+    rf_model --> rf_predict
+    
+    %% 강화학습 연결
+    rf_predict --> rl_env
+    rl_env --> dqn_agent
+    dqn_agent --> rl_train
+    
+    %% 방어 메커니즘 연결
+    mode --> defense_mech
+    defense_init --> defense_mech
+    rl_train --> defense_mech
+    suricata --> defense_mech
+    defense_mech --> actions
+    
+    %% 실시간 처리 연결
+    packet_capture --> capture_thread
+    capture_thread --> process_thread
+    process_thread --> monitor_thread
+    monitor_thread --> train_thread
+    
+    %% 데이터 플로우 (점선)
+    process_thread -.-> ml_models
+    rf_predict -.-> rl_env
+    rl_train -.-> defense_mech
     
     %% 스타일 정의
-    classDef moduleHeader fill:#f96,stroke:#333,stroke-width:2px,color:white;
-    class main moduleHeader
+    classDef mainNode fill:#ff6b6b,stroke:#333,stroke-width:3px,color:white,font-weight:bold;
+    classDef coreNode fill:#4ecdc4,stroke:#333,stroke-width:2px,color:white;
+    classDef dataNode fill:#95e1d3,stroke:#333,stroke-width:2px,color:#333;
+    classDef mlNode fill:#ffd93d,stroke:#333,stroke-width:2px,color:#333;
+    classDef rlNode fill:#6bcf7f,stroke:#333,stroke-width:2px,color:#333;
+    classDef defenseNode fill:#ff8b94,stroke:#333,stroke-width:2px,color:white;
+    classDef threadNode fill:#c44569,stroke:#333,stroke-width:2px,color:white;
+    classDef utilNode fill:#aa96da,stroke:#333,stroke-width:2px,color:white;
     
-    classDef nodeText fill:#f2f2f2,stroke:#333,stroke-width:1px,color:white;
-    classDef nodeText fill:#f2f2f2,stroke:#333,stroke-width:1px,color:black;
-    class collector,generator,preprocessing,features,ml,rf,eval,env,agent,train,reinforce,dqn,detect,prep,components,visual nodeText;
-    
-    classDef subgraphText fill:transparent,color:black;
-    classDef subgraphText fill:transparent,color:white;
-    class data,preprocess,model,rl,realtime,ui subgraphText;
-    
-    linkStyle default stroke:#333,stroke-width:2px;
+    class main mainNode;
+    class mode,capture,defense_init coreNode;
+    class packet_capture,data_prep,packet_collector,traffic_gen,preprocess_app dataNode;
+    class ml_models,rf_model,rf_predict mlNode;
+    class rl_env,dqn_agent,rl_train rlNode;
+    class defense_mech,suricata,actions defenseNode;
+    class capture_thread,process_thread,monitor_thread,train_thread threadNode;
+    class utils utilNode;
 ```
 
 이러한 통합 아키텍처를 통해 데이터 흐름이 원활하게 이루어지며, 각 모듈의 기능이 유기적으로 연결됩니다. 특히 랜덤 포레스트와 강화학습의 통합은 이 시스템의 핵심 특징으로, 두 알고리즘의 장점을 결합하여 더 높은 탐지 성능과 적응성을 제공합니다.
 
 ## 📋 프로그램 작동법
+
+### 설치 요구사항
+
+- Python 3.7 이상
+- Windows/Linux/MacOS 지원 (Windows에서는 관리자 권한 필요)
+- Npcap (Windows) 또는 libpcap (Linux/Mac) 설치 필요
+- 고성능 모드의 경우 Suricata 엔진 설치 필요
+
+### 실행 방법(개발 중)
+
+```bash
+# 기본 실행 (메뉴에서 모드 선택)
+python IDSAgent_RL.py
+
+# 경량 모드로 직접 실행
+python IDSAgent_RL.py --mode lightweight
+
+# 고성능 모드로 직접 실행
+python IDSAgent_RL.py --mode performance
+
+# 최대 패킷 수 제한 (테스트용)
+python IDSAgent_RL.py --max-packets 1000
+
+# 디버그 모드 실행
+python IDSAgent_RL.py --debug
+```
 
 ### 데이터 준비 애플리케이션 (DataPreprocessingApp)
 
@@ -397,36 +514,48 @@ flowchart TB
    - 생성할 패킷 수 설정
    - '생성 시작' 버튼으로 트래픽 생성 및 전송
 
+## 🔍 메모리 최적화 전략
+
+대용량 패킷 처리를 위한 메모리 최적화 기법:
+
+1. **청크 기반 처리**: 패킷을 1000개에서 200개 단위로 나누어 처리
+2. **데이터 타입 최적화**: 
+   - int64 → int32 
+   - 불필요한 object 타입 최소화
+3. **선택적 컬럼 처리**: 필요한 컬럼만 선택적으로 메모리에 로드
+4. **명시적 메모리 관리**: 
+   - 사용 완료된 데이터프레임 명시적 삭제
+   - 주기적 가비지 컬렉션 호출
+5. **버퍼 크기 제한**: 최대 버퍼 크기를 제한하여 메모리 누수 방지
+
+6. **C와 파이썬의 하이브리드 방식으로 구동(고려중)**
+    - 패킷 캡쳐/분석 부분만 C로 구현하여
+
+
+## 🚀 운영 모드
+
+시스템은 두 가지 운영 모드를 지원합니다:
+
+### 1. 경량 모드 (Lightweight)
+- 적은 시스템 자원 사용
+- 기본 특성 7개만 사용
+- 모든 환경에서 실행 가능
+- 내장 휴리스틱 기반 탐지
+
+### 2. 고성능 모드 (Performance)
+- 수리카타(Suricata) 엔진 통합
+- 확장 특성 12개 사용
+- 더 높은 정확도의 탐지 제공
+- 더 많은 시스템 자원 필요
+- 규칙 기반 심층 분석 지원
+
 ## 🔮 향후 개발 계획
 
-- 방어모듈 알고리즘에 수리카타와의 연동 고려
-
-[네트워크 트래픽]
-      ↓
-   ┌─────────────┐   ┌─────────────┐
-   │   Scapy     │   │  수리카타   │
-   │(패킷 캡처)  │   │(IDS 분석)   │
-   └─────┬───────┘   └──────┬──────┘
-         │                  │
-         ↓                  ↓
-   ┌─────────────┐   ┌─────────────┐
-   │  데이터     │   │  알림       │
-   │  전처리     │   │  이벤트     │
-   └─────┬───────┘   └──────┬──────┘
-         │                  │
-         └────────┬─────────┘
-                  ↓
-         ┌─────────────────────┐
-         │  통합 분석 레이어   │
-         │ (랜덤 포레스트 +    │
-         │  강화학습 + 수리카타)│
-         └──────────┬──────────┘
-                    ↓
-         ┌─────────────────────┐
-         │    방어 조치        │
-         └─────────────────────┘
-- PPO(Proximal Policy Optimization) 알고리즘 구현
+- PPO(Proximal Policy Optimization) 알고리즘 구현 고려
 - 다양한 네트워크 환경에서의 적응성 향상
+- 핵심 병목 구간(패킷 캡쳐/분석) 사용언어 C로 변경 고려(cython,메모리 및 cpu 사용량 최적화)
+- 백그라운드 실행(핵심 개발 완료 후 실행 예정)
 - 분산 학습 시스템 구축(클라우드 연동 고려)
 - 실시간 대응 메커니즘 고도화
-- 사용자 피드백 기반 성능 최적화
+- 사용자 피드백 기반 성능 개선 
+- 학습 및 차단 트래픽 데이터 시각화화
