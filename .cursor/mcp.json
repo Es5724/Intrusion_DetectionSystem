@@ -1,7 +1,7 @@
 {
     "env": {
-        "ANTHROPIC_API_KEY": "YOUR_ANTHROPIC_API_KEY_HERE",
-        "OPENAI_API_KEY": "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",
+        "ANTHROPIC_API_KEY": "",
+        "OPENAI_API_KEY": "",
         "PERPLEXITY_API_KEY": "",
         "GOOGLE_API_KEY": "",
         "MISTRAL_API_KEY": "",
