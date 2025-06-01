@@ -118,4 +118,21 @@ yarn-error.log*
 
 # System files
 .git/
-.gitignore~ 
+.gitignore~
+
+# Build directories and large files
+build/
+dist/
+*.pkg
+*.dmg
+*.app
+*.msi
+*.deb
+*.rpm
+
+# Large binary files
+*.bin
+*.dat
+*.db
+*.sqlite
+*.sqlite3 
