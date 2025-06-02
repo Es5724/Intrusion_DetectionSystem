@@ -112,27 +112,29 @@ class PacketCaptureCore:
         """Npcap/libpcap 설치 여부를 확인합니다."""
         if platform.system() == 'Windows':
             # Windows에서 Npcap 확인
-        try:
-            key = winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, r'SOFTWARE\Npcap')
-            winreg.CloseKey(key)
-            print("Npcap detected in registry: SOFTWARE\\Npcap")
-            return True
-        except FileNotFoundError:
-            print("Npcap not found in registry: SOFTWARE\\Npcap")
-        try:
-            key = winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, r'SOFTWARE\WOW6432Node\Npcap')
-            winreg.CloseKey(key)
-            print("Npcap detected in registry: SOFTWARE\\WOW6432Node\\Npcap")
-            return True
-        except FileNotFoundError:
-            print("Npcap not found in registry: SOFTWARE\\WOW6432Node\\Npcap")
+            try:
+                key = winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, r'SOFTWARE\Npcap')
+                winreg.CloseKey(key)
+                print("Npcap detected in registry: SOFTWARE\\Npcap")
+                return True
+            except FileNotFoundError:
+                print("Npcap not found in registry: SOFTWARE\\Npcap")
+            
+            try:
+                key = winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, r'SOFTWARE\WOW6432Node\Npcap')
+                winreg.CloseKey(key)
+                print("Npcap detected in registry: SOFTWARE\\WOW6432Node\\Npcap")
+                return True
+            except FileNotFoundError:
+                print("Npcap not found in registry: SOFTWARE\\WOW6432Node\\Npcap")
+            
             default_path = os.path.join(os.environ.get('SystemRoot', r'C:\Windows'), 'System32', 'Npcap')
-        if os.path.exists(default_path):
-            print(f"Npcap detected in directory: {default_path}")
-            return True
-        else:
-            print(f"Npcap not found in directory: {default_path}")
-            return False
+            if os.path.exists(default_path):
+                print(f"Npcap detected in directory: {default_path}")
+                return True
+            else:
+                print(f"Npcap not found in directory: {default_path}")
+                return False
         else:
             # Unix/Linux에서 libpcap 확인
             try:
@@ -141,7 +143,7 @@ class PacketCaptureCore:
                 return True
             except ImportError:
                 print("libpcap이 설치되지 않았습니다.")
-        return False
+                return False
 
     def get_network_interfaces(self):
         """네트워크 인터페이스 목록을 반환합니다."""

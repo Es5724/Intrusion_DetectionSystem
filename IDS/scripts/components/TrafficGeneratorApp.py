@@ -432,9 +432,9 @@ def is_valid_ip(ip):
         try:
             # IPv6 검사
             socket.inet_pton(socket.AF_INET6, ip)
-        return True
-    except socket.error:
-        return False
+            return True
+        except socket.error:
+            return False
 
 def test_packet_send(target_ip="127.0.0.1", method="scapy"):
     """패킷 전송 테스트 함수"""
@@ -764,9 +764,9 @@ class TrafficGeneratorApp(QWidget):
         self.stop_transmission()
         
         # 버튼 상태 업데이트
-            self.generate_button.setEnabled(False)
-            self.stop_button.setEnabled(True)
-            
+        self.generate_button.setEnabled(False)
+        self.stop_button.setEnabled(True)
+        
         # 선택된 공격들을 실행
         attack_names = []
         for attack_name, attack_func, attack_args in selected_attacks:
@@ -806,9 +806,9 @@ class TrafficGeneratorApp(QWidget):
         
         # 버튼 상태 업데이트
         if hasattr(self, 'generate_button'):
-        self.generate_button.setEnabled(True)
+            self.generate_button.setEnabled(True)
         if hasattr(self, 'stop_button'):
-        self.stop_button.setEnabled(False)
+            self.stop_button.setEnabled(False)
         
         # 상태 출력
         print('모든 트래픽 전송이 중지되었습니다.')
@@ -885,7 +885,7 @@ class TrafficGeneratorApp(QWidget):
         """메모리 정리"""
         try:
             # 가비지 컬렉션 강제 실행
-        gc.collect()
+            gc.collect()
 
             # 스레드별 메모리 사용량 확인 (디버깅용)
             import psutil
