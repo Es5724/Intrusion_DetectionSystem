@@ -1,15 +1,15 @@
-2025-05-27 11:23:41,139 - IDSAgent - INFO - 로깅 시스템 초기화 완료
-2025-05-27 11:23:45,009 - matplotlib - DEBUG - matplotlib data path: C:\Users\dksd5\AppData\Local\Programs\Python\Python313\Lib\site-packages\matplotlib\mpl-data
-2025-05-27 11:23:45,016 - matplotlib - DEBUG - CONFIGDIR=C:\Users\dksd5\.matplotlib
-2025-05-27 11:23:45,018 - matplotlib - DEBUG - interactive is False
-2025-05-27 11:23:45,018 - matplotlib - DEBUG - platform is win32
-2025-05-27 11:23:45,087 - matplotlib - DEBUG - CACHEDIR=C:\Users\dksd5\.matplotlib
-2025-05-27 11:23:45,090 - matplotlib.font_manager - DEBUG - Using fontManager instance from C:\Users\dksd5\.matplotlib\fontlist-v390.json
-2025-05-27 11:23:47,970 - IDSAgent - INFO - 운영 모드 설정: lightweight
-2025-05-27 11:23:47,972 - IDSAgent - INFO - 로컬 환경에서 IDS 시스템 실행 시작
-2025-05-27 11:23:48,032 - DefenseMechanism - INFO - 트래픽 차단 시스템 초기화 완료
-2025-05-27 11:23:48,034 - DefenseMechanism - INFO - 알림 시스템 초기화 완료
-2025-05-27 11:23:48,035 - DefenseMechanism - INFO - 트래픽 차단 시스템 초기화 완료
-2025-05-27 11:23:48,035 - DefenseMechanism - INFO - 알림 시스템 초기화 완료
-2025-05-27 11:23:48,037 - DefenseMechanism - INFO - 경량 모드로 실행 중입니다.
-2025-05-27 11:23:48,038 - DefenseMechanism - INFO - 방어 메커니즘 관리자 초기화 완료 (모드: lightweight)
+2025-06-02 14:22:07,318 - IDSAgent - INFO - 로깅 시스템 초기화 완료
+2025-06-02 14:22:11,463 - matplotlib - DEBUG - matplotlib data path: C:\Users\dksd5\AppData\Local\Programs\Python\Python313\Lib\site-packages\matplotlib\mpl-data
+2025-06-02 14:22:11,468 - matplotlib - DEBUG - CONFIGDIR=C:\Users\dksd5\.matplotlib
+2025-06-02 14:22:11,470 - matplotlib - DEBUG - interactive is False
+2025-06-02 14:22:11,470 - matplotlib - DEBUG - platform is win32
+2025-06-02 14:22:11,541 - matplotlib - DEBUG - CACHEDIR=C:\Users\dksd5\.matplotlib
+2025-06-02 14:22:11,544 - matplotlib.font_manager - DEBUG - Using fontManager instance from C:\Users\dksd5\.matplotlib\fontlist-v390.json
+2025-06-02 14:22:14,052 - IDSAgent - INFO - 운영 모드 설정: lightweight
+2025-06-02 14:22:14,054 - IDSAgent - INFO - 로컬 환경에서 IDS 시스템 실행 시작
+2025-06-02 14:22:14,122 - DefenseMechanism - INFO - 트래픽 차단 시스템 초기화 완료
+2025-06-02 14:22:14,123 - DefenseMechanism - INFO - 알림 시스템 초기화 완료
+2025-06-02 14:22:14,137 - DefenseMechanism - INFO - 트래픽 차단 시스템 초기화 완료
+2025-06-02 14:22:14,138 - DefenseMechanism - INFO - 알림 시스템 초기화 완료
+2025-06-02 14:22:14,139 - DefenseMechanism - INFO - 경량 모드로 실행 중입니다.
+2025-06-02 14:22:14,139 - DefenseMechanism - INFO - 방어 메커니즘 관리자 초기화 완료 (모드: lightweight)
