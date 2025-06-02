@@ -11,18 +11,19 @@
 
 1. [프로젝트 개요](#1-프로젝트-개요)
 2. [팀원 정보](#2-팀원-정보)
-3. [프로젝트 구조](#️3-프로젝트-구조)
-4. [사용된 모듈](#️4-사용된-모듈)
-5. [AI 에이전트 작동 방식](#-ai-에이전트-작동-방식)
-6. [하이브리드 접근 방식의 특징](#-하이브리드-접근-방식의-특징)
-7. [주요 시스템 구성 요소](#-주요-시스템-구성-요소)
-8. [강화학습 관련 클래스 및 메서드](#-강화학습-관련-클래스-및-메서드)
-9. [모듈 간 통합 및 데이터 흐름](#-모듈-간-통합-및-데이터-흐름)
-10. [전체 시스템 아키텍처](#️-전체-시스템-아키텍처)
-11. [프로그램 작동법](#-프로그램-작동법)
-12. [메모리 최적화 전략](#-메모리-최적화-전략)
-13. [운영 모드](#-운영-모드)
-14. [향후 개발 계획](#-향후-개발-계획)
+3. [사용개발환경](#3-사용개발환경)
+4. [프로젝트 구조](#️4-프로젝트-구조)
+5. [사용된 모듈](#️5-사용된-모듈)
+6. [AI 에이전트 작동 방식](#-ai-에이전트-작동-방식)
+7. [하이브리드 접근 방식의 특징](#-하이브리드-접근-방식의-특징)
+8. [주요 시스템 구성 요소](#-주요-시스템-구성-요소)
+9. [강화학습 관련 클래스 및 메서드](#-강화학습-관련-클래스-및-메서드)
+10. [모듈 간 통합 및 데이터 흐름](#-모듈-간-통합-및-데이터-흐름)
+11. [전체 시스템 아키텍처](#️-전체-시스템-아키텍처)
+12. [프로그램 작동법](#-프로그램-작동법)
+13. [메모리 최적화 전략](#-메모리-최적화-전략)
+14. [운영 모드](#-운영-모드)
+15. [향후 개발 계획](#-향후-개발-계획)
 
 ## 1. 📌프로젝트 개요
 
@@ -38,7 +39,28 @@
 - **민인영[팀원]**: 데이터 학습, 이미지 시각화, 피드백 및 시각화 웹앱 제작
 - **최준형[팀원]**: 데이터 학습, 피드백 및 시각화 웹앱 제작
 
-## 3. 🏗️프로젝트 구조
+## 3. 💻사용개발환경
+
+### 프론트엔드
+- **IDE**: WebStorm
+- **언어**: JavaScript, CSS
+- **프레임워크**: React (웹 시각화 대시보드)
+
+### 백엔드 
+- **IDE**: PyCharm
+- **언어**: Python
+- **프레임워크**: Flask (API 서버)
+
+### IDS 프로그램
+- **언어**: Python
+- **주요 라이브러리**: Scapy, PyTorch, scikit-learn
+
+### 기타 개발도구
+- **Google Colab**: 머신러닝 모델 실험 및 훈련
+- **VS Code**: 코드 편집 및 디버깅
+- **OpenAI Gym**: 강화학습 환경 구축
+
+## 4. 🏗️프로젝트 구조
 
 ```
 📁 Intrusion_DetectionSystem/
@@ -79,7 +101,7 @@
 └── 📁 rules/                   # 수리카타 규칙 파일
 ```
 
-## 4. 🛠️사용된 모듈
+## 5. 🛠️사용된 모듈
 
 ### 데이터 분석 모듈
 - **pandas(메모리 사용 최적화로 인한 미사용 예정)**
@@ -352,9 +374,9 @@ flowchart TB
     classDef uiClass fill:#e1f5fe,stroke:#01579b,stroke-width:2px;
     classDef coreClass fill:#f3e5f5,stroke:#4a148c,stroke-width:2px;
     classDef agentClass fill:#ffebee,stroke:#b71c1c,stroke-width:3px;
-    classDef dataClass fill:#e8f5e9,stroke:#1b5e20,stroke-width:2px;
+    classDef dataClass fill:#e8f5e9,stroke:#1b5e20,stroke-width:2px,color:#333;
     
-    class main_ui,packet_collector,traffic_gen,preprocess uiClass;
+    class main_ui,packet_collector,traffic_gen,preprocess_app uiClass;
     class packet_capture,ml_models,rl_module,defense,suricata,utils coreClass;
     class ids_agent agentClass;
     class raw_packets,processed_data,rf_predictions,rl_actions,defense_actions dataClass;
