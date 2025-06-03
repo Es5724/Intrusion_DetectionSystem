@@ -1,4 +1,4 @@
-# 반응형 취약점 차단 AI 에이전트
+# 🛡️ IDS Agent - 침입 탐지 시스템 (Intrusion Detection System)
 
 <div align="center">
   <img src="https://img.shields.io/badge/Language-Python-blue" alt="Language">
@@ -7,7 +7,7 @@
   <img src="https://img.shields.io/badge/AI-Reinforcement%20Learning-brightgreen" alt="AI">
 </div>
 
-## 0. 📑목차
+## 0. 목차
 
 1. [프로젝트 개요](#1-프로젝트-개요)
 2. [팀원 정보](#2-팀원-정보)
@@ -33,7 +33,7 @@
 실시간으로 네트워크 보안 취약점을 탐지하고 자동으로 대응하는 AI 기반 침입 탐지 시스템입니다.   
 랜덤 포레스트와 강화학습의 장점을 결합한 하이브리드 접근 방식을 통해 기존 방식보다 높은 정확도와 적응성을 제공 합니다..
 
-## 2. 👥팀원 정보
+## 2. 팀원 정보
 
 - **안상수[팀장]**: 시스템 설계, 메인프로그래밍
 - **신명재[팀원]**: 데이터 학습, 문서작업, 피드백 및 시각화 웹앱 제작
@@ -136,7 +136,7 @@ python IDS/IDSAgent_RL.py
 ├── 📄 IDSAgent_RL.py                    # 메인 에이전트 (시스템 핵심)
 │
 ├── 📁 scripts/                          # 실행 스크립트
-│   ├── 📄 data_preparation.py           # 데이터 준비 인터페이스
+│   ├── 📄 IDS_Training_Data_Generator.py           # 데이터 준비 인터페이스
 │   │
 │   └── 📁 components/                   # UI 컴포넌트
 │       ├── 📄 packet_collector.py       # 패킷 수집 모듈
@@ -298,9 +298,9 @@ flowchart TD
    - 해당 트래픽 모니터링 강화
    - 기록 및 로깅 강화
 
-### 데이터 준비 및 처리 모듈 (data_preparation.py)
+### IDS Training Data Generator (IDS_Training_Data_Generator.py)
 
-`data_preparation.py`는 데이터 수집, 생성 및 전처리에 필요한 GUI 인터페이스를 제공합니다.
+`IDS_Training_Data_Generator.py`는 데이터 수집, 생성 및 전처리에 필요한 GUI 인터페이스를 제공합니다.
 
 **MainApplication 클래스:**
 - 중앙 위젯 및 스택 위젯을 통한 화면 전환 기능
@@ -371,10 +371,10 @@ DQNAgent 클래스는 심층 Q 네트워크를 구현하여 패킷에 대한 최
 ```mermaid
 flowchart TB
     subgraph UI["사용자 인터페이스"]
-        main_ui["data_preparation.py<br/>메인 UI 진입점"]
+        main_ui["IDS_Training_Data_Generator.py<br/>메인 UI 진입점"]
         packet_collector["scripts/components/<br/>packet_collector.py<br/>패킷 수집 GUI"]
         traffic_gen["scripts/components/<br/>TrafficGeneratorApp.py<br/>트래픽 생성기"]
-        preprocess["scripts/components/<br/>DataPreprocessingApp.py<br/>데이터 전처리 UI"]
+        data_prep["scripts/components/<br/>DataPreprocessingApp.py<br/>통합 데이터 준비 UI"]
     end
 
     subgraph Core["핵심 모듈 (modules/)"]
@@ -401,7 +401,7 @@ flowchart TB
     %% UI 연결
     main_ui --> packet_collector
     main_ui --> traffic_gen
-    main_ui --> preprocess
+    main_ui --> data_prep
 
     %% 데이터 수집 플로우
     packet_collector --> packet_capture
@@ -409,8 +409,8 @@ flowchart TB
     packet_capture --> raw_packets
 
     %% 데이터 처리 플로우
-    raw_packets --> preprocess
-    preprocess --> processed_data
+    raw_packets --> data_prep
+    data_prep --> processed_data
 
     %% ML 플로우
     processed_data --> ml_models
@@ -444,7 +444,7 @@ flowchart TB
     classDef agentClass fill:#ffebee,stroke:#b71c1c,stroke-width:3px;
     classDef dataClass fill:#e8f5e9,stroke:#1b5e20,stroke-width:2px,color:#333;
     
-    class main_ui,packet_collector,traffic_gen,preprocess_app uiClass;
+    class main_ui,packet_collector,traffic_gen,data_prep uiClass;
     class packet_capture,ml_models,rl_module,defense,suricata,utils coreClass;
     class ids_agent agentClass;
     class raw_packets,processed_data,rf_predictions,rl_actions,defense_actions dataClass;
@@ -508,7 +508,7 @@ graph LR
     C --> F
     E --> F
     
-    H[data_preparation.py] --> I[packet_collector.py]
+    H[IDS_Training_Data_Generator.py] --> I[packet_collector.py]
     H --> J[TrafficGeneratorApp.py]
     H --> K[DataPreprocessingApp.py]
     
@@ -536,7 +536,7 @@ flowchart TD
     
     %% 두 번째 레벨 - 데이터 수집
     packet_capture["packet_capture.py<br/>PacketCaptureCore"]
-    data_prep["data_preparation.py<br/>통합 데이터 준비 UI"]
+    data_prep["IDS_Training_Data_Generator.py<br/>통합 데이터 준비 UI"]
     
     %% 세 번째 레벨 - GUI 컴포넌트
     packet_collector["packet_collector.py<br/>패킷 수집 GUI"]
@@ -662,7 +662,7 @@ python IDSAgent_RL.py --debug
 ### 데이터 준비 애플리케이션 (DataPreprocessingApp)
 
 1. **데이터 파일 업로드**:
-   - 'data_preparation.py'를 실행하여 메인 메뉴에 접근
+   - 'IDS_Training_Data_Generator.py'를 실행하여 메인 메뉴에 접근
    - '데이터 전처리' 버튼을 클릭하여 DataPreprocessingApp 실행
    - '데이터 파일 업로드' 버튼으로 CSV 또는 PCAP 파일 선택
    - 데이터는 자동으로 테이블에 로드되어 표시됨
@@ -685,7 +685,7 @@ python IDSAgent_RL.py --debug
 ### 트래픽 생성 (TrafficGeneratorApp)
 
 1. **공격성 패킷 생성**:
-   - 'data_preparation.py'에서 '트래픽 생성' 버튼 클릭
+   - 'IDS_Training_Data_Generator.py'에서 '트래픽 생성' 버튼 클릭
    - 공격 대상 IP 입력
    - 패킷 크기 및 유형 선택
    - 생성할 패킷 수 설정

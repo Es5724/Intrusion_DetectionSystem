@@ -22,7 +22,13 @@ class DataPreprocessingApp(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.parent_app = parent
-        self.setWindowTitle("데이터 전처리")
+        
+        # 관리자 권한 상태 확인
+        admin_status = ""
+        if hasattr(self.parent_app, 'is_admin_mode') and self.parent_app.is_admin_mode:
+            admin_status = " [관리자]"
+            
+        self.setWindowTitle("데이터 전처리" + admin_status)
         layout = QVBoxLayout()
 
         # 상단 레이아웃 설정

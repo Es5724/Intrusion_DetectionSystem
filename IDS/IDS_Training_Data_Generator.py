@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 """
-데이터 생성 및 데이터 전처리 메인 애플리케이션
+IDS Training Data Generator
 
 이 스크립트는 패킷 캡처, 트래픽 생성, 데이터 전처리 등 
 AI학습에 필요한 데이터 생성 및 가공에 필요한 기능들의 인터페이스 제공 .
@@ -27,7 +27,7 @@ if current_dir not in sys.path:
 # PyQt6 임포트
 from PyQt6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, 
-    QPushButton, QLabel, QStackedWidget
+    QPushButton, QLabel, QStackedWidget, QMessageBox
 )
 from PyQt6.QtGui import QIcon, QFont
 from PyQt6.QtCore import Qt, QSize
@@ -56,17 +56,9 @@ def run_as_admin():
     
     if platform.system() == 'Windows':
         try:
-            # VBS 스크립트 생성하여 관리자 권한으로 실행
-            script_path = os.path.join(os.environ.get('TEMP', os.getcwd()), 'run_as_admin.vbs')
-            with open(script_path, 'w') as f:
-                f.write(f'''
-Set UAC = CreateObject("Shell.Application")
-UAC.ShellExecute "{sys.executable}", "{' '.join(sys.argv)}", "", "runas", 1
-''')
-            
-            # VBS 스크립트 실행
-            os.system(f'start "" "{script_path}"')
-            return True
+            # Windows에서 관리자 권한으로 재실행
+            ctypes.windll.shell32.ShellExecuteW(None, "runas", sys.executable, " ".join(sys.argv), None, 1)
+            return False  # 새 프로세스가 시작되므로 현재 프로세스는 종료해야 함
         except Exception as e:
             print(f"관리자 권한으로 실행 중 오류 발생: {e}")
             return False
@@ -82,11 +74,14 @@ def clear_screen():
 class MainApplication(QMainWindow):
     """메인 애플리케이션 클래스"""
     
-    def __init__(self):
+    def __init__(self, is_admin_mode=False):
         super().__init__()
         
+        # 관리자 권한 상태 저장
+        self.is_admin_mode = is_admin_mode
+        
         # 기본 설정
-        self.setWindowTitle("데이터 생성 및 전처리 어플리케이션")
+        self.setWindowTitle("IDS Training Data Generator" + (" [관리자]" if self.is_admin_mode else ""))
         self.setMinimumSize(800, 500)  # 세로 크기 600 → 500으로 축소
         
         # 중앙 위젯 설정
@@ -104,8 +99,8 @@ class MainApplication(QMainWindow):
         # 메인 화면 초기화
         self.init_main_screen()
         
-        # 관리자 권한 확인을 별도 스레드에서 처리
-        self.check_admin_privileges()
+        # 관리자 권한 확인 제거 (이미 main에서 처리됨)
+        # self.check_admin_privileges()
         
         # 패킷 캡처 화면 초기화
         self.packet_collector_app = PacketCollectorApp(self)
@@ -122,14 +117,6 @@ class MainApplication(QMainWindow):
         # 시작 화면 표시
         self.show_main_screen()
     
-    def check_admin_privileges(self):
-        """관리자 권한을 비동기적으로 확인"""
-        if platform.system() == 'Windows' and not is_admin():
-            # 관리자 권한이 없을 때 경고 메시지만 표시하고 계속 진행
-            print("경고: 관리자 권한이 없습니다. 일부 기능이 제한될 수 있습니다.")
-            # 필요시 사용자에게 알림
-            # QMessageBox.warning(self, "권한 경고", "관리자 권한이 없습니다. 패킷 캡처 및 전송 기능이 제한될 수 있습니다.")
-    
     def init_main_screen(self):
         """메인 시작 화면 초기화"""
         self.main_screen = QWidget()
@@ -137,7 +124,7 @@ class MainApplication(QMainWindow):
         layout.setSpacing(15)  # 요소 간격 줄임
         
         # 제목 라벨
-        title_label = QLabel("데이터 생성 및 전처리 어플리케이션")
+        title_label = QLabel("IDS Training Data Generator")
         title_font = QFont("Segoe UI", 22, QFont.Weight.Bold)  # 폰트를 Segoe UI로 변경
         title_label.setFont(title_font)
         title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -150,7 +137,7 @@ class MainApplication(QMainWindow):
         layout.addWidget(title_label)
         
         # 부제목 추가
-        subtitle_label = QLabel("네트워크 패킷 및 데이터 관리 시스템")
+        subtitle_label = QLabel("침입 탐지 시스템 학습 데이터 생성 도구")
         subtitle_font = QFont("Segoe UI", 12)  # 폰트를 Segoe UI로 변경
         subtitle_font.setItalic(True)
         subtitle_label.setFont(subtitle_font)
@@ -191,11 +178,13 @@ class MainApplication(QMainWindow):
         
         # 상태 표시줄
         self.status_label = QLabel("시스템 상태: 준비 완료")
+        if hasattr(self, 'is_admin_mode') and self.is_admin_mode:
+            self.status_label.setText("시스템 상태: 준비 완료 [관리자 권한]")
         self.status_label.setStyleSheet("color: #666666; font-style: italic; font-size: 11px;")
         layout.addWidget(self.status_label, alignment=Qt.AlignmentFlag.AlignBottom)
         
         # 푸터 영역 추가
-        footer_label = QLabel("© 2025 데이터 처리 시스템")
+        footer_label = QLabel("© 2025 IDS Training Data Generator")
         footer_label.setStyleSheet("color: #999999; font-size: 10px;")
         footer_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(footer_label)
@@ -247,8 +236,40 @@ class MainApplication(QMainWindow):
 
 def main():
     """메인 함수"""
-    app = QApplication(sys.argv)
-    window = MainApplication()
+    # 프로그램 시작 전에 관리자 권한 확인
+    if platform.system() == 'Windows' and not is_admin():
+        # QApplication을 먼저 생성하여 메시지박스 표시 가능하게 함
+        app = QApplication(sys.argv)
+        
+        reply = QMessageBox.question(
+            None,
+            "관리자 권한 필요",
+            "이 프로그램은 패킷 캡처 및 전송을 위해 관리자 권한이 필요합니다.\n"
+            "관리자 권한으로 실행하시겠습니까?",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.Yes
+        )
+        
+        if reply == QMessageBox.StandardButton.Yes:
+            # 관리자 권한으로 재실행
+            if not run_as_admin():
+                # 새 프로세스가 시작되므로 현재 프로세스 종료
+                sys.exit(0)
+        else:
+            # 사용자가 거부한 경우 제한된 기능으로 실행
+            reply = QMessageBox.information(
+                None,
+                "제한된 기능",
+                "관리자 권한 없이 실행합니다.\n"
+                "일부 네트워크 기능이 제한될 수 있습니다.",
+                QMessageBox.StandardButton.Ok
+            )
+    else:
+        # 이미 관리자 권한이 있거나 Linux/Mac인 경우
+        app = QApplication(sys.argv)
+    
+    # 관리자 권한 상태를 MainApplication에 전달
+    window = MainApplication(is_admin_mode=is_admin())
     window.show()
     sys.exit(app.exec())
 

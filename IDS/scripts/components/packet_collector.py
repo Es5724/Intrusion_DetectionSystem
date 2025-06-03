@@ -263,7 +263,13 @@ class MainApp(QMainWindow):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.parent_app = parent
-        self.setWindowTitle("패킷 캡처 애플리케이션")
+        
+        # 관리자 권한 상태 확인
+        admin_status = ""
+        if hasattr(self.parent_app, 'is_admin_mode') and self.parent_app.is_admin_mode:
+            admin_status = " [관리자]"
+            
+        self.setWindowTitle("패킷 캡처 애플리케이션" + admin_status)
         self.setWindowIcon(QIcon("icon.png"))
         self.core = PacketCaptureCore()
         self.check_for_updates()
