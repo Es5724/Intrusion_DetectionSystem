@@ -11,10 +11,11 @@ import os
 import sys
 import subprocess
 
-# 필요한 라이브러리 확인 및 설치 (Windows에서 문제가 되는 패키지 제외)
+# 필요한 라이브러리 확인 및 설치
 required_packages = [
-    'scapy', 'pandas', 'numpy', 'matplotlib', 'seaborn', 'joblib', 'scikit-learn',
-    'psutil', 'pyyaml'
+    'gym', 'torch', 'scapy', 'pandas', 'numpy', 'matplotlib', 'seaborn', 'joblib', 'scikit-learn','PyQt6',     
+    'pypcap', 'dpkt', 'netfilterqueue', 'psutil',
+    'ipaddress', 'pywin32','pyyaml'
 ]
 
 def install_missing_packages():
@@ -34,7 +35,6 @@ from .packet_capture import PacketCapture, PacketCaptureCore, preprocess_packet_
 from .reinforcement_learning import NetworkEnv, DQNAgent, train_rl_agent, plot_training_results, save_model, load_model
 from .ml_models import MLTrainingWindow, train_random_forest, add_rf_predictions
 from .utils import is_colab, is_admin, run_as_admin, clear_screen, wait_for_enter, syn_scan
-from .port_scan_detector import PortScanDetector, VulnerabilityScanner, SecurityHardening
 
 # 수리카타 관리자 모듈 임포트 시도
 try:
@@ -52,8 +52,7 @@ __all__ = [
     'NetworkEnv', 'DQNAgent', 'train_rl_agent', 'plot_training_results', 'save_model', 'load_model',
     'MLTrainingWindow', 'train_random_forest', 'add_rf_predictions',
     'is_colab', 'is_admin', 'run_as_admin', 'clear_screen', 'wait_for_enter', 'syn_scan',
-    'create_defense_manager', 'register_to_packet_capture',
-    'PortScanDetector', 'VulnerabilityScanner', 'SecurityHardening'
+    'create_defense_manager', 'register_to_packet_capture'
 ] 
 
 # 수리카타 지원이 있는 경우에만 export

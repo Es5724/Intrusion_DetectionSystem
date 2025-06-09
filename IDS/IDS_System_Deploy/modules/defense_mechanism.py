@@ -20,7 +20,6 @@ import gc  # 가비지 컬렉션 명시적 호출용
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from datetime import datetime
-from typing import Dict, List, Optional, Tuple
 
 # 수리카타 매니저 추가 시도
 try:
@@ -36,14 +35,6 @@ try:
 except ImportError:
     THREAT_ALERT_SUPPORT = False
     print("위협 알림 시스템을 찾을 수 없습니다. 기본 알림 기능만 사용됩니다.")
-
-# 포트 스캔 탐지 시스템 추가
-try:
-    from .port_scan_detector import PortScanDetector, VulnerabilityScanner, SecurityHardening
-    PORT_SCAN_SUPPORT = True
-except ImportError:
-    PORT_SCAN_SUPPORT = False
-    print("포트 스캔 탐지 시스템을 찾을 수 없습니다. 기본 탐지 기능만 사용됩니다.")
 
 # 로그 디렉토리 생성
 log_dir = "logs"
@@ -163,26 +154,6 @@ class DefenseManager:
             except Exception as e:
                 logger.error(f"위협 알림 시스템 초기화 실패: {e}")
                 self.threat_alert_system = None
-        
-        # 포트 스캔 탐지 시스템 초기화
-        self.port_scan_detector = None
-        self.vulnerability_scanner = None
-        self.security_hardening = None
-        
-        if PORT_SCAN_SUPPORT:
-            try:
-                # 설정 파일에서 port_scan 섹션 읽기
-                scan_config_file = None
-                if config_file and os.path.exists(config_file):
-                    scan_config_file = config_file
-                
-                self.port_scan_detector = PortScanDetector(scan_config_file)
-                self.vulnerability_scanner = VulnerabilityScanner()
-                self.security_hardening = SecurityHardening()
-                logger.info("포트 스캔 탐지 시스템 초기화 완료")
-            except Exception as e:
-                logger.error(f"포트 스캔 탐지 시스템 초기화 실패: {e}")
-                self.port_scan_detector = None
         
         # 설정 파일 로드
         self.config = self._load_config(config_file)
@@ -328,30 +299,6 @@ class DefenseManager:
                 # 기본 분석 수행
                 prediction, confidence = self.auto_defense.analyze_packet(packet_info)
                 
-                # 포트 스캔 탐지 분석 추가
-                port_scan_detected = False
-                port_scan_risk = 0.0
-                port_scan_type = "none"
-                
-                if self.port_scan_detector:
-                    try:
-                        port_scan_detected, port_scan_risk, port_scan_type = self.port_scan_detector.analyze_packet(packet_info)
-                        
-                        if port_scan_detected:
-                            logger.warning(f"포트 스캔 탐지: {packet_info.get('source', 'unknown')} -> "
-                                         f"위험도: {port_scan_risk:.2f}, 패턴: {port_scan_type}")
-                            
-                            # 포트 스캔이 탐지되면 예측 결과와 신뢰도를 업데이트
-                            if port_scan_risk > confidence:
-                                prediction = 1
-                                confidence = port_scan_risk
-                                # 패킷 정보에 포트 스캔 정보 추가
-                                packet_info['port_scan_detected'] = True
-                                packet_info['port_scan_type'] = port_scan_type
-                                packet_info['port_scan_risk'] = port_scan_risk
-                    except Exception as e:
-                        logger.error(f"포트 스캔 탐지 중 오류: {e}")
-                
                 # 고성능 모드에서 수리카타 분석 추가
                 if self.mode == "performance" and self.suricata_enabled and self.suricata_manager:
                     suricata_result = self.suricata_manager.check_packet(packet_info)
@@ -388,24 +335,6 @@ class DefenseManager:
                     # 위협 수준에 따른 대응
                     action_taken = self.auto_defense.execute_defense_action(packet_info, confidence)
                     
-                    # 포트 스캔 탐지 시 추가 대응
-                    if port_scan_detected and self.security_hardening:
-                        try:
-                            threat_info_for_hardening = {
-                                'source_ip': source_ip,
-                                'risk_level': 'high' if port_scan_risk >= 0.8 else 'medium',
-                                'scan_type': port_scan_type,
-                                'confidence': port_scan_risk
-                            }
-                            
-                            # 긴급 대응 조치 적용
-                            hardening_actions = self.security_hardening.apply_emergency_response(threat_info_for_hardening)
-                            if hardening_actions:
-                                logger.info(f"포트 스캔 대응 조치 적용: {', '.join(hardening_actions)}")
-                                action_taken += f" | 추가 대응: {', '.join(hardening_actions)}"
-                        except Exception as e:
-                            logger.error(f"포트 스캔 대응 중 오류: {e}")
-                    
                     # 위협 알림 시스템에 전달
                     if self.threat_alert_system:
                         threat_info = {
@@ -416,12 +345,6 @@ class DefenseManager:
                             'packet_info': packet_info,
                             'action_taken': action_taken
                         }
-                        
-                        # 포트 스캔 정보 추가
-                        if port_scan_detected:
-                            threat_info['port_scan_detected'] = True
-                            threat_info['port_scan_type'] = port_scan_type
-                            threat_info['port_scan_risk'] = port_scan_risk
                         
                         # 수리카타 정보 추가
                         if 'suricata_alert' in packet_info and packet_info['suricata_alert']:
@@ -509,96 +432,6 @@ class DefenseManager:
         
         return status
     
-    def perform_port_scan(self, target_ip: str, ports: List[int]) -> Dict:
-        """
-        대상 IP에 대한 포트 스캔 수행
-        
-        Args:
-            target_ip (str): 스캔할 대상 IP
-            ports (List[int]): 스캔할 포트 목록
-            
-        Returns:
-            Dict: 스캔 결과 및 취약점 분석
-        """
-        try:
-            # utils.py의 syn_scan 함수 사용
-            from .utils import syn_scan
-            
-            # 포트 스캔 수행
-            scan_result = syn_scan(target_ip, ports)
-            
-            if not scan_result:
-                return {'error': '스캔 실패', 'target_ip': target_ip}
-            
-            # 열린 포트에 대한 취약점 분석
-            vulnerability_analysis = {}
-            if self.vulnerability_scanner and scan_result.get('open'):
-                vulnerability_analysis = self.vulnerability_scanner.analyze_open_ports(
-                    scan_result['open'], target_ip
-                )
-            
-            # 보안 강화 권장사항 생성
-            recommendations = []
-            if self.security_hardening and vulnerability_analysis:
-                recommendations = self.security_hardening.generate_hardening_recommendations(
-                    vulnerability_analysis
-                )
-            
-            result = {
-                'target_ip': target_ip,
-                'scan_result': scan_result,
-                'vulnerability_analysis': vulnerability_analysis,
-                'security_recommendations': recommendations,
-                'scan_timestamp': datetime.now().isoformat()
-            }
-            
-            logger.info(f"포트 스캔 완료: {target_ip}, 열린 포트: {len(scan_result.get('open', []))}개")
-            return result
-            
-        except Exception as e:
-            logger.error(f"포트 스캔 중 오류: {e}")
-            return {'error': str(e), 'target_ip': target_ip}
-    
-    def get_port_scan_statistics(self, source_ip: str) -> Dict:
-        """
-        특정 IP의 포트 스캔 통계 조회
-        
-        Args:
-            source_ip (str): 조회할 IP 주소
-            
-        Returns:
-            Dict: 스캔 통계 정보
-        """
-        if self.port_scan_detector:
-            return self.port_scan_detector.get_scan_statistics(source_ip)
-        return {}
-    
-    def generate_security_report(self, scan_results: List[Dict] = None) -> str:
-        """
-        보안 취약점 분석 보고서 생성
-        
-        Args:
-            scan_results (List[Dict]): 스캔 결과 목록 (없으면 기본 보고서)
-            
-        Returns:
-            str: 보안 보고서 텍스트
-        """
-        if self.vulnerability_scanner:
-            if scan_results:
-                # 취약점 분석 결과만 추출
-                vulnerability_results = []
-                for result in scan_results:
-                    if 'vulnerability_analysis' in result:
-                        vulnerability_results.append(result['vulnerability_analysis'])
-                
-                if vulnerability_results:
-                    return self.vulnerability_scanner.generate_security_report(vulnerability_results)
-            
-            # 기본 보고서 생성
-            return self.vulnerability_scanner.generate_security_report([])
-        
-        return "취약점 스캐너가 초기화되지 않았습니다."
-    
     def shutdown(self):
         """방어 메커니즘 종료"""
         self.deactivate()
@@ -606,8 +439,6 @@ class DefenseManager:
             self.suricata_manager.shutdown()
         if self.threat_alert_system:
             self.threat_alert_system.shutdown()
-        if self.port_scan_detector:
-            self.port_scan_detector.shutdown()
         logger.info("방어 메커니즘 종료됨")
 
 

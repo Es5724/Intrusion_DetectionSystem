@@ -10,7 +10,8 @@ import os
 import sys
 import time
 import threading
-# import pandas as pd
+import pandas as pd
+import joblib
 import argparse
 from datetime import datetime
 import queue
@@ -99,6 +100,7 @@ try:
     from ml_models import MLTrainingWindow, train_random_forest, add_rf_predictions
     from utils import is_colab, is_admin, run_as_admin, clear_screen, wait_for_enter, syn_scan
     from defense_mechanism import create_defense_manager, register_to_packet_capture
+    from threat_alert_system import ThreatAlertSystem  # 위협 알림 시스템 추가
     print("모듈 임포트 성공!")
 except ImportError as e:
     print(f"모듈을 찾을 수 없습니다: {e}")

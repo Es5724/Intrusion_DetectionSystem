@@ -5,7 +5,6 @@ import socket
 import time
 import traceback
 import logging
-import random
 from datetime import datetime
 
 # 로깅 설정

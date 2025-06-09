@@ -48,3 +48,27 @@
 2025-06-02 14:22:14,138 - DefenseMechanism - INFO - 알림 시스템 초기화 완료
 2025-06-02 14:22:14,139 - DefenseMechanism - INFO - 경량 모드로 실행 중입니다.
 2025-06-02 14:22:14,139 - DefenseMechanism - INFO - 방어 메커니즘 관리자 초기화 완료 (모드: lightweight)
+2025-06-04 21:59:42,732 - DefenseMechanism - INFO - 트래픽 차단 시스템 초기화 완료
+2025-06-04 21:59:42,732 - DefenseMechanism - INFO - 알림 시스템 초기화 완료
+2025-06-04 21:59:42,733 - DefenseMechanism - INFO - 트래픽 차단 시스템 초기화 완료
+2025-06-04 21:59:42,733 - DefenseMechanism - INFO - 알림 시스템 초기화 완료
+2025-06-04 21:59:42,733 - DefenseMechanism - INFO - 경량 모드로 실행 중입니다.
+2025-06-04 21:59:42,733 - DefenseMechanism - INFO - 방어 메커니즘 관리자 초기화 완료 (모드: lightweight)
+2025-06-08 04:40:36,683 - DefenseMechanism - INFO - 트래픽 차단 시스템 초기화 완료
+2025-06-08 04:40:36,683 - DefenseMechanism - INFO - 알림 시스템 초기화 완료
+2025-06-08 04:40:36,684 - DefenseMechanism - INFO - 트래픽 차단 시스템 초기화 완료
+2025-06-08 04:40:36,684 - DefenseMechanism - INFO - 알림 시스템 초기화 완료
+2025-06-08 04:40:36,684 - DefenseMechanism - WARNING - 수리카타 지원 모듈을 찾을 수 없습니다. 경량 모드로 전환합니다.
+2025-06-08 04:40:36,684 - DefenseMechanism - INFO - 방어 메커니즘 관리자 초기화 완료 (모드: lightweight)
+2025-06-08 04:42:40,170 - DefenseMechanism - INFO - 트래픽 차단 시스템 초기화 완료
+2025-06-08 04:42:40,171 - DefenseMechanism - INFO - 알림 시스템 초기화 완료
+2025-06-08 04:42:40,171 - DefenseMechanism - INFO - 트래픽 차단 시스템 초기화 완료
+2025-06-08 04:42:40,171 - DefenseMechanism - INFO - 알림 시스템 초기화 완료
+2025-06-08 04:42:40,171 - DefenseMechanism - INFO - 경량 모드로 실행 중입니다.
+2025-06-08 04:42:40,171 - DefenseMechanism - INFO - 방어 메커니즘 관리자 초기화 완료 (모드: lightweight)
+2025-06-08 14:36:20,008 - DefenseMechanism - INFO - 트래픽 차단 시스템 초기화 완료
+2025-06-08 14:36:20,008 - DefenseMechanism - INFO - 알림 시스템 초기화 완료
+2025-06-08 14:36:20,009 - DefenseMechanism - INFO - 트래픽 차단 시스템 초기화 완료
+2025-06-08 14:36:20,009 - DefenseMechanism - INFO - 알림 시스템 초기화 완료
+2025-06-08 14:36:20,009 - DefenseMechanism - WARNING - 수리카타 지원 모듈을 찾을 수 없습니다. 경량 모드로 전환합니다.
+2025-06-08 14:36:20,009 - DefenseMechanism - INFO - 방어 메커니즘 관리자 초기화 완료 (모드: lightweight)
