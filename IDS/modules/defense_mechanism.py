@@ -954,7 +954,7 @@ class AutoDefenseActions:
         try:
             # 유효한 패킷 확인
             if not isinstance(packet, dict):
-                print(f"analyze_packet - 유효하지 않은 패킷 타입: {type(packet).__name__}")
+                log_with_cache('DEBUG', f"analyze_packet - 유효하지 않은 패킷 타입: {type(packet).__name__}")
                 # 문자열을 딕셔너리로 변환 시도
                 if isinstance(packet, str):
                     packet = {
@@ -970,7 +970,7 @@ class AutoDefenseActions:
                 
             # 필수 필드 존재 확인
             if 'info' not in packet and 'protocol' not in packet:
-                print(f"analyze_packet - 필수 필드 누락: {packet.keys()}")
+                log_with_cache('DEBUG', f"analyze_packet - 필수 필드 누락: {packet.keys()}")
                 return 0, 0.5
                 
             info = str(packet.get('info', '')).lower()
@@ -1008,9 +1008,9 @@ class AutoDefenseActions:
             
         except Exception as e:
             log_with_cache('ERROR', f"패킷 분석 중 오류: {str(e)}")
-            print(f"패킷 분석 중 오류 발생: {str(e)}, 패킷 타입: {type(packet).__name__ if packet is not None else 'None'}")
+            log_with_cache('DEBUG', f"패킷 분석 중 오류 발생: {str(e)}, 패킷 타입: {type(packet).__name__ if packet is not None else 'None'}")
             import traceback
-            traceback.print_exc()
+            log_with_cache('DEBUG', traceback.format_exc())
             return 0, 0.5  # 오류 발생 시 기본값 반환
     
     def execute_defense_action(self, packet, confidence):
@@ -1031,11 +1031,11 @@ class AutoDefenseActions:
         try:
             # 패킷 타입 검사
             if not isinstance(packet, dict):
-                print(f"execute_defense_action - 유효하지 않은 패킷 타입: {type(packet).__name__}")
+                log_with_cache('DEBUG', f"execute_defense_action - 유효하지 않은 패킷 타입: {type(packet).__name__}")
                 return "유효하지 않은 패킷"
                 
             # 로그 추가
-            print(f"방어 조치 실행 - 신뢰도: {confidence:.2f}, 패킷: {packet.get('source', 'N/A')} -> {packet.get('destination', 'N/A')}")
+            log_with_cache('DEBUG', f"방어 조치 실행 - 신뢰도: {confidence:.2f}, 패킷: {packet.get('source', 'N/A')} -> {packet.get('destination', 'N/A')}")
                 
             source_ip = packet.get('source', '').split(':')[0] if ':' in packet.get('source', '') else packet.get('source', '')
             protocol = packet.get('protocol', '')
@@ -1083,9 +1083,9 @@ class AutoDefenseActions:
             
         except Exception as e:
             log_with_cache('ERROR', f"방어 조치 실행 중 오류: {str(e)}")
-            print(f"방어 조치 실행 중 오류: {str(e)}, 패킷 타입: {type(packet).__name__ if packet is not None else 'None'}")
+            log_with_cache('DEBUG', f"방어 조치 실행 중 오류: {str(e)}, 패킷 타입: {type(packet).__name__ if packet is not None else 'None'}")
             import traceback
-            traceback.print_exc()
+            log_with_cache('DEBUG', traceback.format_exc())
             return "오류 발생"
     
     def _high_threat_response(self, ip, protocol):

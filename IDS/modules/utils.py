@@ -104,6 +104,7 @@ def wait_for_enter():
     """
     Enter 키를 누를 때까지 대기
     """
+    # 콘솔 출력은 유지 (사용자 인터페이스 필요)
     print("\n계속하려면 Enter 키를 누르세요...")
     
     if os.name == 'nt':  # Windows
@@ -128,21 +129,14 @@ def wait_for_enter():
 
 def print_scan_status(port, status, start_time):
     """
-    스캔 상태를 실시간으로 출력
+    스캔 상태를 로그에만 기록 (화면 출력 안 함)
     """
     elapsed_time = time.time() - start_time
     current_time = datetime.now().strftime("%H:%M:%S")
     
-    status_colors = {
-        'open': '\033[92m',    # 녹색
-        'closed': '\033[91m',  # 빨간색
-        'filtered': '\033[93m' # 노란색
-    }
-    
-    color = status_colors.get(status, '\033[0m')
-    reset = '\033[0m'
-    
-    print(f"\r[{current_time}] 포트 {port}: {color}{status}{reset} | 경과 시간: {elapsed_time:.1f}초", end='', flush=True)
+    # 로그에만 기록
+    import logging
+    logging.getLogger('Utils').debug(f"[{current_time}] 포트 {port}: {status} | 경과 시간: {elapsed_time:.1f}초")
 
 def syn_scan(target_ip, ports):
     """
@@ -182,7 +176,7 @@ def syn_scan(target_ip, ports):
         
         try:
             # 패킷 전송 및 응답 대기
-            response = sr1(packet, timeout=1, verbose=0)
+            response = sr1(packet, timeout=1)
             
             if response is None:
                 filtered_ports.append(port)
@@ -193,7 +187,7 @@ def syn_scan(target_ip, ports):
                     print_scan_status(port, "open", start_time)
                     # RST 패킷 전송하여 연결 종료
                     rst_packet = IP(dst=target_ip)/TCP(sport=src_port, dport=port, flags="R")
-                    send(rst_packet, verbose=0)
+                    send(rst_packet)
                 elif response.getlayer(TCP).flags == 0x14:  # RST-ACK 응답
                     closed_ports.append(port)
                     print_scan_status(port, "closed", start_time)

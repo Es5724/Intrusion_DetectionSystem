@@ -1,15 +1,152 @@
-2025-06-08 14:36:13,270 - IDSAgent - INFO - 로깅 시스템 초기화 완료
-2025-06-08 14:36:15,062 - matplotlib - DEBUG - matplotlib data path: C:\Users\dksd5\AppData\Local\Programs\Python\Python313\Lib\site-packages\matplotlib\mpl-data
-2025-06-08 14:36:15,603 - matplotlib - DEBUG - CONFIGDIR=C:\Users\dksd5\.matplotlib
-2025-06-08 14:36:15,609 - matplotlib - DEBUG - interactive is False
-2025-06-08 14:36:15,609 - matplotlib - DEBUG - platform is win32
-2025-06-08 14:36:15,648 - matplotlib - DEBUG - CACHEDIR=C:\Users\dksd5\.matplotlib
-2025-06-08 14:36:15,651 - matplotlib.font_manager - DEBUG - Using fontManager instance from C:\Users\dksd5\.matplotlib\fontlist-v390.json
-2025-06-08 14:36:19,983 - IDSAgent - INFO - 운영 모드 설정: performance
-2025-06-08 14:36:19,984 - IDSAgent - INFO - 로컬 환경에서 IDS 시스템 실행 시작
-2025-06-08 14:36:20,008 - DefenseMechanism - INFO - 트래픽 차단 시스템 초기화 완료
-2025-06-08 14:36:20,008 - DefenseMechanism - INFO - 알림 시스템 초기화 완료
-2025-06-08 14:36:20,009 - DefenseMechanism - INFO - 트래픽 차단 시스템 초기화 완료
-2025-06-08 14:36:20,009 - DefenseMechanism - INFO - 알림 시스템 초기화 완료
-2025-06-08 14:36:20,009 - DefenseMechanism - WARNING - 수리카타 지원 모듈을 찾을 수 없습니다. 경량 모드로 전환합니다.
-2025-06-08 14:36:20,009 - DefenseMechanism - INFO - 방어 메커니즘 관리자 초기화 완료 (모드: lightweight)
+2025-07-10 06:02:45,876 - IDSAgent - INFO - 로깅 시스템 초기화 완료
+2025-07-10 06:02:45,877 - IDSAgent - INFO - 모듈 경로 추가됨: c:\Users\dksd5\OneDrive\Desktop\Intrusion_DetectionSystem\IDS\modules
+2025-07-10 06:02:46,299 - IDSAgent - INFO - 최적화된 패킷 캡처 모듈 사용
+2025-07-10 06:02:47,668 - matplotlib - DEBUG - matplotlib data path: C:\Users\dksd5\AppData\Local\Programs\Python\Python313\Lib\site-packages\matplotlib\mpl-data
+2025-07-10 06:02:47,671 - matplotlib - DEBUG - CONFIGDIR=C:\Users\dksd5\.matplotlib
+2025-07-10 06:02:47,672 - matplotlib - DEBUG - interactive is False
+2025-07-10 06:02:47,672 - matplotlib - DEBUG - platform is win32
+2025-07-10 06:02:47,714 - matplotlib - DEBUG - CACHEDIR=C:\Users\dksd5\.matplotlib
+2025-07-10 06:02:47,716 - matplotlib.font_manager - DEBUG - Using fontManager instance from C:\Users\dksd5\.matplotlib\fontlist-v390.json
+2025-07-10 06:02:48,538 - IDSAgent - INFO - 모듈 임포트 성공!
+2025-07-10 06:03:19,746 - IDSAgent - INFO - 운영 모드 설정: lightweight
+2025-07-10 06:03:19,746 - IDSAgent - INFO - 로컬 환경에서 IDS 시스템 실행 시작
+2025-07-10 06:03:19,747 - IDSAgent - INFO - 윈도우 환경 감지: 관리자 권한 확인 중...
+2025-07-10 06:03:19,747 - IDSAgent - INFO - 관리자 권한으로 실행 중...
+2025-07-10 06:03:19,768 - IDSAgent - INFO - 패킷 캡처 코어 초기화 중...
+2025-07-10 06:03:19,768 - IDSAgent - INFO - 멀티프로세싱 패킷 캡처 활성화 (워커: 4개)
+2025-07-10 06:03:19,768 - IDSAgent - INFO - lightweight 모드로 방어 메커니즘 초기화 중...
+2025-07-10 06:03:19,768 - DefenseMechanism - INFO - 트래픽 차단 시스템 초기화 완료
+2025-07-10 06:03:19,769 - DefenseMechanism - INFO - 알림 시스템 초기화 완료
+2025-07-10 06:03:19,769 - DefenseMechanism - INFO - 트래픽 차단 시스템 초기화 완료
+2025-07-10 06:03:19,769 - DefenseMechanism - INFO - 알림 시스템 초기화 완료
+2025-07-10 06:03:19,770 - DefenseMechanism - INFO - 경량 모드로 실행 중입니다.
+2025-07-10 06:03:19,770 - DefenseMechanism - INFO - 방어 메커니즘 관리자 초기화 완료 (모드: lightweight)
+2025-07-10 06:03:19,770 - IDSAgent - INFO - 방어 메커니즘이 패킷 캡처 시스템에 성공적으로 등록되었습니다.
+2025-07-10 06:03:19,787 - IDSAgent - INFO - 선택된 인터페이스: Wi-Fi
+2025-07-10 06:03:19,787 - OptimizedCapture - INFO - 패킷 캡처 시작: Wi-Fi (최대: 무제한)
+2025-07-10 06:03:19,790 - IDSAgent - INFO - 강화된 실시간 대시보드 모니터링 시작
+2025-07-10 06:03:19,894 - IDSAgent - INFO - 모니터링 및 학습 스레드 시작
+2025-07-10 06:03:19,894 - IDSAgent - INFO - 사용자 입력 스레드 시작
+2025-07-10 06:03:24,891 - OptimizedCapture - DEBUG - [성능] 캡처: 24, 처리: 15, 드롭: 0, 샘플링: 100.0%
+2025-07-10 06:03:30,088 - OptimizedCapture - DEBUG - [성능] 캡처: 41, 처리: 38, 드롭: 0, 샘플링: 100.0%
+2025-07-10 06:03:35,306 - OptimizedCapture - DEBUG - [성능] 캡처: 64, 처리: 61, 드롭: 0, 샘플링: 100.0%
+2025-07-10 06:03:40,504 - OptimizedCapture - DEBUG - [성능] 캡처: 77, 처리: 73, 드롭: 0, 샘플링: 100.0%
+2025-07-10 06:03:45,716 - OptimizedCapture - DEBUG - [성능] 캡처: 136, 처리: 110, 드롭: 0, 샘플링: 100.0%
+2025-07-10 06:03:50,919 - OptimizedCapture - DEBUG - [성능] 캡처: 189, 처리: 183, 드롭: 0, 샘플링: 100.0%
+2025-07-10 06:03:56,117 - OptimizedCapture - DEBUG - [성능] 캡처: 216, 처리: 211, 드롭: 0, 샘플링: 100.0%
+2025-07-10 06:04:01,317 - OptimizedCapture - DEBUG - [성능] 캡처: 229, 처리: 225, 드롭: 0, 샘플링: 100.0%
+2025-07-10 06:04:06,518 - OptimizedCapture - DEBUG - [성능] 캡처: 259, 처리: 254, 드롭: 0, 샘플링: 100.0%
+2025-07-10 06:04:11,720 - OptimizedCapture - DEBUG - [성능] 캡처: 320, 처리: 313, 드롭: 0, 샘플링: 100.0%
+2025-07-10 06:04:16,923 - OptimizedCapture - DEBUG - [성능] 캡처: 339, 처리: 333, 드롭: 0, 샘플링: 100.0%
+2025-07-10 06:04:22,118 - OptimizedCapture - DEBUG - [성능] 캡처: 362, 처리: 358, 드롭: 0, 샘플링: 100.0%
+2025-07-10 06:04:27,327 - OptimizedCapture - DEBUG - [성능] 캡처: 426, 처리: 416, 드롭: 0, 샘플링: 100.0%
+2025-07-10 06:04:32,518 - OptimizedCapture - DEBUG - [성능] 캡처: 451, 처리: 439, 드롭: 0, 샘플링: 100.0%
+2025-07-10 06:04:37,710 - OptimizedCapture - DEBUG - [성능] 캡처: 467, 처리: 462, 드롭: 0, 샘플링: 100.0%
+2025-07-10 06:04:42,900 - OptimizedCapture - DEBUG - [성능] 캡처: 490, 처리: 484, 드롭: 0, 샘플링: 100.0%
+2025-07-10 06:04:48,110 - OptimizedCapture - DEBUG - [성능] 캡처: 513, 처리: 507, 드롭: 0, 샘플링: 100.0%
+2025-07-10 06:04:53,303 - OptimizedCapture - DEBUG - [성능] 캡처: 540, 처리: 531, 드롭: 0, 샘플링: 100.0%
+2025-07-10 06:04:58,505 - OptimizedCapture - DEBUG - [성능] 캡처: 555, 처리: 549, 드롭: 0, 샘플링: 100.0%
+2025-07-10 06:05:03,697 - OptimizedCapture - DEBUG - [성능] 캡처: 582, 처리: 575, 드롭: 0, 샘플링: 100.0%
+2025-07-10 06:05:08,895 - OptimizedCapture - DEBUG - [성능] 캡처: 610, 처리: 600, 드롭: 0, 샘플링: 100.0%
+2025-07-10 06:05:14,095 - OptimizedCapture - DEBUG - [성능] 캡처: 665, 처리: 657, 드롭: 0, 샘플링: 100.0%
+2025-07-10 06:05:19,293 - OptimizedCapture - DEBUG - [성능] 캡처: 678, 처리: 672, 드롭: 0, 샘플링: 100.0%
+2025-07-10 06:05:24,492 - OptimizedCapture - DEBUG - [성능] 캡처: 732, 처리: 709, 드롭: 0, 샘플링: 100.0%
+2025-07-10 06:05:29,696 - OptimizedCapture - DEBUG - [성능] 캡처: 751, 처리: 743, 드롭: 0, 샘플링: 100.0%
+2025-07-10 06:05:34,908 - OptimizedCapture - DEBUG - [성능] 캡처: 772, 처리: 766, 드롭: 0, 샘플링: 100.0%
+2025-07-10 06:05:40,101 - OptimizedCapture - DEBUG - [성능] 캡처: 839, 처리: 832, 드롭: 0, 샘플링: 100.0%
+2025-07-10 06:05:45,294 - OptimizedCapture - DEBUG - [성능] 캡처: 930, 처리: 902, 드롭: 0, 샘플링: 100.0%
+2025-07-10 06:05:50,494 - OptimizedCapture - DEBUG - [성능] 캡처: 957, 처리: 943, 드롭: 0, 샘플링: 100.0%
+2025-07-10 06:05:55,686 - OptimizedCapture - DEBUG - [성능] 캡처: 990, 처리: 978, 드롭: 0, 샘플링: 100.0%
+2025-07-10 06:06:00,890 - OptimizedCapture - DEBUG - [성능] 캡처: 1026, 처리: 1018, 드롭: 0, 샘플링: 100.0%
+2025-07-10 06:06:06,082 - OptimizedCapture - DEBUG - [성능] 캡처: 1053, 처리: 1043, 드롭: 0, 샘플링: 100.0%
+2025-07-10 06:06:11,285 - OptimizedCapture - DEBUG - [성능] 캡처: 1882, 처리: 1676, 드롭: 0, 샘플링: 100.0%
+2025-07-10 06:06:16,510 - OptimizedCapture - DEBUG - [성능] 캡처: 7066, 처리: 6904, 드롭: 0, 샘플링: 100.0%
+2025-07-10 06:06:21,760 - OptimizedCapture - DEBUG - [성능] 캡처: 11078, 처리: 10770, 드롭: 0, 샘플링: 100.0%
+2025-07-10 06:06:26,984 - OptimizedCapture - DEBUG - [성능] 캡처: 13951, 처리: 13785, 드롭: 0, 샘플링: 100.0%
+2025-07-10 06:06:32,199 - OptimizedCapture - DEBUG - [성능] 캡처: 15040, 처리: 15015, 드롭: 0, 샘플링: 100.0%
+2025-07-10 06:06:37,407 - OptimizedCapture - DEBUG - [성능] 캡처: 17516, 처리: 17494, 드롭: 0, 샘플링: 100.0%
+2025-07-10 06:06:42,630 - OptimizedCapture - DEBUG - [성능] 캡처: 19018, 처리: 18968, 드롭: 0, 샘플링: 100.0%
+2025-07-10 06:06:47,850 - OptimizedCapture - DEBUG - [성능] 캡처: 19036, 처리: 19012, 드롭: 0, 샘플링: 100.0%
+2025-07-10 06:06:53,062 - OptimizedCapture - DEBUG - [성능] 캡처: 19094, 처리: 19067, 드롭: 0, 샘플링: 100.0%
+2025-07-10 06:06:58,267 - OptimizedCapture - DEBUG - [성능] 캡처: 19125, 처리: 19104, 드롭: 0, 샘플링: 100.0%
+2025-07-10 06:07:03,481 - OptimizedCapture - DEBUG - [성능] 캡처: 19322, 처리: 19244, 드롭: 0, 샘플링: 100.0%
+2025-07-10 06:07:08,694 - OptimizedCapture - DEBUG - [성능] 캡처: 21891, 처리: 21713, 드롭: 0, 샘플링: 100.0%
+2025-07-10 06:07:13,906 - OptimizedCapture - DEBUG - [성능] 캡처: 25202, 처리: 25001, 드롭: 0, 샘플링: 100.0%
+2025-07-10 06:07:19,122 - OptimizedCapture - DEBUG - [성능] 캡처: 26896, 처리: 26640, 드롭: 0, 샘플링: 100.0%
+2025-07-10 06:07:24,339 - OptimizedCapture - DEBUG - [성능] 캡처: 27340, 처리: 27303, 드롭: 0, 샘플링: 100.0%
+2025-07-10 06:07:29,556 - OptimizedCapture - DEBUG - [성능] 캡처: 28178, 처리: 28151, 드롭: 0, 샘플링: 100.0%
+2025-07-10 06:07:34,762 - OptimizedCapture - DEBUG - [성능] 캡처: 29083, 처리: 29058, 드롭: 0, 샘플링: 100.0%
+2025-07-10 06:07:39,976 - OptimizedCapture - DEBUG - [성능] 캡처: 29146, 처리: 29118, 드롭: 0, 샘플링: 100.0%
+2025-07-10 06:07:45,183 - OptimizedCapture - DEBUG - [성능] 캡처: 29178, 처리: 29151, 드롭: 0, 샘플링: 100.0%
+2025-07-10 06:07:50,390 - OptimizedCapture - DEBUG - [성능] 캡처: 29197, 처리: 29170, 드롭: 0, 샘플링: 100.0%
+2025-07-10 06:07:55,603 - OptimizedCapture - DEBUG - [성능] 캡처: 29224, 처리: 29192, 드롭: 0, 샘플링: 100.0%
+2025-07-10 06:08:00,814 - OptimizedCapture - DEBUG - [성능] 캡처: 29421, 처리: 29388, 드롭: 0, 샘플링: 100.0%
+2025-07-10 06:08:06,029 - OptimizedCapture - DEBUG - [성능] 캡처: 29458, 처리: 29429, 드롭: 0, 샘플링: 100.0%
+2025-07-10 06:08:11,237 - OptimizedCapture - DEBUG - [성능] 캡처: 29546, 처리: 29517, 드롭: 0, 샘플링: 100.0%
+2025-07-10 06:08:16,444 - OptimizedCapture - DEBUG - [성능] 캡처: 29582, 처리: 29538, 드롭: 0, 샘플링: 100.0%
+2025-07-10 06:08:19,888 - PacketCapture - DEBUG - 디버그: 전처리 시작 - 입력 데이터 크기: (24, 7)
+2025-07-10 06:08:19,889 - PacketCapture - DEBUG - 디버그: 프로토콜 매핑 시작
+2025-07-10 06:08:19,896 - PacketCapture - DEBUG - 디버그: 프로토콜 매핑 완료
+2025-07-10 06:08:19,896 - PacketCapture - DEBUG - 디버그: IP 주소 정규화 시작
+2025-07-10 06:08:19,897 - PacketCapture - DEBUG - 디버그: IP 주소 정규화 완료
+2025-07-10 06:08:19,897 - PacketCapture - DEBUG - 디버그: 전처리 완료 - 출력 데이터 크기: (24, 7)
+2025-07-10 06:08:19,929 - IDSAgent - INFO - 패킷 24개가 captured_packets_20250710_060819.csv에 저장됨
+2025-07-10 06:08:21,664 - OptimizedCapture - DEBUG - [성능] 캡처: 29636, 처리: 29604, 드롭: 0, 샘플링: 100.0%
+2025-07-10 06:08:26,876 - OptimizedCapture - DEBUG - [성능] 캡처: 29672, 처리: 29639, 드롭: 0, 샘플링: 100.0%
+2025-07-10 06:08:32,090 - OptimizedCapture - DEBUG - [성능] 캡처: 29740, 처리: 29707, 드롭: 0, 샘플링: 100.0%
+2025-07-10 06:08:37,298 - OptimizedCapture - DEBUG - [성능] 캡처: 31854, 처리: 31608, 드롭: 0, 샘플링: 100.0%
+2025-07-10 06:08:42,526 - OptimizedCapture - DEBUG - [성능] 캡처: 38230, 처리: 38089, 드롭: 0, 샘플링: 100.0%
+2025-07-10 06:08:47,739 - OptimizedCapture - DEBUG - [성능] 캡처: 43589, 처리: 43183, 드롭: 0, 샘플링: 100.0%
+2025-07-10 06:08:52,963 - OptimizedCapture - DEBUG - [성능] 캡처: 43752, 처리: 43531, 드롭: 0, 샘플링: 100.0%
+2025-07-10 06:08:54,596 - DefenseMechanism - INFO - IP 주소 차단 성공: 192.168.45.137
+2025-07-10 06:08:54,599 - DefenseMechanism - INFO - 알림 발송 성공: 192.168.45.137
+2025-07-10 06:08:54,599 - DefenseMechanism - INFO - 패킷 처리 완료: 192.168.45.137 (신뢰도: 0.90)
+2025-07-10 06:08:54,885 - DefenseMechanism - INFO - 중복 위협 무시: 192.168.45.137 (최근에 이미 대응함)
+2025-07-10 06:08:55,457 - DefenseMechanism - INFO - 중복 위협 무시: 192.168.45.137 (최근에 이미 대응함)
+2025-07-10 06:08:55,613 - DefenseMechanism - INFO - 중복 위협 무시: 192.168.45.137 (최근에 이미 대응함)
+2025-07-10 06:08:55,797 - DefenseMechanism - INFO - 중복 위협 무시: 192.168.45.137 (최근에 이미 대응함)
+2025-07-10 06:08:55,813 - DefenseMechanism - INFO - 중복 위협 무시: 192.168.45.137 (최근에 이미 대응함)
+2025-07-10 06:08:55,862 - DefenseMechanism - INFO - 중복 위협 무시: 192.168.45.137 (최근에 이미 대응함)
+2025-07-10 06:08:55,866 - DefenseMechanism - INFO - 중복 위협 무시: 192.168.45.137 (최근에 이미 대응함)
+2025-07-10 06:08:55,978 - DefenseMechanism - INFO - 중복 위협 무시: 192.168.45.137 (최근에 이미 대응함)
+2025-07-10 06:08:56,081 - DefenseMechanism - INFO - 중복 위협 무시: 192.168.45.137 (최근에 이미 대응함)
+2025-07-10 06:08:56,569 - DefenseMechanism - INFO - 중복 위협 무시: 192.168.45.137 (최근에 이미 대응함)
+2025-07-10 06:08:56,671 - DefenseMechanism - INFO - IP 주소 차단 성공: 210.220.163.82
+2025-07-10 06:08:56,673 - DefenseMechanism - INFO - 알림 발송 성공: 210.220.163.82
+2025-07-10 06:08:56,674 - DefenseMechanism - INFO - 패킷 처리 완료: 210.220.163.82 (신뢰도: 0.95)
+2025-07-10 06:08:56,688 - DefenseMechanism - INFO - 중복 위협 무시: 210.220.163.82 (최근에 이미 대응함)
+2025-07-10 06:08:56,739 - DefenseMechanism - INFO - 중복 위협 무시: 210.220.163.82 (최근에 이미 대응함)
+2025-07-10 06:08:56,748 - DefenseMechanism - INFO - 중복 위협 무시: 210.220.163.82 (최근에 이미 대응함)
+2025-07-10 06:08:56,754 - DefenseMechanism - INFO - 중복 위협 무시: 210.220.163.82 (최근에 이미 대응함)
+2025-07-10 06:08:56,759 - DefenseMechanism - INFO - 중복 위협 무시: 210.220.163.82 (최근에 이미 대응함)
+2025-07-10 06:08:57,056 - DefenseMechanism - INFO - 중복 위협 무시: 192.168.45.137 (최근에 이미 대응함)
+2025-07-10 06:08:57,095 - DefenseMechanism - INFO - 중복 위협 무시: 210.220.163.82 (최근에 이미 대응함)
+2025-07-10 06:08:57,174 - DefenseMechanism - INFO - 중복 위협 무시: 192.168.45.137 (최근에 이미 대응함)
+2025-07-10 06:08:57,236 - DefenseMechanism - INFO - 중복 위협 무시: 210.220.163.82 (최근에 이미 대응함)
+2025-07-10 06:08:57,246 - DefenseMechanism - INFO - 중복 위협 무시: 210.220.163.82 (최근에 이미 대응함)
+2025-07-10 06:08:57,376 - DefenseMechanism - INFO - IP 주소 차단 성공: 219.250.36.130
+2025-07-10 06:08:57,378 - DefenseMechanism - INFO - 알림 발송 성공: 219.250.36.130
+2025-07-10 06:08:57,379 - DefenseMechanism - INFO - 패킷 처리 완료: 219.250.36.130 (신뢰도: 0.95)
+2025-07-10 06:08:57,385 - DefenseMechanism - INFO - 중복 위협 무시: 219.250.36.130 (최근에 이미 대응함)
+2025-07-10 06:08:57,452 - DefenseMechanism - INFO - 중복 위협 무시: 210.220.163.82 (최근에 이미 대응함)
+2025-07-10 06:08:57,516 - DefenseMechanism - INFO - 중복 위협 무시: 210.220.163.82 (최근에 이미 대응함)
+2025-07-10 06:08:57,519 - DefenseMechanism - INFO - 중복 위협 무시: 210.220.163.82 (최근에 이미 대응함)
+2025-07-10 06:08:57,575 - DefenseMechanism - INFO - 중복 위협 무시: 192.168.45.137 (최근에 이미 대응함)
+2025-07-10 06:08:57,592 - DefenseMechanism - INFO - 중복 위협 무시: 192.168.45.137 (최근에 이미 대응함)
+2025-07-10 06:08:57,751 - DefenseMechanism - INFO - 중복 위협 무시: 192.168.45.137 (최근에 이미 대응함)
+2025-07-10 06:08:58,053 - DefenseMechanism - INFO - 중복 위협 무시: 219.250.36.130 (최근에 이미 대응함)
+2025-07-10 06:08:58,055 - DefenseMechanism - INFO - 중복 위협 무시: 219.250.36.130 (최근에 이미 대응함)
+2025-07-10 06:08:58,178 - OptimizedCapture - DEBUG - [성능] 캡처: 51213, 처리: 50000, 드롭: 0, 샘플링: 100.0%
+2025-07-10 06:08:58,388 - DefenseMechanism - INFO - 중복 위협 무시: 192.168.45.137 (최근에 이미 대응함)
+2025-07-10 06:08:58,662 - DefenseMechanism - INFO - 중복 위협 무시: 192.168.45.137 (최근에 이미 대응함)
+2025-07-10 06:09:03,395 - OptimizedCapture - DEBUG - [성능] 캡처: 51851, 처리: 50000, 드롭: 0, 샘플링: 100.0%
+2025-07-10 06:09:08,615 - OptimizedCapture - DEBUG - [성능] 캡처: 51999, 처리: 50000, 드롭: 0, 샘플링: 100.0%
+2025-07-10 06:09:13,835 - OptimizedCapture - DEBUG - [성능] 캡처: 52114, 처리: 50000, 드롭: 0, 샘플링: 100.0%
+2025-07-10 06:09:16,460 - PacketCapture - DEBUG - 디버그: 전처리 시작 - 입력 데이터 크기: (200, 7)
+2025-07-10 06:09:16,460 - PacketCapture - DEBUG - 디버그: 프로토콜 매핑 시작
+2025-07-10 06:09:16,461 - PacketCapture - DEBUG - 디버그: 프로토콜 매핑 완료
+2025-07-10 06:09:16,461 - PacketCapture - DEBUG - 디버그: IP 주소 정규화 시작
+2025-07-10 06:09:16,461 - PacketCapture - DEBUG - 디버그: IP 주소 정규화 완료
+2025-07-10 06:09:16,461 - PacketCapture - DEBUG - 디버그: 전처리 완료 - 출력 데이터 크기: (200, 7)
+2025-07-10 06:09:16,482 - IDSAgent - INFO - 패킷 200개가 captured_packets_20250710_060916.csv에 저장됨
+2025-07-10 06:09:19,052 - OptimizedCapture - DEBUG - [성능] 캡처: 52171, 처리: 50000, 드롭: 0, 샘플링: 100.0%

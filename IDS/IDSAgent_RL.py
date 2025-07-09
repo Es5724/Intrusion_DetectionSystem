@@ -18,6 +18,21 @@ import queue
 import traceback
 import logging
 
+# 컬러 출력을 위한 모듈 추가
+try:
+    from colorama import Fore, Back, Style, init
+    init(autoreset=True)  # 자동으로 색상 리셋
+    COLOR_SUPPORT = True
+except ImportError:
+    # colorama가 없는 경우 더미 클래스 정의
+    class Fore:
+        RED = YELLOW = GREEN = CYAN = BLUE = MAGENTA = WHITE = ''
+    class Back:
+        BLACK = RED = GREEN = YELLOW = BLUE = MAGENTA = CYAN = WHITE = ''
+    class Style:
+        BRIGHT = DIM = NORMAL = RESET_ALL = ''
+    COLOR_SUPPORT = False
+
 # 디버깅 설정
 DEBUG_MODE = True
 
@@ -34,9 +49,9 @@ logging.basicConfig(
     filemode='w'  # 로그 파일 덮어쓰기
 )
 
-# 콘솔 로거 추가
+# 콘솔 로거 추가 (실시간 대시보드 방해 방지를 위해 ERROR 레벨만 출력)
 console = logging.StreamHandler()
-console.setLevel(logging.DEBUG if DEBUG_MODE else logging.INFO)
+console.setLevel(logging.ERROR)  # 콘솔에는 에러만 출력
 formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
 console.setFormatter(formatter)
 logging.getLogger('').addHandler(console)
@@ -58,7 +73,8 @@ args = parser.parse_args()
 
 if args.debug:
     DEBUG_MODE = True
-    console.setLevel(logging.DEBUG)
+    # 디버그 모드에서도 콘솔에는 ERROR만 출력 (파일에는 DEBUG 레벨로 기록)
+    console.setLevel(logging.ERROR)
     logger.info("디버그 모드 활성화됨")
 
 # 예외 처리 함수
@@ -91,55 +107,330 @@ else:
         sys.exit(1)
 
 sys.path.append(module_path)
-print(f"모듈 경로 추가됨: {module_path}")
+logger.info(f"모듈 경로 추가됨: {module_path}")
 
 # 필요한 모듈 임포트
 try:
-    from packet_capture import PacketCapture, PacketCaptureCore, preprocess_packet_data
+    # 최적화된 패킷 캡처 모듈을 우선적으로 사용
+    try:
+        from optimized_packet_capture_simple import OptimizedPacketCapture
+        use_optimized_capture = True
+        logger.info("최적화된 패킷 캡처 모듈 사용")
+    except ImportError:
+        try:
+            from optimized_packet_capture import OptimizedPacketCapture
+            use_optimized_capture = True
+            logger.info("최적화된 패킷 캡처 모듈 사용")
+        except ImportError:
+            from packet_capture import PacketCapture, PacketCaptureCore, preprocess_packet_data
+            use_optimized_capture = False
+            logger.info("기본 패킷 캡처 모듈 사용")
+    
+    # preprocess_packet_data는 항상 packet_capture에서 가져옴
+    if use_optimized_capture:
+        from packet_capture import preprocess_packet_data
+    
     from reinforcement_learning import NetworkEnv, DQNAgent, train_rl_agent, plot_training_results, save_model, load_model
     from ml_models import MLTrainingWindow, train_random_forest, add_rf_predictions
     from utils import is_colab, is_admin, run_as_admin, clear_screen, wait_for_enter, syn_scan
     from defense_mechanism import create_defense_manager, register_to_packet_capture
     from threat_alert_system import ThreatAlertSystem  # 위협 알림 시스템 추가
-    print("모듈 임포트 성공!")
+    
+    # scapy의 전역 verbose 설정 비활성화
+    try:
+        import scapy.config
+        scapy.config.conf.verb = 0  # scapy의 verbose 출력 비활성화
+    except:
+        pass
+    
+    logger.info("모듈 임포트 성공!")
 except ImportError as e:
-    print(f"모듈을 찾을 수 없습니다: {e}")
-    print(f"현재 sys.path: {sys.path}")
+    logger.error(f"모듈을 찾을 수 없습니다: {e}")
+    logger.error(f"현재 sys.path: {sys.path}")
     sys.exit(1)
 
-def select_mode_menu():
-    """사용자에게 모드 선택 메뉴를 표시하고 선택 결과를 반환합니다."""
+# CLI 유틸리티 함수들
+def print_colored(text, color=Fore.WHITE, style=Style.NORMAL, end='\n'):
+    """색상이 있는 텍스트 출력"""
+    if COLOR_SUPPORT:
+        print(f"{style}{color}{text}{Style.RESET_ALL}", end=end)
+    else:
+        print(text, end=end)
+
+def print_header():
+    """메인 헤더 출력"""
     clear_screen()
-    print("="*50)
-    print("        침입 탐지 시스템(IDS) 모드 선택        ")
-    print("="*50)
-    print("\n다음 중 사용할 모드를 선택하세요:")
-    print("\n1. 경량 모드 (Lightweight)")
-    print("   - 적은 시스템 자원 사용")
-    print("   - 기본 특성 7개 사용")
-    print("   - 모든 환경에서 실행 가능")
-    print("\n2. 고성능 모드 (Performance)")
-    print("   - 수리카타(Suricata) 엔진 통합")
-    print("   - 확장 특성 12개 사용")
-    print("   - 더 높은 정확도의 탐지")
-    print("   - 더 많은 시스템 자원 필요")
-    print("="*50)
+    print_colored("=" * 80, Fore.CYAN, Style.BRIGHT)
+    print_colored("""
+    ██╗██████╗ ███████╗     █████╗  ██████╗ ███████╗███╗   ██╗████████╗
+    ██║██╔══██╗██╔════╝    ██╔══██╗██╔════╝ ██╔════╝████╗  ██║╚══██╔══╝
+    ██║██║  ██║███████╗    ███████║██║  ███╗█████╗  ██╔██╗ ██║   ██║   
+    ██║██║  ██║╚════██║    ██╔══██║██║   ██║██╔══╝  ██║╚██╗██║   ██║   
+    ██║██████╔╝███████║    ██║  ██║╚██████╔╝███████╗██║ ╚████║   ██║   
+    ╚═╝╚═════╝ ╚══════╝    ╚═╝  ╚═╝ ╚═════╝ ╚══════╝╚═╝  ╚═══╝   ╚═╝   
+    """, Fore.CYAN, Style.BRIGHT)
+    
+    print_colored("             지능형 침입 탐지 시스템 (IDS Agent)  ", Fore.YELLOW, Style.BRIGHT)
+    print_colored("                    강화학습 & 머신러닝 기반", Fore.GREEN)
+    print_colored("=" * 80, Fore.CYAN, Style.BRIGHT)
+    print()
+
+def print_system_info():
+    """시스템 정보 출력"""
+    print_colored("📊 시스템 정보", Fore.YELLOW, Style.BRIGHT)
+    print_colored("-" * 40, Fore.YELLOW)
+    
+    # 현재 시간
+    current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    print_colored(f"⏰ 현재 시간: {current_time}", Fore.WHITE)
+    
+    # 운영체제 정보
+    os_name = "Windows" if os.name == 'nt' else "Linux/Unix"
+    print_colored(f"💻 운영체제: {os_name}", Fore.WHITE)
+    
+    # Python 버전
+    python_version = f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}"
+    print_colored(f"🐍 Python 버전: {python_version}", Fore.WHITE)
+ 
+    print()
+
+def print_feature_overview():
+    """기능 개요 출력"""
+    print_colored("🚀 주요 기능", Fore.YELLOW, Style.BRIGHT)
+    print_colored("-" * 40, Fore.YELLOW)
+    
+    features = [
+        "실시간 네트워크 패킷 모니터링",
+        "랜덤포레스트 & 강화학습 기반 위협 탐지",
+    ]
+    
+    for feature in features:
+        print_colored(f"  {feature}", Fore.GREEN)
+    
+    print()
+
+def select_mode_menu():
+    """모드 선택 메뉴"""
+    print_header()
+    print_system_info()
+    print_feature_overview()
+    
+    print_colored("⚙️  운영 모드 선택", Fore.YELLOW, Style.BRIGHT)
+    print_colored("=" * 60, Fore.YELLOW)
+    print()
+    
+    # 경량 모드 설명
+    print_colored("1️⃣  경량 모드 (Lightweight Mode)", Fore.GREEN, Style.BRIGHT)
+    print_colored("   ┌─────────────────────────────────────────────────┐", Fore.GREEN)
+    print_colored("   │  빠른 실행 속도                                  │", Fore.WHITE)
+    print_colored("   │  낮은 자원 사용량                                │", Fore.WHITE)
+    print_colored("   │  기본 특성 7개 사용                              │", Fore.WHITE)
+    print_colored("   │  모든 환경에서 실행 가능                          │", Fore.WHITE)
+    print_colored("   └─────────────────────────────────────────────────┘", Fore.GREEN)
+    print()
+    
+    # 고성능 모드 설명
+    print_colored("2️⃣  고성능 모드 (Performance Mode)", Fore.BLUE, Style.BRIGHT)
+    print_colored("   ┌─────────────────────────────────────────────────┐", Fore.BLUE)
+    print_colored("   │  수리카타(Suricata) 엔진 통합                    │", Fore.WHITE)
+    print_colored("   │  확장 특성 12개 사용                             │", Fore.WHITE)
+    print_colored("   │  더 높은 정확도의 탐지                           │", Fore.WHITE)
+    print_colored("   │  더 많은 시스템 자원 필요                         │", Fore.WHITE)
+    print_colored("   └─────────────────────────────────────────────────┘", Fore.BLUE)
+    print()
+    
+    print_colored("=" * 60, Fore.YELLOW)
     
     while True:
         try:
-            choice = int(input("\n선택 (1 또는 2): "))
-            if choice == 1:
+            print_colored("선택하세요: ", Fore.CYAN, Style.BRIGHT, end="")
+            choice = input()
+            
+            if choice == "1":
+                print_colored("✅ 경량 모드가 선택되었습니다!", Fore.GREEN, Style.BRIGHT)
+                time.sleep(1)
                 return "lightweight"
-            elif choice == 2:
+            elif choice == "2":
+                print_colored("✅ 고성능 모드가 선택되었습니다!", Fore.BLUE, Style.BRIGHT)
+                time.sleep(1)
                 return "performance"
             else:
-                print("잘못된 입력입니다. 1 또는 2를 입력하세요.")
+                print_colored("❌ 잘못된 입력입니다. 1 또는 2를 입력하세요.", Fore.RED)
         except ValueError:
-            print("잘못된 입력입니다. 숫자를 입력하세요.")
+            print_colored("❌ 잘못된 입력입니다. 숫자를 입력하세요.", Fore.RED)
+        except KeyboardInterrupt:
+            print_colored("\n\n👋 프로그램을 종료합니다.", Fore.YELLOW)
+            sys.exit(0)
+
+def show_startup_animation():
+    """시작 애니메이션"""
+    frames = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"]
+    
+    print_colored("🚀 IDS 시스템을 초기화하는 중", Fore.CYAN, Style.BRIGHT, end="")
+    
+    for i in range(20):
+        print_colored(f"\r🚀 IDS 시스템을 초기화하는 중 {frames[i % len(frames)]}", Fore.CYAN, Style.BRIGHT, end="")
+        time.sleep(0.1)
+    
+    print_colored("\r✅ IDS 시스템 초기화 완료!                    ", Fore.GREEN, Style.BRIGHT)
+    time.sleep(0.5)
+
+def print_status_box(title, content, color=Fore.WHITE):
+    """상태 박스 출력"""
+    box_width = 60
+    title_line = f"📋 {title}"
+    
+    print_colored("┌" + "─" * (box_width - 2) + "┐", color)
+    print_colored(f"│ {title_line:<{box_width - 3}} │", color, Style.BRIGHT)
+    print_colored("├" + "─" * (box_width - 2) + "┤", color)
+    
+    for line in content:
+        print_colored(f"│ {line:<{box_width - 3}} │", Fore.WHITE)
+    
+    print_colored("└" + "─" * (box_width - 2) + "┘", color)
+
+def analyze_threat_level(packet, defense_manager=None):
+    """
+    방어 모듈 기반 패킷 위협 수준 분석
+    
+    Args:
+        packet (dict): 분석할 패킷 정보
+        defense_manager: 방어 메커니즘 관리자 (옵션)
+        
+    Returns:
+        str: 위협 수준 ('high', 'medium', 'low', 'safe')
+    """
+    try:
+        if not isinstance(packet, dict):
+            return 'safe'
+        
+        # 방어 메커니즘 관리자를 통한 분석 (우선순위 1)
+        if defense_manager and hasattr(defense_manager, 'auto_defense'):
+            try:
+                # AutoDefenseActions의 analyze_packet 메서드 활용
+                prediction, confidence = defense_manager.auto_defense.analyze_packet(packet)
+                
+                # 예측 결과와 신뢰도를 바탕으로 위협 수준 결정
+                if prediction == 1:  # 공격으로 분류됨
+                    if confidence >= 0.9:
+                        return 'high'
+                    elif confidence >= 0.8:
+                        return 'medium'
+                    elif confidence >= 0.7:
+                        return 'low'
+                    else:
+                        return 'safe'
+                else:  # 정상으로 분류됨
+                    # 정상이지만 신뢰도가 낮은 경우 의심스러운 것으로 판단
+                    if confidence < 0.6:
+                        return 'low'
+                    else:
+                        return 'safe'
+                        
+            except Exception as e:
+                logger.debug(f"방어 모듈 분석 오류: {e}")
+        
+        # 백업 휴리스틱 분석 (방어 모듈이 없거나 오류 발생 시)
+        length = packet.get('length', 0)
+        source = packet.get('source', '')
+        destination = packet.get('destination', '')
+        protocol = str(packet.get('protocol', '')).upper()
+        info = str(packet.get('info', '')).lower()
+        
+        threat_score = 0.0
+        
+        # 즉시 고위험 조건들
+        if length > 8000:  # 비정상적으로 큰 패킷
+            threat_score += 0.8
+        
+        if 'syn flood' in info or 'ddos' in info or 'attack' in info:
+            threat_score += 0.9
+        
+        # 의심스러운 포트 확인 (방어 모듈과 동일한 로직)
+        suspicious_ports = [4444, 31337, 1337, 6667, 6666]
+        if ':' in destination:
+            try:
+                port = int(destination.split(':')[1])
+                if port in suspicious_ports:
+                    threat_score += 0.7
+            except:
+                pass
+        
+        # SYN 플러딩 패턴 (방어 모듈과 동일한 로직)
+        if (protocol in ['TCP', '6'] or protocol == 'tcp') and 'syn' in info:
+            threat_score += 0.6
+        
+        # 비정상적인 패킷 크기 (방어 모듈과 동일한 로직)
+        if length > 5000:
+            threat_score += 0.5
+        
+        # 중간 크기 패킷
+        if length > 3000:
+            threat_score += 0.3
+        
+        # 외부 연결 분석
+        if source and not (source.startswith('192.168.') or source.startswith('10.') or 
+                          source.startswith('172.16.') or source.startswith('127.') or
+                          source.startswith('::1') or source.startswith('fe80')):
+            if length > 1500:
+                threat_score += 0.2
+        
+        # 점수를 위협 수준으로 변환 (방어 모듈의 신뢰도 기준과 일치)
+        if threat_score >= 0.9:
+            return 'high'
+        elif threat_score >= 0.8:
+            return 'medium'  
+        elif threat_score >= 0.7:
+            return 'low'
+        else:
+            return 'safe'
+            
+    except Exception as e:
+        logger.debug(f"위협 분석 중 오류: {e}")
+        return 'safe'
+
+def show_help_menu():
+    """도움말 메뉴"""
+    print_header()
+    
+    print_colored("📖 도움말", Fore.YELLOW, Style.BRIGHT)
+    print_colored("=" * 60, Fore.YELLOW)
+    
+    help_content = [
+        "🔧 사용 가능한 명령어:",
+        "",
+        "m, mode     - 운영 모드 전환",
+        "s, status   - 시스템 상태 확인",
+        "h, help     - 이 도움말 표시",
+        "q, quit     - 프로그램 종료",
+        "",
+        "📊 통계 명령어:",
+        "packets     - 캡처된 패킷 통계",
+        "defense     - 방어 메커니즘 상태",
+        "ml          - 머신러닝 모델 상태",
+        "threats     - 위협 탐지 상세 통계",
+        "",
+        "⚡ 단축키:",
+        "Ctrl+C      - 강제 종료",
+        "Enter       - 상태 새로고침"
+    ]
+    
+    print_status_box("명령어 가이드", help_content, Fore.CYAN)
+    print()
+    print_colored("계속하려면 Enter 키를 누르세요...", Fore.YELLOW)
+    input()
 
 def main():
+    # 전역 통계 변수들
+    global threat_stats, defense_stats, ml_stats, start_time
+    threat_stats = {'high': 0, 'medium': 0, 'low': 0, 'safe': 0}
+    defense_stats = {'blocked': 0, 'monitored': 0, 'alerts': 0}
+    ml_stats = {'predictions': 0, 'accuracy': 0.0, 'model_updates': 0}
+    start_time = time.time()
+    
     try:
-        print("프로그램 시작...")
+        # 시작 애니메이션
+        show_startup_animation()
         
         # 모드 선택 (CLI 인수 또는 메뉴)
         if args.mode is None and not args.no_menu:
@@ -152,15 +443,22 @@ def main():
             args.mode = "lightweight"
         
         # 운영 모드 표시
-        print(f"운영 모드: {args.mode}")
+        print_header()
+        mode_color = Fore.GREEN if args.mode == "lightweight" else Fore.BLUE
+        mode_icon = "⚡" if args.mode == "lightweight" else "🔥"
+        print_colored(f"{mode_icon} 선택된 운영 모드: {args.mode.upper()}", mode_color, Style.BRIGHT)
         logger.info(f"운영 모드 설정: {args.mode}")
+        print()
         
         # Colab 환경 확인
-        print(f"Colab 환경 확인: {is_colab()}")
-        if is_colab():
+        colab_status = is_colab()
+        print_colored(f"🔍 환경 확인: {'Google Colab' if colab_status else '로컬 환경'}", Fore.CYAN)
+        
+        if colab_status:
             logger.info("Google Colab 환경에서 실행 중")
-            print("Google Colab 환경에서는 머신러닝 모델 학습만 가능합니다.")
-            print("포트 스캔 및 패킷 캡처 기능은 로컬 환경에서만 사용 가능합니다.")
+            print_colored("⚠️  Google Colab 환경 감지", Fore.YELLOW, Style.BRIGHT)
+            print_colored("📚 머신러닝 모델 학습만 가능합니다", Fore.YELLOW)
+            print_colored("🚫 패킷 캡처 기능은 로컬 환경에서만 사용 가능", Fore.YELLOW)
             
             # 데이터 파일이 있는 경우에만 머신러닝 모델 학습 실행
             preprocessed_data_path = 'data_set/전처리데이터1.csv'
@@ -174,16 +472,41 @@ def main():
                 env = NetworkEnv(max_steps=1000, mode=args.mode)
                 state_size = env.observation_space.shape[0]
                 action_size = env.action_space.n
-                agent = DQNAgent(state_size, action_size, mode=args.mode)
                 
-                # 강화학습 훈련 실행
-                rewards = train_rl_agent(env, agent)
+                # 새로운 Experience Replay Buffer를 사용하는 DQNAgent 초기화
+                agent = DQNAgent(
+                    state_size, 
+                    action_size, 
+                    mode=args.mode,
+                    use_prioritized_replay=True,  # Prioritized Experience Replay 사용
+                    replay_buffer_capacity=10000  # 버퍼 크기 설정
+                )
                 
-                # 훈련 결과 시각화
-                plot_training_results(rewards)
+                # 강화학습 훈련 실행 (개선된 버전)
+                rewards, malicious_counts, buffer_stats = train_rl_agent(
+                    env, 
+                    agent, 
+                    episodes=500,
+                    batch_size=32,
+                    save_buffer_interval=50,
+                    buffer_save_path=f"experience_buffer_{args.mode}"
+                )
+                
+                # 훈련 결과 시각화 (개선된 버전)
+                plot_training_results(rewards, malicious_counts, buffer_stats)
                 
                 # 모델 저장 (모드별로 구분하여 저장)
                 save_model(agent, f'dqn_model_{args.mode}.pth')
+                
+                # Experience Replay Buffer 통계 출력
+                final_stats = agent.get_buffer_stats()
+                print("\n=== Experience Replay Buffer 최종 통계 ===")
+                print(f"총 경험 수: {final_stats['total_experiences']}")
+                print(f"악성 경험 수: {final_stats['malicious_experiences']}")
+                print(f"정상 경험 수: {final_stats['benign_experiences']}")
+                print(f"평균 보상: {final_stats['avg_reward']:.3f}")
+                print(f"최대 보상: {final_stats['max_reward']:.13f}")
+                print(f"최소 보상: {final_stats['min_reward']:.3f}")
                 
                 print("\n모델 학습이 완료되었습니다.")
             else:
@@ -197,32 +520,37 @@ def main():
         
         # 관리자 권한 확인 및 필요시 재실행 (Windows 환경에서만)
         if os.name == 'nt' and not args.debug:  # 디버그 모드에서는 관리자 권한 체크 생략
-            print("윈도우 환경 감지: 관리자 권한 확인 중...")
+            logger.info("윈도우 환경 감지: 관리자 권한 확인 중...")
             if not is_admin():
                 print("관리자 권한이 필요합니다. 관리자 권한으로 재실행합니다...")
                 run_as_admin()
                 return
-            print("관리자 권한으로 실행 중...")
+            logger.info("관리자 권한으로 실행 중...")
         elif os.name == 'nt' and args.debug:
-            print("디버그 모드: 관리자 권한 체크 우회")
+            logger.info("디버그 모드: 관리자 권한 체크 우회")
             logger.info("디버그 모드에서 관리자 권한 체크 우회됨")
         
         # 화면 초기화
         clear_screen()
         
         # 패킷 캡처 코어 초기화
-        print("패킷 캡처 코어 초기화 중...")
-        packet_core = PacketCaptureCore()
+        logger.info("패킷 캡처 코어 초기화 중...")
+        if use_optimized_capture:
+            # 최적화된 멀티프로세싱 캡처 사용
+            packet_core = OptimizedPacketCapture()
+            logger.info(f"멀티프로세싱 패킷 캡처 활성화 (워커: {packet_core.num_workers}개)")
+        else:
+            packet_core = PacketCaptureCore()
         
         # 방어 메커니즘 초기화 (선택한 모드 적용)
-        print(f"{args.mode} 모드로 방어 메커니즘 초기화 중...")
+        logger.info(f"{args.mode} 모드로 방어 메커니즘 초기화 중...")
         defense_manager = create_defense_manager('defense_config.json', mode=args.mode)
         
         # 패킷 캡처 코어에 방어 메커니즘 등록
         if register_to_packet_capture(defense_manager, packet_core):
-            print("방어 메커니즘이 패킷 캡처 시스템에 성공적으로 등록되었습니다.")
+            logger.info("방어 메커니즘이 패킷 캡처 시스템에 성공적으로 등록되었습니다.")
         else:
-            print("방어 메커니즘 등록 실패")
+            logger.error("방어 메커니즘 등록 실패")
         
         # Windows 환경에서만 Npcap 설치 확인
         if os.name == 'nt':
@@ -265,79 +593,169 @@ def main():
                 wait_for_enter()
                 return
         
-        print(f"\n선택된 인터페이스: {selected_interface}")
+        logger.info(f"선택된 인터페이스: {selected_interface}")
         
         # 백그라운드에서 패킷 캡처 시작
-        print(f"\n{selected_interface}에서 패킷 캡처를 시작합니다...")
-        if packet_core.start_capture(selected_interface, max_packets=args.max_packets):  # 명령행 인수에서 가져온 값 사용
-            print("패킷 캡처가 백그라운드에서 시작되었습니다.")
-            print("프로그램을 종료하려면 Ctrl+C를 누르세요.")
-            print("모드를 전환하려면 'm'을 누르세요.")
+        print_colored(f"\n🔗 {selected_interface}에서 패킷 캡처를 시작합니다...", Fore.CYAN)
+        if packet_core.start_capture(selected_interface, max_packets=args.max_packets):
+            print_colored("✅ 패킷 캡처가 백그라운드에서 시작되었습니다.", Fore.GREEN)
+            print_colored("🎛️  실시간 대시보드 모드로 전환합니다.", Fore.YELLOW)
+            print()
             
-            # 실시간 패킷 정보 표시 스레드
-            def display_packet_info():
+            # 강화된 실시간 대시보드 표시 스레드
+            def display_realtime_stats():
+                global threat_stats, defense_stats, ml_stats
                 last_packet_count = 0
-                print("디버그: 패킷 표시 스레드 시작됨")
+                start_time = time.time()
+                protocol_stats = {'TCP': 0, 'UDP': 0, 'ICMP': 0, 'Other': 0}
+                last_stats_time = time.time()
+                last_display_time = 0
+                packets_per_second = 0
+                peak_packets_per_second = 0
+                total_threats_detected = 0
+                
+                # 조용히 시작 (로그에만 기록)
+                logger.info("강화된 실시간 대시보드 모니터링 시작")
+                
+                # 첫 번째 대시보드 즉시 표시
+                show_initial_dashboard = True
+                
                 while packet_core.is_running:
                     current_count = packet_core.get_packet_count()
+                    current_time = time.time()
+                    elapsed_time = current_time - start_time
                     
-                    if current_count > last_packet_count:
-                        try:
-                            # 최근 캡처된 패킷 정보 가져오기
+                    # 초당 패킷 수 계산
+                    if current_time - last_stats_time >= 1.0:  # 1초마다 계산
+                        packets_per_second = current_count - last_packet_count
+                        if packets_per_second > peak_packets_per_second:
+                            peak_packets_per_second = packets_per_second
+                        last_packet_count = current_count
+                        last_stats_time = current_time
+                    
+                    # 큐에서 패킷을 가져와서 통계 업데이트
+                    try:
+                        processed_count = 0
+                        while not packet_core.packet_queue.empty() and processed_count < 50:  # 한 번에 최대 50개만 처리
                             packet = packet_core.packet_queue.get_nowait()
-                            print(f"디버그: 패킷 가져옴, 타입: {type(packet).__name__}")
+                            processed_count += 1
                             
-                            # 패킷 정보 표시
-                            print("\n" + "="*50)
-                            print(f"캡처된 패킷 수: {current_count}")
-                            print(f"시간: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-                            
-                            # 패킷 타입 확인 및 처리
                             if isinstance(packet, dict):
-                                # 딕셔너리인 경우 get 메서드 사용
-                                print(f"출발지: {packet.get('source', 'N/A')}")
-                                print(f"목적지: {packet.get('destination', 'N/A')}")
-                                print(f"프로토콜: {packet.get('protocol', 'N/A')}")
-                                print(f"길이: {packet.get('length', 'N/A')} bytes")
-                                print(f"정보: {packet.get('info', 'N/A')}")
-                            elif isinstance(packet, str):
-                                # 문자열인 경우 그대로 출력
-                                print(f"패킷 데이터(문자열): {packet}")
+                                # 프로토콜 통계
+                                protocol = str(packet.get('protocol', 'Other')).upper()
+                                if protocol in ['6', 'TCP']:
+                                    protocol_stats['TCP'] += 1
+                                elif protocol in ['17', 'UDP']:
+                                    protocol_stats['UDP'] += 1
+                                elif protocol in ['1', 'ICMP']:
+                                    protocol_stats['ICMP'] += 1
                             else:
-                                # 그 외 타입의 경우
-                                print(f"패킷 데이터(타입: {type(packet).__name__}): {str(packet)}")
+                                protocol_stats['Other'] += 1
                             
-                            print("="*50)
+                            # 방어 모듈 기반 위협 수준 분석
+                            threat_level = analyze_threat_level(packet, defense_manager=defense_manager)
+                            threat_stats[threat_level] += 1
                             
-                            last_packet_count = current_count
-                        except queue.Empty:
-                            # 큐가 비어있는 경우 - 정상적인 상황
-                            pass
-                        except Exception as e:
-                            print(f"패킷 표시 중 오류 발생: {str(e)}")
-                            print(f"오류 타입: {type(e).__name__}")
-                            import traceback
-                            traceback.print_exc()
-                    time.sleep(0.1)  # CPU 사용량 감소를 위한 짧은 대기
+                            if threat_level in ['high', 'medium']:
+                                total_threats_detected += 1
+                    except queue.Empty:
+                        pass
+                    except Exception:
+                        pass  # 조용히 처리
+                    
+                    # 방어 메커니즘 통계 수집
+                    try:
+                        if 'defense_manager' in locals():
+                            defense_status = defense_manager.get_status()
+                            defense_stats['blocked'] = len(defense_status.get('blocked_ips', []))
+                    except:
+                        pass
+                    
+                    # 실시간 대시보드 출력 (처음 즉시, 이후 3초마다)
+                    if show_initial_dashboard or (int(elapsed_time) % 3 == 0 and int(elapsed_time) != last_display_time):
+                        if show_initial_dashboard:
+                            show_initial_dashboard = False
+                        last_display_time = int(elapsed_time)
+                        runtime_str = f"{int(elapsed_time//3600):02d}:{int((elapsed_time%3600)//60):02d}:{int(elapsed_time%60):02d}"
+                        
+                        # 화면 지우기 (선택적)
+                        print("\n" * 2)  # 새 줄 추가
+                        
+                        # 메인 헤더
+                        print_colored("🛡️" + "="*78 + "🛡️", Fore.CYAN, Style.BRIGHT)
+                        print_colored("                    📊 IDS 실시간 모니터링 대시보드 📊", Fore.CYAN, Style.BRIGHT)
+                        print_colored("🛡️" + "="*78 + "🛡️", Fore.CYAN, Style.BRIGHT)
+                        
+                        # 시스템 상태 섹션
+                        print_colored(f"⏱️  시스템 가동시간: {runtime_str}  |  🛡️  운영모드: {args.mode.upper()}  |  📡 인터페이스: {selected_interface}", Fore.GREEN)
+                        print_colored("-" * 80, Fore.WHITE)
+                        
+                        # 패킷 캡처 통계
+                        print_colored("📦 패킷 캡처 통계", Fore.YELLOW, Style.BRIGHT)
+                        print_colored(f"   총 캡처: {current_count:,}개  |  초당 패킷: {packets_per_second}/s  |  최고 처리량: {peak_packets_per_second}/s", Fore.WHITE)
+                        print_colored(f"   큐 크기: {packet_core.packet_queue.qsize():,}개  |  처리 상태: {'🟢 활성' if packet_core.is_running else '🔴 중지'}", Fore.WHITE)
+                        
+                        # 프로토콜 분석
+                        total_protocols = sum(protocol_stats.values())
+                        if total_protocols > 0:
+                            print_colored("🌐 프로토콜 분석", Fore.BLUE, Style.BRIGHT)
+                            protocol_line = "   "
+                            for proto, count in protocol_stats.items():
+                                if count > 0:
+                                    percentage = (count / total_protocols) * 100
+                                    protocol_line += f"{proto}: {count:,}({percentage:.1f}%)  "
+                            print_colored(protocol_line, Fore.WHITE)
+                        
+                        # 위협 탐지 통계
+                        total_analyzed = sum(threat_stats.values())
+                        if total_analyzed > 0:
+                            print_colored("🚨 위협 탐지 현황", Fore.RED, Style.BRIGHT)
+                            threat_percentage = (total_threats_detected / total_analyzed) * 100 if total_analyzed > 0 else 0
+                            print_colored(f"   총 분석: {total_analyzed:,}개  |  위협 탐지: {total_threats_detected:,}개 ({threat_percentage:.2f}%)", Fore.WHITE)
+                            print_colored(f"   🔴 높음: {threat_stats['high']:,}  🟡 중간: {threat_stats['medium']:,}  🟢 낮음: {threat_stats['low']:,}  ⚪ 안전: {threat_stats['safe']:,}", Fore.WHITE)
+                        
+                        # 방어 조치 통계
+                        print_colored("🛡️  방어 조치 현황", Fore.MAGENTA, Style.BRIGHT)
+                        print_colored(f"   차단된 IP: {defense_stats['blocked']:,}개  |  모니터링 중: {defense_stats['monitored']:,}개  |  발송 알림: {defense_stats['alerts']:,}개", Fore.WHITE)
+                        
+                        # 머신러닝 상태
+                        print_colored("🤖 AI/ML 엔진 상태", Fore.GREEN, Style.BRIGHT)
+                        memory_usage = packet_core.packet_queue.qsize() / 10000 * 100  # 추정 메모리 사용률
+                        accuracy_display = f"{ml_stats['accuracy']:.2%}" if ml_stats['accuracy'] > 0 else "계산 중"
+                        print_colored(f"   예측 수행: {ml_stats['predictions']:,}회  |  모델 정확도: {accuracy_display}  |  업데이트: {ml_stats['model_updates']:,}회", Fore.WHITE)
+                        
+                        # 하단 정보
+                        print_colored("="*80, Fore.CYAN)
+                        print_colored("💡 명령어: h(도움말) s(상태) p(패킷) d(방어) m(모드) q(종료) | Enter: 명령 입력", Fore.YELLOW)
+                        print()
+                        
+                    time.sleep(1)  # 1초마다 체크
             
-            display_thread = threading.Thread(target=display_packet_info)
+            display_thread = threading.Thread(target=display_realtime_stats)
             display_thread.daemon = True
             display_thread.start()
             
-            # 패킷 캡처 상태 모니터링 스레드
+            # 상세 상태 모니터링 스레드 (백그라운드에서 로그만 기록)
             def monitor_capture_status():
+                last_log_time = time.time()
                 while packet_core.is_running:
-                    print(f"\n캡처 상태: {'실행 중' if packet_core.is_running else '중지됨'}")
-                    print(f"캡처된 총 패킷 수: {packet_core.get_packet_count()}")
+                    current_time = time.time()
                     
-                    # 방어 메커니즘 상태 표시
-                    defense_status = defense_manager.get_status()
-                    print(f"방어 메커니즘 상태: {'활성화' if defense_status['is_active'] else '비활성화'}")
-                    print(f"운영 모드: {defense_status['mode']}")
-                    if defense_status['blocked_ips']:
-                        print(f"차단된 IP 주소: {', '.join(defense_status['blocked_ips'])}")
+                    # 10분마다 상세 로그 기록
+                    if current_time - last_log_time >= 600:  # 10분
+                        packet_count = packet_core.get_packet_count()
+                        defense_status = defense_manager.get_status()
+                        
+                        logger.info(f"상태 보고 - 캡처된 패킷: {packet_count:,}개")
+                        logger.info(f"방어 메커니즘: {'활성화' if defense_status['is_active'] else '비활성화'}")
+                        logger.info(f"운영 모드: {defense_status['mode']}")
+                        
+                        if defense_status['blocked_ips']:
+                            logger.info(f"차단된 IP 수: {len(defense_status['blocked_ips'])}개")
                     
-                    time.sleep(5)  # 5초마다 상태 업데이트
+                        last_log_time = current_time
+                    
+                    time.sleep(30)  # 30초마다 체크 (로그 출력은 10분마다)
             
             monitor_thread = threading.Thread(target=monitor_capture_status)
             monitor_thread.daemon = True
@@ -345,6 +763,7 @@ def main():
             
             # 실시간 패킷 처리 및 저장 스레드 (청크 방식으로 최적화)
             def process_and_save_packets():
+                global ml_stats
                 packet_buffer = []
                 last_save_time = time.time()
                 chunk_size = 200  # 더 작은 청크 크기로 설정
@@ -387,10 +806,9 @@ def main():
                         }
                 
                 while packet_core.is_running:
-                    # 패킷 큐에서 패킷 가져오기
+                    # 패킷 큐에서 패킷 가져오기 (조용히 처리)
                     try:
                         packet = packet_core.packet_queue.get_nowait()
-                        print(f"디버그: 처리 스레드에서 패킷 가져옴, 타입: {type(packet).__name__}")
                         # 패킷이 딕셔너리가 아닌 경우 변환
                         packet = convert_packet_to_dict(packet)
                         packet_buffer.append(packet)
@@ -398,10 +816,10 @@ def main():
                         # 큐가 비어있는 경우 - 정상적인 상황
                         pass
                     except Exception as e:
-                        print(f"패킷 처리 중 오류 발생: {str(e)}")
-                        print(f"오류 타입: {type(e).__name__}")
-                        import traceback
-                        traceback.print_exc()
+                        # 오류를 로그에만 기록 (화면 출력 없음)
+                        logger.error(f"패킷 처리 중 오류: {str(e)}")
+                        if DEBUG_MODE:
+                            logger.debug(traceback.format_exc())
                     
                     current_time = time.time()
                     # 청크 크기에 도달하거나 5분 경과 시 처리
@@ -429,11 +847,13 @@ def main():
                             
                             # 랜덤포레스트 예측 확률 feature 추가
                             df_chunk = add_rf_predictions(df_chunk)
+                            ml_stats['predictions'] += process_size
                             
                             # CSV 파일로 저장 (append 모드)
                             file_exists = os.path.isfile(filename)
                             df_chunk.to_csv(filename, mode='a', header=not file_exists, index=False)
-                            print(f"\n패킷 {process_size}개가 {filename}에 저장되었습니다.")
+                            # 로그에만 기록 (화면 출력 없음)
+                            logger.info(f"패킷 {process_size}개가 {filename}에 저장됨")
                             
                             # 처리된 청크 제거
                             packet_buffer = packet_buffer[process_size:]
@@ -443,7 +863,7 @@ def main():
                             
                             # 최대 버퍼 크기 초과 시 오래된 패킷 삭제
                             if len(packet_buffer) > max_buffer_size:
-                                print(f"\n버퍼 크기 제한으로 {len(packet_buffer) - max_buffer_size}개 패킷 삭제")
+                                logger.info(f"버퍼 크기 제한으로 {len(packet_buffer) - max_buffer_size}개 패킷 삭제")
                                 packet_buffer = packet_buffer[-max_buffer_size:]
                             
                             # 전체 버퍼가 비었거나 5분 경과 시 타이머 재설정
@@ -462,7 +882,8 @@ def main():
             
             # 데이터 파일 모니터링 및 머신러닝 모델 학습 스레드 (메모리 최적화)
             def monitor_and_train():
-                print("모니터링 및 학습 스레드 시작")
+                global ml_stats
+                logger.info("모니터링 및 학습 스레드 시작")
                 
                 # 파일 변경 여부 체크용 변수
                 last_modified_time = 0
@@ -493,6 +914,7 @@ def main():
                             try:
                                 # 메모리 최적화를 위한 청크 단위 파일 처리
                                 ml_window.gui_queue.put(('update_status', "랜덤 포레스트 모델 학습 시작"))
+                                ml_stats['model_updates'] += 1
                                 
                                 # 청크 처리로 랜덤 포레스트 모델 학습
                                 # 기존 train_random_forest 함수가 chunked_reading을 지원하도록 수정 필요
@@ -503,6 +925,7 @@ def main():
                                 
                                 # 메모리 사용량을 줄이기 위해 GUI 업데이트 전 임시 저장
                                 accuracy_value = float(accuracy)
+                                ml_stats['accuracy'] = accuracy_value
                                 # 혼동 행렬은 작은 크기로 요약
                                 conf_matrix_summary = conf_matrix.sum(axis=1).tolist() if hasattr(conf_matrix, 'sum') else []
                                 
@@ -519,26 +942,53 @@ def main():
                                     env = NetworkEnv(max_steps=1000, mode=args.mode)
                                     state_size = env.observation_space.shape[0]
                                     action_size = env.action_space.n
-                                    agent = DQNAgent(state_size, action_size, mode=args.mode)
+                                    
+                                    # 새로운 Experience Replay Buffer를 사용하는 DQNAgent 초기화
+                                    agent = DQNAgent(
+                                        state_size, 
+                                        action_size, 
+                                        mode=args.mode,
+                                        use_prioritized_replay=True,
+                                        replay_buffer_capacity=10000
+                                    )
                                     
                                     # 기존 모델 로드 시도
                                     model_path = f'dqn_model_{args.mode}.pth'
                                     if os.path.exists(model_path):
                                         load_model(agent, model_path)
+                                    
+                                    # 기존 Experience Buffer 로드 시도
+                                    buffer_path = f'experience_buffer_{args.mode}.pkl'
+                                    if os.path.exists(buffer_path):
+                                        if agent.load_buffer(buffer_path):
+                                            ml_window.gui_queue.put(('update_status', "기존 Experience Buffer 로드 완료"))
                                 
                                 # 강화학습 훈련
                                 ml_window.gui_queue.put(('update_status', "강화학습 훈련 시작"))
                                 
                                 # 에피소드 수를 줄이고 메모리 효율성 향상
-                                rewards = train_rl_agent(env, agent, episodes=50)
+                                rewards, malicious_counts, buffer_stats = train_rl_agent(
+                                    env, 
+                                    agent, 
+                                    episodes=50,
+                                    batch_size=32,
+                                    save_buffer_interval=25,
+                                    buffer_save_path=f"experience_buffer_{args.mode}"
+                                )
                                 
                                 # 강화학습 모델 저장
                                 save_model(agent, f'dqn_model_{args.mode}.pth')
                                 ml_window.gui_queue.put(('update_status', f"{args.mode} 모드용 강화학습 모델 저장 완료"))
                                 
+                                # Experience Replay Buffer 통계 GUI 업데이트
+                                buffer_stats_summary = agent.get_buffer_stats()
+                                status_msg = (f"버퍼 사용률: {buffer_stats_summary['buffer_utilization']:.1%}, "
+                                            f"악성 경험: {buffer_stats_summary.get('malicious_experiences', 0)}")
+                                ml_window.gui_queue.put(('update_status', status_msg))
+                                
                                 # 훈련 결과 시각화 (경량 모드에서만 수행)
                                 if args.mode != "lightweight":
-                                    plot_training_results(rewards)
+                                    plot_training_results(rewards, malicious_counts, buffer_stats)
                                 
                                 # 학습 완료 후 타임스탬프 업데이트
                                 last_modified_time = current_modified_time
@@ -563,32 +1013,161 @@ def main():
             # MLTrainingWindow 초기화 시 process_gui_queue 호출
             ml_window.process_gui_queue()
             
-            # 모드 전환을 위한 사용자 입력 처리 스레드
+            # 고급 사용자 입력 처리 스레드
             def handle_user_input():
-                global args
+                global args, threat_stats, defense_stats, ml_stats, start_time
+                
+                def show_command_prompt():
+                    """명령어 프롬프트 표시"""
+                    print()  # 대시보드와 구분을 위한 빈 줄
+                    print_colored("=" * 60, Fore.CYAN)
+                    print_colored("💻 명령어 입력 모드", Fore.CYAN, Style.BRIGHT)
+                    print_colored("사용 가능한 명령어: h(도움말), s(상태), p(패킷), d(방어), m(모드전환), q(종료)", Fore.WHITE)
+                    print_colored("=" * 60, Fore.CYAN)
+                    print_colored("명령어 > ", Fore.YELLOW, end="")
+                
+                def show_status():
+                    """현재 상태 표시"""
+                    clear_screen()
+                    print_header()
+                    
+                    # 시스템 상태
+                    status_info = [
+                        f"⚡ 운영 모드: {args.mode.upper()}",
+                        f"📊 캡처된 패킷: {packet_core.get_packet_count():,}개",
+                        f"🔄 캡처 상태: {'실행 중' if packet_core.is_running else '중지됨'}",
+                        f"⏰ 실행 시간: {datetime.now().strftime('%H:%M:%S')}"
+                    ]
+                    
+                    if 'defense_manager' in locals():
+                        defense_status = defense_manager.get_status()
+                        status_info.extend([
+                            f"🛡️ 방어 메커니즘: {'활성화' if defense_status['is_active'] else '비활성화'}",
+                            f"🚫 차단된 IP: {len(defense_status.get('blocked_ips', []))}개"
+                        ])
+                    
+                    print_status_box("시스템 상태", status_info, Fore.GREEN)
+                
+                def show_packet_stats():
+                    """패킷 통계 표시"""
+                    packet_count = packet_core.get_packet_count()
+                    stats_info = [
+                        f"📦 총 캡처된 패킷: {packet_count:,}개",
+                        f"📈 초당 패킷 수: 계산 중...",
+                        f"💾 큐 크기: {packet_core.packet_queue.qsize()}개",
+                        f"🔄 처리 상태: {'활성화' if packet_core.is_running else '중지됨'}"
+                    ]
+                    print_status_box("패킷 통계", stats_info, Fore.BLUE)
+                
+                # 간단한 명령어 입력 처리 (조용히 백그라운드에서 대기)
+                logger.info("사용자 입력 스레드 시작")
+                
                 while packet_core.is_running:
-                    user_input = input("\n명령어를 입력하세요 ('m': 모드 전환, 'q': 종료): ")
-                    if user_input.lower() == 'm':
-                        # 모드 전환
-                        new_mode = 'performance' if args.mode == 'lightweight' else 'lightweight'
-                        print(f"\n{args.mode} 모드에서 {new_mode} 모드로 전환 중...")
+                    try:
+                        # 간단한 입력 대기
+                        user_input = input().strip().lower()
                         
-                        # 방어 메커니즘 모드 전환
-                        if defense_manager.switch_mode(new_mode):
-                            print(f"방어 메커니즘 모드가 {new_mode}로 전환되었습니다.")
+                        if not user_input:  # Enter만 누른 경우
+                            show_command_prompt()
+                            user_input = input().strip().lower()
+                        
+                        if user_input in ['m', 'mode']:
+                            new_mode = 'performance' if args.mode == 'lightweight' else 'lightweight'
+                            new_color = Fore.BLUE if new_mode == 'performance' else Fore.GREEN
+                            new_icon = "🔥" if new_mode == 'performance' else "⚡"
                             
-                            # 강화학습 환경/에이전트 모드 전환 (재학습 중이라면)
-                            if 'env' in locals() and 'agent' in locals():
-                                env.set_mode(new_mode)
-                                agent.switch_mode(new_mode)
-                                print(f"강화학습 모델이 {new_mode}로 전환되었습니다.")
+                            print_colored(f"\n{new_icon} {args.mode} → {new_mode} 모드로 전환 중...", new_color, Style.BRIGHT)
+                            
+                            # 방어 메커니즘 모드 전환
+                            if defense_manager.switch_mode(new_mode):
+                                print_colored(f"✅ 방어 메커니즘이 {new_mode} 모드로 전환되었습니다", Fore.GREEN)
                                 
-                            # 전역 모드 설정 업데이트
-                            args.mode = new_mode
+                                # 강화학습 환경/에이전트 모드 전환 (재학습 중이라면)
+                                if 'env' in locals() and 'agent' in locals():
+                                    env.set_mode(new_mode)
+                                    agent.switch_mode(new_mode)
+                                    print_colored(f"✅ 강화학습 모델이 {new_mode} 모드로 전환되었습니다", Fore.GREEN)
+                                
+                                # 전역 모드 설정 업데이트
+                                args.mode = new_mode
+                                print_colored(f"🎯 현재 모드: {args.mode.upper()}", new_color, Style.BRIGHT)
+                            else:
+                                print_colored("❌ 모드 전환에 실패했습니다", Fore.RED)
+                                
+                        elif user_input in ['s', 'status']:
+                            show_status()
+                            
+                        elif user_input in ['p', 'packets']:
+                            show_packet_stats()
+                            
+                        elif user_input in ['h', 'help']:
+                            show_help_menu()
+                            
+                        elif user_input in ['d', 'defense']:
+                            if 'defense_manager' in locals():
+                                defense_status = defense_manager.get_status()
+                                defense_info = [
+                                    f"상태: {'활성화' if defense_status['is_active'] else '비활성화'}",
+                                    f"모드: {defense_status['mode'].upper()}",
+                                    f"차단된 IP 수: {len(defense_status.get('blocked_ips', []))}개"
+                                ]
+                                if defense_status.get('blocked_ips'):
+                                    defense_info.append("차단된 IP 목록:")
+                                    for ip in defense_status['blocked_ips'][:5]:  # 최대 5개만 표시
+                                        defense_info.append(f"  🚫 {ip}")
+                                print_status_box("방어 메커니즘 상태", defense_info, Fore.RED)
+                            else:
+                                print_colored("❌ 방어 메커니즘이 초기화되지 않았습니다", Fore.RED)
+                                
+                        elif user_input in ['ml', 'machine-learning']:
+                            accuracy_display = f"{ml_stats['accuracy']:.2%}" if ml_stats['accuracy'] > 0 else "아직 학습되지 않음"
+                            elapsed_time = time.time() - start_time
+                            predictions_per_sec = ml_stats['predictions'] / max(elapsed_time, 1)
+                            ml_info = [
+                                "🤖 강화학습 에이전트: 활성화",
+                                "🌲 랜덤 포레스트: 활성화",
+                                f"💾 Experience Buffer: 사용 중",
+                                f"⚙️ 운영 모드: {args.mode.upper()}",
+                                "",
+                                f"📊 모델 정확도: {accuracy_display}",
+                                f"🔢 총 예측 수행: {ml_stats['predictions']:,}회",
+                                f"⚡ 초당 예측: {predictions_per_sec:.1f}회/s",
+                                f"🔄 모델 업데이트: {ml_stats['model_updates']:,}회"
+                            ]
+                            print_status_box("머신러닝 상세 상태", ml_info, Fore.MAGENTA)
+                            
+                        elif user_input in ['threats', 't']:
+                            # 위협 탐지 상세 통계
+                            threat_info = [
+                                f"🔴 높은 위협: {threat_stats.get('high', 0):,}개",
+                                f"🟡 중간 위협: {threat_stats.get('medium', 0):,}개",
+                                f"🟢 낮은 위협: {threat_stats.get('low', 0):,}개",
+                                f"⚪ 안전: {threat_stats.get('safe', 0):,}개",
+                                "",
+                                f"총 분석 패킷: {sum(threat_stats.values()):,}개",
+                                f"위협 탐지율: {(threat_stats.get('high', 0) + threat_stats.get('medium', 0)) / max(sum(threat_stats.values()), 1) * 100:.2f}%"
+                            ]
+                            print_status_box("위협 탐지 상세 통계", threat_info, Fore.RED)
+                            
+                        elif user_input in ['q', 'quit', 'exit']:
+                            print_colored("\n👋 IDS 시스템을 종료합니다...", Fore.YELLOW, Style.BRIGHT)
+                            packet_core.stop_capture()
+                            break
+                            
+                        elif user_input == '':
+                            # Enter만 누른 경우 상태 새로고침
+                            show_status()
+                            
                         else:
-                            print("모드 전환에 실패했습니다.")
-                    elif user_input.lower() == 'q':
-                        print("\n프로그램을 종료합니다...")
+                            print_colored(f"❌ 알 수 없는 명령어: '{user_input}'", Fore.RED)
+                            print_colored("💡 도움말을 보려면 'h'를 입력하세요", Fore.YELLOW)
+                        
+                    except KeyboardInterrupt:
+                        print_colored("\n\n🛑 Ctrl+C 감지 - 프로그램을 종료합니다", Fore.YELLOW, Style.BRIGHT)
+                        packet_core.stop_capture()
+                        break
+                    except EOFError:
+                        print_colored("\n\n👋 입력 종료 - 프로그램을 종료합니다", Fore.YELLOW)
                         packet_core.stop_capture()
                         break
                     

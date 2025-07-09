@@ -104,31 +104,32 @@ class PacketCaptureCore:
 
     def check_npcap(self):
         """Npcap 설치 여부를 확인합니다."""
+        import logging
         # 윈도우 환경이 아닌 경우 Npcap 확인 불필요
         if os.name != 'nt':
-            print("윈도우 환경이 아니므로 Npcap 확인을 건너뜁니다.")
+            logging.getLogger('PacketCapture').info("윈도우 환경이 아니므로 Npcap 확인을 건너뜁니다.")
             return True
             
         try:
             key = winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, r'SOFTWARE\Npcap')
             winreg.CloseKey(key)
-            print("Npcap detected in registry: SOFTWARE\\Npcap")
+            logging.getLogger('PacketCapture').info("Npcap detected in registry: SOFTWARE\\Npcap")
             return True
         except FileNotFoundError:
-            print("Npcap not found in registry: SOFTWARE\\Npcap")
+            logging.getLogger('PacketCapture').debug("Npcap not found in registry: SOFTWARE\\Npcap")
         try:
             key = winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, r'SOFTWARE\WOW6432Node\Npcap')
             winreg.CloseKey(key)
-            print("Npcap detected in registry: SOFTWARE\\WOW6432Node\\Npcap")
+            logging.getLogger('PacketCapture').info("Npcap detected in registry: SOFTWARE\\WOW6432Node\\Npcap")
             return True
         except FileNotFoundError:
-            print("Npcap not found in registry: SOFTWARE\\WOW6432Node\\Npcap")
+            logging.getLogger('PacketCapture').debug("Npcap not found in registry: SOFTWARE\\WOW6432Node\\Npcap")
         default_path = os.path.join(os.environ.get('SystemRoot', 'C:\Windows'), 'System32', 'Npcap')
         if os.path.exists(default_path):
-            print(f"Npcap detected in directory: {default_path}")
+            logging.getLogger('PacketCapture').info(f"Npcap detected in directory: {default_path}")
             return True
         else:
-            print(f"Npcap not found in directory: {default_path}")
+            logging.getLogger('PacketCapture').debug(f"Npcap not found in directory: {default_path}")
         return False
 
     def get_network_interfaces(self):
@@ -175,7 +176,8 @@ class PacketCaptureCore:
             self.packet_queue.put(packet)
             return True
         except Exception as e:
-            print(f"패킷 큐 추가 중 오류: {e}")
+            import logging
+            logging.getLogger('PacketCapture').error(f"패킷 큐 추가 중 오류: {e}")
             return False
             
     def start_capture(self, interface, max_packets):
@@ -186,12 +188,13 @@ class PacketCaptureCore:
         self.packet_count = 0
         self.max_packets = max_packets
         self.active_interface = interface  # 활성 인터페이스 저장
-        print(f"Starting packet capture on interface: {interface} with max_packets: {max_packets}")
+        import logging
+        logging.getLogger('PacketCapture').info(f"Starting packet capture on interface: {interface} with max_packets: {max_packets}")
         
         def packet_callback(packet):
             """패킷 캡처 콜백 함수"""
             if not self.is_running:
-                return False
+                return
             if IP in packet:
                 try:
                     packet_info = {
@@ -205,7 +208,8 @@ class PacketCaptureCore:
                     # 안전한 큐 추가 함수 사용
                     self.put_packet(packet_info)
                     self.packet_count += 1
-                    print(f"디버그: 패킷 캡처됨 - {self.packet_count}번째 패킷")
+                    import logging
+                    logging.getLogger('PacketCapture').debug(f"디버그: 패킷 캡처됨 - {self.packet_count}번째 패킷")
                     
                     # 방어 모듈 콜백 함수가 등록되었고 활성화되어 있으면 실행
                     if self.enable_defense and self.defense_callback:
@@ -213,16 +217,18 @@ class PacketCaptureCore:
                         self.defense_callback(packet_info)
                         
                 except Exception as e:
-                    print(f"디버그: 패킷 처리 중 오류 발생: {str(e)}")
-            return True
+                    import logging
+                    logging.getLogger('PacketCapture').error(f"디버그: 패킷 처리 중 오류 발생: {str(e)}")
         
         def capture():
             try:
-                print(f"디버그: 캡처 스레드 시작 - 인터페이스: {interface}")
+                import logging
+                logging.getLogger('PacketCapture').debug(f"디버그: 캡처 스레드 시작 - 인터페이스: {interface}")
                 sniff(iface=interface, prn=packet_callback, store=0, stop_filter=lambda x: not self.is_running)
-                print("디버그: 캡처 스레드 종료")
+                logging.getLogger('PacketCapture').debug("디버그: 캡처 스레드 종료")
             except Exception as e:
-                print(f"디버그: 캡처 중 오류 발생: {str(e)}")
+                import logging
+                logging.getLogger('PacketCapture').error(f"디버그: 캡처 중 오류 발생: {str(e)}")
             finally:
                 self.is_running = False
                 self.capture_completed = True
@@ -260,11 +266,12 @@ class PacketCaptureCore:
 
     def stop_capture(self):
         """패킷 캡처를 중지하고 캡처된 패킷 수를 반환합니다."""
-        print("Stopping packet capture...")
+        import logging
+        logging.getLogger('PacketCapture').info("Stopping packet capture...")
         self.is_running = False
         if self.sniff_thread is not None:
             self.sniff_thread.join()
-        print(f"Packet capture stopped. Total packets captured: {self.packet_count}")
+        logging.getLogger('PacketCapture').info(f"Packet capture stopped. Total packets captured: {self.packet_count}")
         return self.packet_count
 
     def get_packet_dataframe(self):
@@ -277,11 +284,12 @@ class PacketCaptureCore:
 
 def preprocess_packet_data(df):
     """패킷 데이터 전처리 함수"""
-    print("디버그: 전처리 시작 - 입력 데이터 크기:", df.shape)
+    import logging
+    logging.getLogger('PacketCapture').debug("디버그: 전처리 시작 - 입력 데이터 크기: %s", df.shape)
     
     # 필요한 전처리 작업 수행
     if 'protocol' in df.columns:
-        print("디버그: 프로토콜 매핑 시작")
+        logging.getLogger('PacketCapture').debug("디버그: 프로토콜 매핑 시작")
         # 프로토콜 번호를 이름으로 매핑
         protocol_map = {
             1: 'ICMP',
@@ -289,14 +297,14 @@ def preprocess_packet_data(df):
             17: 'UDP'
         }
         df['protocol'] = df['protocol'].map(protocol_map).fillna('Other')
-        print("디버그: 프로토콜 매핑 완료")
+        logging.getLogger('PacketCapture').debug("디버그: 프로토콜 매핑 완료")
     
     if 'source' in df.columns and 'destination' in df.columns:
-        print("디버그: IP 주소 정규화 시작")
+        logging.getLogger('PacketCapture').debug("디버그: IP 주소 정규화 시작")
         # IP 주소 정규화
         df['source'] = df['source'].apply(lambda x: x.split(':')[0] if ':' in x else x)
         df['destination'] = df['destination'].apply(lambda x: x.split(':')[0] if ':' in x else x)
-        print("디버그: IP 주소 정규화 완료")
+        logging.getLogger('PacketCapture').debug("디버그: IP 주소 정규화 완료")
     
-    print("디버그: 전처리 완료 - 출력 데이터 크기:", df.shape)
+    logging.getLogger('PacketCapture').debug("디버그: 전처리 완료 - 출력 데이터 크기: %s", df.shape)
     return df 
