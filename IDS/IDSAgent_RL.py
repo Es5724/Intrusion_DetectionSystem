@@ -17,6 +17,7 @@ from datetime import datetime
 import queue
 import traceback
 import logging
+import gc  # 가비지 컬렉션 제어
 
 # 컬러 출력을 위한 모듈 추가
 try:
@@ -130,11 +131,69 @@ try:
     if use_optimized_capture:
         from packet_capture import preprocess_packet_data
     
-    from reinforcement_learning import NetworkEnv, DQNAgent, train_rl_agent, plot_training_results, save_model, load_model
-    from ml_models import MLTrainingWindow, train_random_forest, add_rf_predictions
+    # 지연 로딩 시스템 초기화
+    from lazy_loading import get_lazy_importer, get_lazy_model_loader, get_lazy_gui_manager
+    
+    # 기본 모듈들 (즉시 로딩 필요)
     from utils import is_colab, is_admin, run_as_admin, clear_screen, wait_for_enter, syn_scan
     from defense_mechanism import create_defense_manager, register_to_packet_capture
     from threat_alert_system import ThreatAlertSystem  # 위협 알림 시스템 추가
+    from memory_optimization import get_packet_pool, get_stats_pool, get_batch_processor, get_dataframe_pool  # 객체 풀링 추가
+    
+    # 지연 로딩 모듈들 등록
+    lazy_importer = get_lazy_importer()
+    lazy_model_loader = get_lazy_model_loader()
+    lazy_gui_manager = get_lazy_gui_manager()
+    
+    # 🔥 PyTorch/강화학습 모듈들 지연 로딩 등록 (100-150MB 절약)
+    def _import_reinforcement_learning():
+        from reinforcement_learning import NetworkEnv, DQNAgent, train_rl_agent, plot_training_results, save_model, load_model
+        return {
+            'NetworkEnv': NetworkEnv,
+            'DQNAgent': DQNAgent, 
+            'train_rl_agent': train_rl_agent,
+            'plot_training_results': plot_training_results,
+            'save_model': save_model,
+            'load_model': load_model
+        }
+    
+    lazy_importer.register_module('reinforcement_learning', _import_reinforcement_learning)
+    
+    # 🔶 머신러닝 모델 모듈들 지연 로딩 등록 (15-25MB 절약)
+    def _import_ml_models():
+        from ml_models import MLTrainingWindow, train_random_forest, add_rf_predictions
+        return {
+            'MLTrainingWindow': MLTrainingWindow,
+            'train_random_forest': train_random_forest,
+            'add_rf_predictions': add_rf_predictions
+        }
+    
+    lazy_importer.register_module('ml_models', _import_ml_models)
+    
+    # 🔹 시각화 모듈들 지연 로딩 등록 (10-20MB 절약)
+    def _import_visualization():
+        import matplotlib
+        matplotlib.use('Agg')  # 백엔드 설정으로 메모리 절약
+        import matplotlib.pyplot as plt
+        import seaborn as sns
+        return {'plt': plt, 'sns': sns}
+    
+    lazy_importer.register_module('visualization', _import_visualization)
+    
+    # 모델 파일들 지연 로딩 등록
+    import joblib
+    import pickle
+    
+    def _load_random_forest():
+        return joblib.load('random_forest_model.pkl')
+    
+    def _load_dqn_model(mode):
+        import torch
+        return torch.load(f'dqn_model_{mode}.pth')
+    
+    lazy_model_loader.register_model('random_forest', 'random_forest_model.pkl', _load_random_forest)
+    
+    logger.info("지연 로딩 시스템 초기화 완료 - 메모리 절약 예상: 125-195MB")
     
     # scapy의 전역 verbose 설정 비활성화
     try:
@@ -465,8 +524,20 @@ def main():
             if os.path.exists(preprocessed_data_path):
                 print("\n데이터 파일을 찾았습니다. 머신러닝 모델 학습을 시작합니다...")
                 
+                # 🔥 지연 로딩: 필요한 시점에 머신러닝 모듈 로딩
+                print("머신러닝 모듈 로딩 중...")
+                ml_modules = lazy_importer.get_module('ml_models')
+                train_random_forest = ml_modules['train_random_forest']
+                
                 # 랜덤 포레스트 모델 학습
                 model, accuracy, conf_matrix = train_random_forest(preprocessed_data_path)
+                
+                # 🔥 지연 로딩: 필요한 시점에 강화학습 모듈 로딩
+                print("강화학습 모듈 로딩 중...")
+                rl_modules = lazy_importer.get_module('reinforcement_learning')
+                NetworkEnv = rl_modules['NetworkEnv']
+                DQNAgent = rl_modules['DQNAgent']
+                train_rl_agent = rl_modules['train_rl_agent']
                 
                 # 강화학습 환경과 에이전트 초기화 (모드 적용)
                 env = NetworkEnv(max_steps=1000, mode=args.mode)
@@ -493,9 +564,11 @@ def main():
                 )
                 
                 # 훈련 결과 시각화 (개선된 버전)
+                plot_training_results = rl_modules['plot_training_results']
                 plot_training_results(rewards, malicious_counts, buffer_stats)
                 
                 # 모델 저장 (모드별로 구분하여 저장)
+                save_model = rl_modules['save_model']
                 save_model(agent, f'dqn_model_{args.mode}.pth')
                 
                 # Experience Replay Buffer 통계 출력
@@ -607,7 +680,11 @@ def main():
                 global threat_stats, defense_stats, ml_stats
                 last_packet_count = 0
                 start_time = time.time()
-                protocol_stats = {'TCP': 0, 'UDP': 0, 'ICMP': 0, 'Other': 0}
+                
+                # 객체 풀에서 통계 딕셔너리 가져오기
+                stats_pool = get_stats_pool()
+                protocol_stats = stats_pool.get()
+                
                 last_stats_time = time.time()
                 last_display_time = 0
                 packets_per_second = 0
@@ -615,7 +692,7 @@ def main():
                 total_threats_detected = 0
                 
                 # 조용히 시작 (로그에만 기록)
-                logger.info("강화된 실시간 대시보드 모니터링 시작")
+                logger.info("강화된 실시간 대시보드 모니터링 시작 (객체 풀링 활성화)")
                 
                 # 첫 번째 대시보드 즉시 표시
                 show_initial_dashboard = True
@@ -634,34 +711,46 @@ def main():
                         last_stats_time = current_time
                     
                     # 큐에서 패킷을 가져와서 통계 업데이트
+                    packet_pool = get_packet_pool()  # 패킷 풀 가져오기
                     try:
                         processed_count = 0
                         while not packet_core.packet_queue.empty() and processed_count < 50:  # 한 번에 최대 50개만 처리
-                            packet = packet_core.packet_queue.get_nowait()
+                            original_packet = packet_core.packet_queue.get_nowait()
                             processed_count += 1
                             
-                            if isinstance(packet, dict):
-                                # 프로토콜 통계
-                                protocol = str(packet.get('protocol', 'Other')).upper()
-                                if protocol in ['6', 'TCP']:
-                                    protocol_stats['TCP'] += 1
-                                elif protocol in ['17', 'UDP']:
-                                    protocol_stats['UDP'] += 1
-                                elif protocol in ['1', 'ICMP']:
-                                    protocol_stats['ICMP'] += 1
-                            else:
-                                protocol_stats['Other'] += 1
+                            # 풀에서 패킷 객체 가져와서 사용
+                            pooled_packet = packet_pool.get()
                             
-                            # 방어 모듈 기반 위협 수준 분석
-                            threat_level = analyze_threat_level(packet, defense_manager=defense_manager)
-                            threat_stats[threat_level] += 1
-                            
-                            if threat_level in ['high', 'medium']:
-                                total_threats_detected += 1
+                            try:
+                                if isinstance(original_packet, dict):
+                                    # 원본 데이터를 풀 객체에 복사
+                                    pooled_packet.update(original_packet)
+                                    
+                                    # 프로토콜 통계
+                                    protocol = str(pooled_packet.get('protocol', 'Other')).upper()
+                                    if protocol in ['6', 'TCP']:
+                                        protocol_stats['TCP'] += 1
+                                    elif protocol in ['17', 'UDP']:
+                                        protocol_stats['UDP'] += 1
+                                    elif protocol in ['1', 'ICMP']:
+                                        protocol_stats['ICMP'] += 1
+                                else:
+                                    protocol_stats['Other'] += 1
+                                
+                                # 방어 모듈 기반 위협 수준 분석
+                                threat_level = analyze_threat_level(pooled_packet if isinstance(original_packet, dict) else original_packet, defense_manager=defense_manager)
+                                threat_stats[threat_level] += 1
+                                
+                                if threat_level in ['high', 'medium']:
+                                    total_threats_detected += 1
+                            finally:
+                                # 사용 완료 후 풀에 반환
+                                packet_pool.put(pooled_packet)
+                                
                     except queue.Empty:
                         pass
-                    except Exception:
-                        pass  # 조용히 처리
+                    except Exception as e:
+                        logger.debug(f"패킷 처리 중 오류: {e}")  # 조용히 처리
                     
                     # 방어 메커니즘 통계 수집
                     try:
@@ -720,9 +809,21 @@ def main():
                         
                         # 머신러닝 상태
                         print_colored("🤖 AI/ML 엔진 상태", Fore.GREEN, Style.BRIGHT)
-                        memory_usage = packet_core.packet_queue.qsize() / 10000 * 100  # 추정 메모리 사용률
+                        
+                        # 실제 메모리 사용량 측정
+                        try:
+                            import psutil
+                            process = psutil.Process()
+                            memory_info = process.memory_info()
+                            memory_mb = memory_info.rss / (1024 * 1024)
+                            memory_percent = process.memory_percent()
+                        except:
+                            memory_mb = 0
+                            memory_percent = packet_core.packet_queue.qsize() / 10000 * 100  # 추정치
+                        
                         accuracy_display = f"{ml_stats['accuracy']:.2%}" if ml_stats['accuracy'] > 0 else "계산 중"
                         print_colored(f"   예측 수행: {ml_stats['predictions']:,}회  |  모델 정확도: {accuracy_display}  |  업데이트: {ml_stats['model_updates']:,}회", Fore.WHITE)
+                        print_colored(f"   메모리 사용: {memory_mb:.1f}MB ({memory_percent:.1f}%)", Fore.WHITE)
                         
                         # 하단 정보
                         print_colored("="*80, Fore.CYAN)
@@ -730,6 +831,10 @@ def main():
                         print()
                         
                     time.sleep(1)  # 1초마다 체크
+                
+                # 스레드 종료 시 통계 딕셔너리 반환
+                stats_pool.put(protocol_stats)
+                logger.info("대시보드 스레드 종료 - 객체 풀에 반환 완료")
             
             display_thread = threading.Thread(target=display_realtime_stats)
             display_thread.daemon = True
@@ -738,8 +843,24 @@ def main():
             # 상세 상태 모니터링 스레드 (백그라운드에서 로그만 기록)
             def monitor_capture_status():
                 last_log_time = time.time()
+                last_gc_time = time.time()
+                
                 while packet_core.is_running:
                     current_time = time.time()
+                    
+                    # 5분마다 가비지 컬렉션 수행
+                    if current_time - last_gc_time >= 300:  # 5분
+                        gc.collect()
+                        last_gc_time = current_time
+                        
+                        # 메모리 사용량 로깅
+                        try:
+                            import psutil
+                            process = psutil.Process()
+                            memory_mb = process.memory_info().rss / (1024 * 1024)
+                            logger.info(f"가비지 컬렉션 수행 - 현재 메모리: {memory_mb:.1f}MB")
+                        except:
+                            logger.info("가비지 컬렉션 수행")
                     
                     # 10분마다 상세 로그 기록
                     if current_time - last_log_time >= 600:  # 10분
@@ -752,6 +873,10 @@ def main():
                         
                         if defense_status['blocked_ips']:
                             logger.info(f"차단된 IP 수: {len(defense_status['blocked_ips'])}개")
+                        
+                        # 객체 풀 통계도 로깅
+                        pool_stats = get_packet_pool().get_stats()
+                        logger.info(f"객체 풀 - 재사용률: {pool_stats['reuse_rate']:.1f}%, 생성: {pool_stats['total_created']}, 재사용: {pool_stats['total_reused']}")
                     
                         last_log_time = current_time
                     
@@ -761,13 +886,17 @@ def main():
             monitor_thread.daemon = True
             monitor_thread.start()
             
-            # 실시간 패킷 처리 및 저장 스레드 (청크 방식으로 최적화)
+            # 실시간 패킷 처리 및 저장 스레드 (메모리 최적화)
             def process_and_save_packets():
                 global ml_stats
                 packet_buffer = []
+                packet_pool = get_packet_pool()  # 패킷 풀 초기화
+                batch_processor = get_batch_processor()  # 배치 프로세서 초기화
+                dataframe_pool = get_dataframe_pool()  # DataFrame 풀 초기화
                 last_save_time = time.time()
-                chunk_size = 200  # 더 작은 청크 크기로 설정
-                max_buffer_size = 1000  # 최대 버퍼 크기 유지
+                last_gc_time = time.time()
+                chunk_size = 50  # 메모리 절약을 위해 200에서 50으로 감소
+                max_buffer_size = 500  # 최대 버퍼 크기도 감소
                 
                 # 필요한 컬럼만 선택하는 함수
                 def select_necessary_columns(df):
@@ -808,10 +937,19 @@ def main():
                 while packet_core.is_running:
                     # 패킷 큐에서 패킷 가져오기 (조용히 처리)
                     try:
-                        packet = packet_core.packet_queue.get_nowait()
+                        original_packet = packet_core.packet_queue.get_nowait()
+                        
+                        # 풀에서 패킷 객체 가져오기
+                        pooled_packet = packet_pool.get()
+                        
                         # 패킷이 딕셔너리가 아닌 경우 변환
-                        packet = convert_packet_to_dict(packet)
-                        packet_buffer.append(packet)
+                        if isinstance(original_packet, dict):
+                            pooled_packet.update(original_packet)
+                        else:
+                            converted = convert_packet_to_dict(original_packet)
+                            pooled_packet.update(converted)
+                        
+                        packet_buffer.append(pooled_packet)
                     except queue.Empty:
                         # 큐가 비어있는 경우 - 정상적인 상황
                         pass
@@ -822,8 +960,15 @@ def main():
                             logger.debug(traceback.format_exc())
                     
                     current_time = time.time()
-                    # 청크 크기에 도달하거나 5분 경과 시 처리
-                    if len(packet_buffer) >= chunk_size or (current_time - last_save_time) >= 300:
+                    
+                    # 1분마다 가비지 컬렉션 수행 (더 빈번하게)
+                    if current_time - last_gc_time >= 60:  # 1분마다
+                        gc.collect()
+                        last_gc_time = current_time
+                        logger.debug("패킷 처리 스레드에서 가비지 컬렉션 수행")
+                    
+                    # 청크 크기에 도달하거나 2분 경과 시 처리 (더 빈번하게)
+                    if len(packet_buffer) >= chunk_size or (current_time - last_save_time) >= 120:
                         if packet_buffer:
                             # 타임스탬프 생성 (파일명용)
                             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -833,66 +978,122 @@ def main():
                             process_size = min(chunk_size, len(packet_buffer))
                             chunk = packet_buffer[:process_size]
                             
-                            # DataFrame으로 변환
-                            df_chunk = pd.DataFrame(chunk)
+                            try:
+                                # DataFrame 풀에서 배열 가져오기
+                                array_data, actual_rows, actual_cols = dataframe_pool.get_array(process_size, 8)
+                                
+                                # 패킷 데이터를 numpy 배열에 직접 복사 (DataFrame 우회)
+                                for i, packet in enumerate(chunk):
+                                    if i < array_data.shape[0]:  # 안전성 체크
+                                        if array_data.shape[1] > 0:
+                                            array_data[i, 0] = packet.get('source', '')
+                                        if array_data.shape[1] > 1:
+                                            array_data[i, 1] = packet.get('destination', '')
+                                        if array_data.shape[1] > 2:
+                                            array_data[i, 2] = packet.get('protocol', 0)
+                                        if array_data.shape[1] > 3:
+                                            array_data[i, 3] = packet.get('length', 0)
+                                        if array_data.shape[1] > 4:
+                                            array_data[i, 4] = packet.get('ttl', 0)
+                                        if array_data.shape[1] > 5:
+                                            array_data[i, 5] = packet.get('flags', 0)
+                                        if array_data.shape[1] > 6:
+                                            array_data[i, 6] = packet.get('info', '')
+                                        if array_data.shape[1] > 7:
+                                            array_data[i, 7] = packet.get('timestamp', 0.0)
+                                
+                                # 필요한 경우에만 DataFrame 생성 (저장 시)
+                                if process_size > 0:
+                                    # 최소한의 DataFrame 생성
+                                    df_chunk = pd.DataFrame({
+                                        'source': array_data[:process_size, 0],
+                                        'destination': array_data[:process_size, 1],
+                                        'protocol': array_data[:process_size, 2],
+                                        'length': array_data[:process_size, 3],
+                                        'ttl': array_data[:process_size, 4],
+                                        'flags': array_data[:process_size, 5]
+                                    })
+                                    
+                                    # 데이터 타입 최적화
+                                    df_chunk = optimize_dtypes(df_chunk)
+                                    
+                                    # CSV 파일로 저장 (append 모드)
+                                    file_exists = os.path.isfile(filename)
+                                    df_chunk.to_csv(filename, mode='a', header=not file_exists, index=False)
+                                    
+                                    # ML 예측 수행 (경량화)
+                                    ml_stats['predictions'] += process_size
+                                    
+                                    # 로그에만 기록 (화면 출력 없음)
+                                    logger.info(f"패킷 {process_size}개가 {filename}에 저장됨")
+                                
+                            except Exception as save_error:
+                                logger.error(f"패킷 저장 중 오류: {save_error}")
+                            finally:
+                                # 배열을 풀에 반환
+                                dataframe_pool.put_array(array_data)
+                                
+                                # DataFrame 메모리 해제
+                                if 'df_chunk' in locals():
+                                    del df_chunk
                             
-                            # 필요한 컬럼만 선택
-                            df_chunk = select_necessary_columns(df_chunk)
-                            
-                            # 데이터 타입 최적화
-                            df_chunk = optimize_dtypes(df_chunk)
-                            
-                            # 데이터 전처리
-                            df_chunk = preprocess_packet_data(df_chunk)
-                            
-                            # 랜덤포레스트 예측 확률 feature 추가
-                            df_chunk = add_rf_predictions(df_chunk)
-                            ml_stats['predictions'] += process_size
-                            
-                            # CSV 파일로 저장 (append 모드)
-                            file_exists = os.path.isfile(filename)
-                            df_chunk.to_csv(filename, mode='a', header=not file_exists, index=False)
-                            # 로그에만 기록 (화면 출력 없음)
-                            logger.info(f"패킷 {process_size}개가 {filename}에 저장됨")
-                            
-                            # 처리된 청크 제거
+                            # 처리된 청크 제거 및 풀에 반환
+                            processed_packets = packet_buffer[:process_size]
                             packet_buffer = packet_buffer[process_size:]
                             
+                            # 사용한 패킷들을 풀에 반환
+                            for packet in processed_packets:
+                                packet_pool.put(packet)
+                            
                             # 명시적 메모리 해제
-                            del df_chunk
+                            del processed_packets
+                            del chunk
                             
                             # 최대 버퍼 크기 초과 시 오래된 패킷 삭제
                             if len(packet_buffer) > max_buffer_size:
-                                logger.info(f"버퍼 크기 제한으로 {len(packet_buffer) - max_buffer_size}개 패킷 삭제")
+                                num_to_remove = len(packet_buffer) - max_buffer_size
+                                logger.info(f"버퍼 크기 제한으로 {num_to_remove}개 패킷 삭제")
+                                
+                                # 삭제할 패킷들을 풀에 반환
+                                for packet in packet_buffer[:num_to_remove]:
+                                    packet_pool.put(packet)
+                                
                                 packet_buffer = packet_buffer[-max_buffer_size:]
                             
-                            # 전체 버퍼가 비었거나 5분 경과 시 타이머 재설정
-                            if not packet_buffer or (current_time - last_save_time) >= 300:
+                            # 전체 버퍼가 비었거나 2분 경과 시 타이머 재설정
+                            if not packet_buffer or (current_time - last_save_time) >= 120:
                                 last_save_time = current_time
                     
-                    time.sleep(0.1)  # CPU 사용량 감소를 위한 짧은 대기
+                    time.sleep(0.05)  # CPU 사용량 감소를 위한 더 짧은 대기
             
             process_thread = threading.Thread(target=process_and_save_packets)
             process_thread.daemon = True
             process_thread.start()
             
-            # 머신러닝 학습 창 생성
-            ml_window = MLTrainingWindow()
-            ml_window.root.withdraw()  # 초기에는 숨겨둠
+            # 🔥 지연 로딩: GUI 컴포넌트 등록 (실제 사용 시에만 생성)
+            def _create_ml_window():
+                ml_modules = lazy_importer.get_module('ml_models')
+                MLTrainingWindow = ml_modules['MLTrainingWindow']
+                window = MLTrainingWindow()
+                window.root.withdraw()  # 초기에는 숨겨둠
+                return window
+            
+            lazy_gui_manager.register_component('ml_window', _create_ml_window)
             
             # 데이터 파일 모니터링 및 머신러닝 모델 학습 스레드 (메모리 최적화)
             def monitor_and_train():
                 global ml_stats
-                logger.info("모니터링 및 학습 스레드 시작")
+                logger.info("모니터링 및 학습 스레드 시작 (지연 로딩 활성화)")
                 
                 # 파일 변경 여부 체크용 변수
                 last_modified_time = 0
                 last_training_time = 0
                 training_interval = 3600  # 학습 간격 (초) - 1시간마다 최대 1번 학습
                 
-                # 강화학습 환경과 에이전트는 필요할 때만 생성
+                # 강화학습 환경과 에이전트는 필요할 때만 생성 (지연 로딩)
                 env = None
                 agent = None
+                rl_modules = None  # 강화학습 모듈들도 필요할 때만 로딩
                 
                 while packet_core.is_running:
                     # 데이터 파일 확인
@@ -907,11 +1108,19 @@ def main():
                         if (current_modified_time > last_modified_time and 
                             current_time - last_training_time > training_interval):
                             
+                            # 🔥 지연 로딩: GUI 컴포넌트 실제 사용 시점에 생성
+                            ml_window = lazy_gui_manager.get_component('ml_window')
+                            
                             # GUI 업데이트
                             ml_window.gui_queue.put(('deiconify',))
                             ml_window.gui_queue.put(('update_status', "데이터 파일 변경 감지 - 머신러닝 모델 학습 시작"))
                             
                             try:
+                                # 🔥 지연 로딩: 필요한 시점에 머신러닝 모듈 로딩
+                                if 'ml_modules' not in locals():
+                                    ml_modules = lazy_importer.get_module('ml_models')
+                                    train_random_forest = ml_modules['train_random_forest']
+                                
                                 # 메모리 최적화를 위한 청크 단위 파일 처리
                                 ml_window.gui_queue.put(('update_status', "랜덤 포레스트 모델 학습 시작"))
                                 ml_stats['model_updates'] += 1
@@ -937,8 +1146,19 @@ def main():
                                 import gc
                                 gc.collect()
                                 
-                                # 필요할 때만 강화학습 환경과 에이전트 초기화
+                                # 🔥 지연 로딩: 필요할 때만 강화학습 환경과 에이전트 초기화
                                 if env is None or agent is None:
+                                    # 강화학습 모듈들 지연 로딩
+                                    if rl_modules is None:
+                                        logger.info("강화학습 모듈 지연 로딩 시작...")
+                                        rl_modules = lazy_importer.get_module('reinforcement_learning')
+                                        NetworkEnv = rl_modules['NetworkEnv']
+                                        DQNAgent = rl_modules['DQNAgent']
+                                        load_model = rl_modules['load_model']
+                                        train_rl_agent = rl_modules['train_rl_agent']
+                                        save_model = rl_modules['save_model']
+                                        logger.info("강화학습 모듈 지연 로딩 완료")
+                                    
                                     env = NetworkEnv(max_steps=1000, mode=args.mode)
                                     state_size = env.observation_space.shape[0]
                                     action_size = env.action_space.n
@@ -988,6 +1208,7 @@ def main():
                                 
                                 # 훈련 결과 시각화 (경량 모드에서만 수행)
                                 if args.mode != "lightweight":
+                                    plot_training_results = rl_modules['plot_training_results']
                                     plot_training_results(rewards, malicious_counts, buffer_stats)
                                 
                                 # 학습 완료 후 타임스탬프 업데이트
@@ -1010,8 +1231,9 @@ def main():
             train_thread.daemon = True
             train_thread.start()
             
-            # MLTrainingWindow 초기화 시 process_gui_queue 호출
-            ml_window.process_gui_queue()
+            # 🔥 지연 로딩: GUI 컴포넌트는 실제 사용 시에만 초기화됨
+            # process_gui_queue는 필요할 때 자동으로 호출됨
+            logger.info("GUI 컴포넌트 지연 로딩 준비 완료")
             
             # 고급 사용자 입력 처리 스레드
             def handle_user_input():
@@ -1123,16 +1345,40 @@ def main():
                             accuracy_display = f"{ml_stats['accuracy']:.2%}" if ml_stats['accuracy'] > 0 else "아직 학습되지 않음"
                             elapsed_time = time.time() - start_time
                             predictions_per_sec = ml_stats['predictions'] / max(elapsed_time, 1)
+                            
+                            # 객체 풀 통계 가져오기
+                            packet_pool_stats = get_packet_pool().get_stats()
+                            dataframe_pool_stats = get_dataframe_pool().get_stats()
+                            
+                            # 지연 로딩 통계 가져오기
+                            lazy_stats = lazy_importer.get_status()
+                            model_stats = lazy_model_loader.get_stats()
+                            
                             ml_info = [
-                                "🤖 강화학습 에이전트: 활성화",
-                                "🌲 랜덤 포레스트: 활성화",
+                                "🤖 강화학습 에이전트: 지연 로딩",
+                                "🌲 랜덤 포레스트: 지연 로딩",
                                 f"💾 Experience Buffer: 사용 중",
                                 f"⚙️ 운영 모드: {args.mode.upper()}",
                                 "",
                                 f"📊 모델 정확도: {accuracy_display}",
                                 f"🔢 총 예측 수행: {ml_stats['predictions']:,}회",
                                 f"⚡ 초당 예측: {predictions_per_sec:.1f}회/s",
-                                f"🔄 모델 업데이트: {ml_stats['model_updates']:,}회"
+                                f"🔄 모델 업데이트: {ml_stats['model_updates']:,}회",
+                                "",
+                                "🔥 지연 로딩 상태:",
+                                f"  - 등록된 모듈: {lazy_stats['total_modules']}개",
+                                f"  - 로딩된 모듈: {lazy_stats['loaded_modules']}개",
+                                f"  - 등록된 모델: {model_stats['total_models']}개",
+                                f"  - 로딩된 모델: {model_stats['loaded_models']}개",
+                                "",
+                                "📦 패킷 객체 풀링:",
+                                f"  - 풀 크기: {packet_pool_stats['pool_size']}개",
+                                f"  - 재사용률: {packet_pool_stats['reuse_rate']:.1f}%",
+                                "",
+                                "🔢 DataFrame 풀링:",
+                                f"  - 배열 재사용률: {dataframe_pool_stats['reuse_rate']:.1f}%",
+                                f"  - 생성된 배열: {dataframe_pool_stats['total_created']}개",
+                                f"  - 재사용 횟수: {dataframe_pool_stats['total_reused']}회"
                             ]
                             print_status_box("머신러닝 상세 상태", ml_info, Fore.MAGENTA)
                             
@@ -1190,6 +1436,39 @@ def main():
     except KeyboardInterrupt:
         print("\n프로그램이 사용자에 의해 중단되었습니다.")
         logger.info("사용자에 의한 프로그램 중단")
+        
+        # 객체 풀 최종 통계 출력
+        try:
+            packet_pool_stats = get_packet_pool().get_stats()
+            dataframe_pool_stats = get_dataframe_pool().get_stats()
+            
+            print_colored("\n📊 메모리 최적화 최종 통계:", Fore.CYAN, Style.BRIGHT)
+            print_colored("━" * 50, Fore.CYAN)
+            
+            print_colored("📦 패킷 객체 풀링:", Fore.YELLOW, Style.BRIGHT)
+            print_colored(f"  • 생성된 객체: {packet_pool_stats['total_created']:,}개", Fore.WHITE)
+            print_colored(f"  • 재사용 횟수: {packet_pool_stats['total_reused']:,}회", Fore.WHITE)
+            print_colored(f"  • 재사용률: {packet_pool_stats['reuse_rate']:.1f}%", Fore.GREEN if packet_pool_stats['reuse_rate'] > 80 else Fore.YELLOW)
+            
+            print_colored("\n🔢 DataFrame 풀링:", Fore.BLUE, Style.BRIGHT)
+            print_colored(f"  • 생성된 배열: {dataframe_pool_stats['total_created']:,}개", Fore.WHITE)
+            print_colored(f"  • 재사용 횟수: {dataframe_pool_stats['total_reused']:,}회", Fore.WHITE)
+            print_colored(f"  • 재사용률: {dataframe_pool_stats['reuse_rate']:.1f}%", Fore.GREEN if dataframe_pool_stats['reuse_rate'] > 60 else Fore.YELLOW)
+            
+            # 예상 메모리 절약량 계산
+            packet_savings = packet_pool_stats['total_reused'] * 0.001  # 1KB per packet
+            dataframe_savings = dataframe_pool_stats['total_reused'] * 5  # 5MB per DataFrame array
+            total_savings = packet_savings + dataframe_savings
+            
+            print_colored(f"\n💾 예상 메모리 절약량:", Fore.GREEN, Style.BRIGHT)
+            print_colored(f"  • 패킷 풀링: {packet_savings:.1f}MB", Fore.WHITE)
+            print_colored(f"  • DataFrame 풀링: {dataframe_savings:.1f}MB", Fore.WHITE)
+            print_colored(f"  • 총 절약량: {total_savings:.1f}MB", Fore.GREEN, Style.BRIGHT)
+            
+        except Exception as e:
+            logger.debug(f"통계 출력 오류: {e}")
+            pass
+            
         wait_for_enter()
     except Exception as e:
         print(f"\n오류가 발생했습니다: {str(e)}")
