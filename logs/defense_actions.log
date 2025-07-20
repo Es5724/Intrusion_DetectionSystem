@@ -359,3 +359,37 @@
 2025-07-19 00:38:59,630 - DefenseMechanism - INFO - 이미 차단된 IP 주소: 192.168.45.137
 2025-07-19 00:38:59,633 - DefenseMechanism - INFO - 알림 발송 성공: 192.168.45.137
 2025-07-19 00:38:59,634 - DefenseMechanism - INFO - 패킷 처리 완료: 192.168.45.137 (신뢰도: 0.90)
+2025-07-19 00:40:13,916 - DefenseMechanism - INFO - 이미 차단된 IP 주소: 192.168.45.137
+2025-07-19 00:40:13,918 - DefenseMechanism - INFO - 알림 발송 성공: 192.168.45.137
+2025-07-19 00:40:13,919 - DefenseMechanism - INFO - 패킷 처리 완료: 192.168.45.137 (신뢰도: 0.90)
+2025-07-19 00:40:13,931 - DefenseMechanism - INFO - 중복 위협 무시: 192.168.45.137 (최근에 이미 대응함)
+2025-07-19 00:40:13,943 - DefenseMechanism - INFO - 중복 위협 무시: 192.168.45.137 (최근에 이미 대응함)
+2025-07-19 00:42:18,366 - DefenseMechanism - INFO - 트래픽 차단 시스템 초기화 완료
+2025-07-19 00:42:18,367 - DefenseMechanism - INFO - 알림 시스템 초기화 완료
+2025-07-19 00:42:18,367 - DefenseMechanism - INFO - 트래픽 차단 시스템 초기화 완료
+2025-07-19 00:42:18,367 - DefenseMechanism - INFO - 알림 시스템 초기화 완료
+2025-07-19 00:42:18,367 - DefenseMechanism - INFO - 경량 모드로 실행 중입니다.
+2025-07-19 00:42:18,367 - DefenseMechanism - INFO - 방어 메커니즘 관리자 초기화 완료 (모드: lightweight)
+2025-07-19 00:44:52,583 - DefenseMechanism - INFO - IP 주소 차단 성공: 192.168.45.137
+2025-07-19 00:44:52,585 - DefenseMechanism - INFO - 알림 발송 성공: 192.168.45.137
+2025-07-19 00:44:52,585 - DefenseMechanism - INFO - 패킷 처리 완료: 192.168.45.137 (신뢰도: 0.90)
+2025-07-19 00:44:53,609 - DefenseMechanism - INFO - 중복 위협 무시: 192.168.45.137 (최근에 이미 대응함)
+2025-07-19 00:44:56,795 - DefenseMechanism - INFO - 중복 위협 무시: 192.168.45.137 (최근에 이미 대응함)
+2025-07-19 09:03:54,091 - DefenseMechanism - INFO - 트래픽 차단 시스템 초기화 완료
+2025-07-19 09:03:54,091 - DefenseMechanism - INFO - 알림 시스템 초기화 완료
+2025-07-19 09:03:54,092 - DefenseMechanism - INFO - 트래픽 차단 시스템 초기화 완료
+2025-07-19 09:03:54,092 - DefenseMechanism - INFO - 알림 시스템 초기화 완료
+2025-07-19 09:03:54,092 - DefenseMechanism - WARNING - 수리카타 지원 모듈을 찾을 수 없습니다. 경량 모드로 전환합니다.
+2025-07-19 09:03:54,092 - DefenseMechanism - INFO - 방어 메커니즘 관리자 초기화 완료 (모드: lightweight)
+2025-07-20 09:15:05,550 - DefenseMechanism - INFO - 트래픽 차단 시스템 초기화 완료
+2025-07-20 09:15:05,550 - DefenseMechanism - INFO - 알림 시스템 초기화 완료
+2025-07-20 09:15:05,550 - DefenseMechanism - INFO - 트래픽 차단 시스템 초기화 완료
+2025-07-20 09:15:05,550 - DefenseMechanism - INFO - 알림 시스템 초기화 완료
+2025-07-20 09:15:05,551 - DefenseMechanism - INFO - 경량 모드로 실행 중입니다.
+2025-07-20 09:15:05,551 - DefenseMechanism - INFO - 방어 메커니즘 관리자 초기화 완료 (모드: lightweight)
+2025-07-20 09:16:23,184 - DefenseMechanism - INFO - 트래픽 차단 시스템 초기화 완료
+2025-07-20 09:16:23,184 - DefenseMechanism - INFO - 알림 시스템 초기화 완료
+2025-07-20 09:16:23,184 - DefenseMechanism - INFO - 트래픽 차단 시스템 초기화 완료
+2025-07-20 09:16:23,184 - DefenseMechanism - INFO - 알림 시스템 초기화 완료
+2025-07-20 09:16:23,185 - DefenseMechanism - INFO - 경량 모드로 실행 중입니다.
+2025-07-20 09:16:23,185 - DefenseMechanism - INFO - 방어 메커니즘 관리자 초기화 완료 (모드: lightweight)

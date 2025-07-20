@@ -34,7 +34,7 @@ install_missing_packages()
 # 모듈 임포트
 from .packet_capture import PacketCapture, PacketCaptureCore, preprocess_packet_data
 from .reinforcement_learning import NetworkEnv, DQNAgent, train_rl_agent, plot_training_results, save_model, load_model
-from .ml_models import MLTrainingWindow, train_random_forest, add_rf_predictions
+from .ml_models import train_random_forest, add_rf_predictions
 from .utils import is_colab, is_admin, run_as_admin, clear_screen, wait_for_enter, syn_scan
 from .port_scan_detector import PortScanDetector, VulnerabilityScanner, SecurityHardening
 
@@ -66,7 +66,7 @@ except ImportError:
 
 # 머신러닝 모델
 try:
-    from .ml_models import MLTrainingWindow, train_random_forest, add_rf_predictions
+    from .ml_models import train_random_forest, add_rf_predictions
 except ImportError:
     print("ml_models 모듈을 불러올 수 없습니다.")
 
@@ -115,7 +115,7 @@ except ImportError:
 __all__ = [
     'PacketCapture', 'PacketCaptureCore', 'preprocess_packet_data',
     'OptimizedPacketCapture',
-    'MLTrainingWindow', 'train_random_forest', 'add_rf_predictions',
+    'train_random_forest', 'add_rf_predictions',
     'NetworkEnv', 'DQNAgent', 'train_rl_agent', 'plot_training_results', 
     'save_model', 'load_model',
     'ExperienceReplayBuffer', 'PrioritizedExperienceReplayBuffer', 'IDSExperienceReplayBuffer',

@@ -21,15 +21,66 @@ current_dir = os.path.dirname(os.path.abspath(__file__))
 parent_dir = os.path.dirname(current_dir)  # components 디렉토리의 부모 (scripts)
 sys.path.append(parent_dir)
 
+# 새로운 개선된 모듈들 import
+USE_IMPROVED_MODULES = False
+try:
+    from .network_interface_manager import get_interface_manager, get_default_iface_and_ip as new_get_default_iface_and_ip, get_default_gateway as new_get_default_gateway
+    from .packet_generator_base import syn_flood as new_syn_flood, udp_flood as new_udp_flood, http_slowloris as new_http_slowloris, tcp_handshake_misuse as new_tcp_handshake_misuse
+    USE_IMPROVED_MODULES = True
+    print("✅ 개선된 네트워크 모듈을 성공적으로 로드했습니다.")
+except ImportError as e:
+    print(f"⚠️ 개선된 모듈 로드 실패, 기존 함수 사용: {e}")
+    # 기존 함수들을 그대로 사용
+
 # Scapy 설정 (Wireshark에서 캡처가 잘 되도록)
-conf.verb = 0  # 상세 출력 비활성화
+conf.verb = 0  # MAC 주소 경고를 줄이기 위해 verbose 비활성화
 
 # 최대 패킷 캐시 크기 제한 (메모리 최적화) - 크기를 더 줄임
 MAX_PACKET_CACHE_SIZE = 200  # 1000에서 200으로 감소
 PACKET_BATCH_SIZE = 50       # 배치 크기를 더 작게
 
+# ARP 테이블 미리 채우기 함수 (MAC 경고 감소)
+def populate_arp_table(target_ip, timeout=2):
+    """대상 IP의 MAC 주소를 미리 ARP 테이블에 추가하여 경고를 줄입니다."""
+    try:
+        # ARP 요청 전송
+        arp_request = ARP(pdst=target_ip)
+        broadcast = Ether(dst="ff:ff:ff:ff:ff:ff")
+        arp_request_broadcast = broadcast / arp_request
+        
+        # 응답 대기 (조용히)
+        answered_list = srp(arp_request_broadcast, timeout=timeout, verbose=False)[0]
+        
+        if answered_list:
+            for element in answered_list:
+                mac_address = element[1].hwsrc
+                print(f"✅ ARP 엔트리 추가: {target_ip} -> {mac_address}")
+                return mac_address
+        else:
+            # 게이트웨이를 통한 통신이 필요한 경우 게이트웨이 MAC 확인
+            if USE_IMPROVED_MODULES:
+                gateway = new_get_default_gateway()
+            else:
+                gateway = get_default_gateway()
+            if gateway and gateway != target_ip:
+                print(f"🔄 게이트웨이 {gateway}를 통한 통신 준비")
+                return populate_arp_table(gateway, timeout)
+            
+    except Exception as e:
+        # ARP 실패는 조용히 넘어감 (정상적인 상황일 수 있음)
+        pass
+    return None
+
 # SYN 플러드 공격을 수행하는 함수.
 def syn_flood(target_ip, packet_count, packet_size, stop_flag, spoof_ip=None, progress_callback=None):
+    # 개선된 모듈이 사용 가능한 경우 새 함수 사용
+    if USE_IMPROVED_MODULES:
+        try:
+            return new_syn_flood(target_ip, packet_count, packet_size, stop_flag, spoof_ip, progress_callback)
+        except Exception as e:
+            print(f"⚠️ 개선된 SYN 플러드 함수 실행 실패, 기존 함수로 폴백: {e}")
+    
+    # 기존 함수 로직 (폴백)
     # 현재 시스템의 기본 네트워크 인터페이스와 IP 주소 가져오기
     iface, src_ip = get_default_iface_and_ip()
     if not iface:
@@ -42,6 +93,10 @@ def syn_flood(target_ip, packet_count, packet_size, stop_flag, spoof_ip=None, pr
         print(f"IP 스푸핑 활성화: {spoof_ip}")
 
     print(f"SYN 플러드 시작 - 인터페이스: {iface}, 소스 IP: {src_ip}, 패킷 수: {packet_count}")
+    
+    # ARP 테이블 미리 채우기 (MAC 경고 감소)
+    print("🔄 ARP 테이블 준비 중...")
+    populate_arp_table(target_ip)
     
     # 패킷을 리스트에 모아서 한 번에 전송 (빠른 전송을 위함)
     packets = []
@@ -62,17 +117,18 @@ def syn_flood(target_ip, packet_count, packet_size, stop_flag, spoof_ip=None, pr
         # 배치 크기마다 전송 (메모리 부담 감소)
         if len(packets) >= PACKET_BATCH_SIZE or i == packet_count-1:
             try:
+                # MAC 주소 경고를 줄이기 위해 verbose=0 사용
                 send(packets, iface=iface, verbose=0, inter=0, realtime=False)
                 sent_count += len(packets)
                 
                 # 진행률 콜백 호출
                 if progress_callback:
                     progress = int((i + 1) / packet_count * 100)
-                    progress_callback.emit(f"SYN 플러드 진행률: {progress}% ({sent_count}/{packet_count})")
+                    progress_callback.emit(f"SYN 플러드 진행률: {progress}% ({sent_count}/{packet_count}) - 인터페이스: {iface}")
                 
                 # 로그 출력 빈도 감소 (매 500개마다)
                 if sent_count % 500 == 0 or i == packet_count-1:
-                    print(f'{sent_count}개 SYN 패킷 전송 완료 ({i+1}/{packet_count})')
+                    print(f'✅ {sent_count}개 SYN 패킷 전송 완료 ({i+1}/{packet_count}) via {iface}')
                 
                 packets.clear()  # packets = [] 대신 clear() 사용하여 메모리 재사용
                 
@@ -81,10 +137,26 @@ def syn_flood(target_ip, packet_count, packet_size, stop_flag, spoof_ip=None, pr
                     time.sleep(0.001)  # 1ms 대기
                     
             except Exception as e:
-                print(f'패킷 전송 중 오류: {str(e)}')
+                error_msg = f'❌ 패킷 전송 중 오류 (배치 {sent_count//PACKET_BATCH_SIZE + 1}): {str(e)}'
+                print(error_msg)
+                
+                # 진행률 콜백에도 오류 정보 전달
+                if progress_callback:
+                    progress_callback.emit(f"SYN 플러드 오류: {str(e)} - 재시도 중...")
+                
                 packets.clear()  # 오류 발생해도 메모리 정리
-                # 오류 발생 시 잠시 대기
-                time.sleep(0.01)
+                # 오류 발생 시 잠시 대기 (더 긴 시간)
+                time.sleep(0.1)
+                
+                # 3번 연속 실패 시 중단
+                if hasattr(syn_flood, '_error_count'):
+                    syn_flood._error_count += 1
+                else:
+                    syn_flood._error_count = 1
+                    
+                if syn_flood._error_count >= 3:
+                    print(f"❌ 3번 연속 실패로 SYN 플러드 중단")
+                    break
     
     # 메모리 정리
     del packets
@@ -93,6 +165,14 @@ def syn_flood(target_ip, packet_count, packet_size, stop_flag, spoof_ip=None, pr
 
 # UDP 플러드 공격을 수행하는 함수.
 def udp_flood(target_ip, packet_count, packet_size, stop_flag, spoof_ip=None, progress_callback=None):
+    # 개선된 모듈이 사용 가능한 경우 새 함수 사용
+    if USE_IMPROVED_MODULES:
+        try:
+            return new_udp_flood(target_ip, packet_count, packet_size, stop_flag, spoof_ip, progress_callback)
+        except Exception as e:
+            print(f"⚠️ 개선된 UDP 플러드 함수 실행 실패, 기존 함수로 폴백: {e}")
+    
+    # 기존 함수 로직 (폴백)
     # 현재 시스템의 기본 네트워크 인터페이스와 IP 주소 가져오기
     iface, src_ip = get_default_iface_and_ip()
     if not iface:
@@ -105,6 +185,10 @@ def udp_flood(target_ip, packet_count, packet_size, stop_flag, spoof_ip=None, pr
         print(f"IP 스푸핑 활성화: {spoof_ip}")
 
     print(f"UDP 플러드 시작 - 인터페이스: {iface}, 소스 IP: {src_ip}, 패킷 수: {packet_count}")
+    
+    # ARP 테이블 미리 채우기 (MAC 경고 감소)
+    print("🔄 ARP 테이블 준비 중...")
+    populate_arp_table(target_ip)
     
     # 패킷을 리스트에 모아서 한 번에 전송 (빠른 전송을 위함)
     packets = []
@@ -156,6 +240,14 @@ def udp_flood(target_ip, packet_count, packet_size, stop_flag, spoof_ip=None, pr
 
 # HTTP Slowloris 공격을 수행하는 함수
 def http_slowloris(target_ip, packet_count, packet_size, stop_flag, spoof_ip=None):
+    # 개선된 모듈이 사용 가능한 경우 새 함수 사용
+    if USE_IMPROVED_MODULES:
+        try:
+            return new_http_slowloris(target_ip, packet_count, packet_size, stop_flag, spoof_ip)
+        except Exception as e:
+            print(f"⚠️ 개선된 HTTP Slowloris 함수 실행 실패, 기존 함수로 폴백: {e}")
+    
+    # 기존 함수 로직 (폴백)
     # 현재 시스템의 기본 네트워크 인터페이스와 IP 주소 가져오기
     iface, src_ip = get_default_iface_and_ip()
     if not iface:
@@ -212,6 +304,14 @@ def http_slowloris(target_ip, packet_count, packet_size, stop_flag, spoof_ip=Non
 
 # TCP 핸드셰이크 오용 공격을 수행하는 함수.
 def tcp_handshake_misuse(target_ip, packet_count, packet_size, stop_flag, spoof_ip=None):
+    # 개선된 모듈이 사용 가능한 경우 새 함수 사용
+    if USE_IMPROVED_MODULES:
+        try:
+            return new_tcp_handshake_misuse(target_ip, packet_count, packet_size, stop_flag, spoof_ip)
+        except Exception as e:
+            print(f"⚠️ 개선된 TCP 핸드셰이크 오용 함수 실행 실패, 기존 함수로 폴백: {e}")
+    
+    # 기존 함수 로직 (폴백)
     # 현재 시스템의 기본 네트워크 인터페이스와 IP 주소 가져오기
     iface, src_ip = get_default_iface_and_ip()
     if not iface:
@@ -300,6 +400,7 @@ def http_request_modification(target_ip, packet_count, packet_size, stop_flag):
 
 # ARP 스푸핑 공격을 수행하는 함수.
 def arp_spoof(target_ip, spoof_ip, stop_flag):
+    # 기존 함수 로직 (ARP 스푸핑은 아직 새 모듈에 구현되지 않음)
     # 현재 시스템의 기본 네트워크 인터페이스와 IP 주소 가져오기
     iface, src_ip = get_default_iface_and_ip()
     if not iface:
@@ -358,6 +459,7 @@ def arp_spoof(target_ip, spoof_ip, stop_flag):
 
 # ICMP 리다이렉트 공격을 수행하는 함수.
 def icmp_redirect(target_ip, new_gateway_ip, stop_flag):
+    # 기존 함수 로직 (ICMP 리다이렉트는 아직 새 모듈에 구현되지 않음)
     # 현재 시스템의 기본 네트워크 인터페이스와 IP 주소 가져오기
     iface, src_ip = get_default_iface_and_ip()
     if not iface:
@@ -399,8 +501,18 @@ def icmp_redirect(target_ip, new_gateway_ip, stop_flag):
 # 네트워크 인터페이스와 IP 가져오는 유틸리티 함수
 def get_default_iface_and_ip():
     """기본 네트워크 인터페이스와 IP 주소를 가져옵니다."""
+    # 개선된 모듈이 사용 가능한 경우 새 함수 사용
+    if USE_IMPROVED_MODULES:
+        try:
+            return new_get_default_iface_and_ip()
+        except Exception as e:
+            print(f"⚠️ 개선된 인터페이스 함수 실행 실패, 기존 함수로 폴백: {e}")
+    
+    # 기존 함수 로직 (폴백)
+    print("🔍 네트워크 인터페이스 확인 중...")
+    
     try:
-        # Windows에서 기본 네트워크 인터페이스 찾기
+        # 1단계: 활성 네트워크 연결 확인
         import socket
         s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         try:
@@ -408,37 +520,69 @@ def get_default_iface_and_ip():
             s.connect(("8.8.8.8", 80))
             src_ip = s.getsockname()[0]
             s.close()
+            print(f"✅ 활성 IP 주소 확인: {src_ip}")
             
-            # Scapy의 conf.iface 사용
+            # 2단계: Scapy 기본 인터페이스 확인
             iface = conf.iface
+            print(f"📡 Scapy 기본 인터페이스: {iface}")
             
-            # 인터페이스가 None이거나 비어있는 경우 처리
+            # 3단계: 인터페이스가 None이거나 비어있는 경우 수동 검색
             if not iface:
-                # Windows의 경우 기본 인터페이스 찾기
-                import psutil
-                for interface, addrs in psutil.net_if_addrs().items():
-                    for addr in addrs:
-                        if addr.family == socket.AF_INET and addr.address == src_ip:
-                            iface = interface
-                            break
-                    if iface:
-                        break
+                print("⚠️  Scapy 기본 인터페이스가 없음. 수동 검색 중...")
+                try:
+                    import psutil
+                    found_interfaces = []
+                    
+                    for interface, addrs in psutil.net_if_addrs().items():
+                        for addr in addrs:
+                            if addr.family == socket.AF_INET and addr.address == src_ip:
+                                found_interfaces.append(interface)
+                                print(f"🎯 매칭된 인터페이스 발견: {interface} ({addr.address})")
+                                
+                    if found_interfaces:
+                        iface = found_interfaces[0]
+                        print(f"✅ 선택된 인터페이스: {iface}")
+                    else:
+                        print("❌ 매칭되는 인터페이스를 찾지 못함")
+                        # 활성화된 첫 번째 인터페이스 사용
+                        for interface, stats in psutil.net_if_stats().items():
+                            if stats.isup and interface != "lo" and not "loopback" in interface.lower():
+                                iface = interface
+                                print(f"🔄 대체 인터페이스 사용: {iface}")
+                                break
+                        
+                except ImportError:
+                    print("⚠️  psutil 없음. 기본 인터페이스 검색 제한됨")
             
-            print(f"Scapy 기본 인터페이스: {iface}, IP: {src_ip}")
-            return iface, src_ip
-            
+            # 4단계: 최종 검증
+            if iface and src_ip != "127.0.0.1":
+                print(f"🎉 최종 결정: 인터페이스={iface}, IP={src_ip}")
+                return iface, src_ip
+            else:
+                print("⚠️  유효한 외부 인터페이스를 찾지 못함")
+                
         except socket.error as e:
-            print(f"네트워크 연결을 확인할 수 없습니다: {e}")
+            print(f"❌ 네트워크 연결 확인 실패: {e}")
             s.close()
+            
     except Exception as e:
-        print(f"인터페이스 확인 중 오류: {str(e)}")
+        print(f"❌ 인터페이스 확인 중 오류: {str(e)}")
     
-    # 실패 시 localhost로 폴백
+    # 실패 시 localhost로 폴백 (경고 메시지 추가)
+    print("🔄 localhost로 폴백합니다. 실제 네트워크 패킷 전송이 제한될 수 있습니다.")
     return conf.loopback_name or "lo", "127.0.0.1"
 
 # 기본 게이트웨이 주소를 확인하는 함수
 def get_default_gateway():
     """기본 게이트웨이 주소를 가져옵니다."""
+    # 개선된 모듈이 사용 가능한 경우 새 함수 사용
+    if USE_IMPROVED_MODULES:
+        try:
+            return new_get_default_gateway()
+        except Exception as e:
+            print(f"⚠️ 개선된 게이트웨이 함수 실행 실패, 기존 함수로 폴백: {e}")
+    
+    # 기존 함수 로직 (폴백)
     try:
         # Scapy에서 기본 라우트 정보 가져오기
         for net, msk, gw, iface, addr, metric in conf.route.routes:
@@ -484,7 +628,7 @@ def test_packet_send(target_ip="127.0.0.1", method="scapy"):
             iface = conf.iface  # Scapy 기본 인터페이스 사용
             print(f"Scapy 사용 인터페이스: {iface}")
             packet = IP(dst=target_ip)/UDP(dport=12345)/b"TEST"
-            send(packet, iface=iface, verbose=1)  # verbose=1로 설정하여 전송 정보 표시
+            send(packet, iface=iface, verbose=0)  # MAC 경고를 줄이기 위해 verbose=0 사용
             print("Scapy 테스트 완료")
             return True
     except Exception as e:
@@ -752,6 +896,11 @@ class TrafficGeneratorApp(QWidget):
                 self.add_log("✅ 관리자 권한으로 실행 중입니다.")
             else:
                 self.add_log("⚠️ 제한된 권한으로 실행 중입니다. 일부 기능이 제한될 수 있습니다.")
+        
+        # 네트워크 진단 도구 안내
+        self.add_log("💡 패킷 전송에 문제가 있다면 '패킷 전송 테스트' 버튼을 먼저 클릭하세요.")
+        self.add_log("🔧 더 상세한 진단이 필요하다면 다음 명령을 실행하세요:")
+        self.add_log("   python IDS/scripts/components/network_diagnosis.py --target <대상IP>")
 
     # 메인 화면으로 돌아가는 메서드.
     def go_back(self):
@@ -1020,25 +1169,78 @@ class TrafficGeneratorApp(QWidget):
             QMessageBox.warning(self, "오류", "유효한 IP 주소를 입력하세요.")
             return
         
-        self.add_log(f"패킷 전송 테스트 시작 - 대상: {target_ip}")
+        self.add_log(f"🔍 패킷 전송 테스트 시작 - 대상: {target_ip}")
         
-        # 소켓 테스트
-        self.add_log("소켓 방식 테스트 중...")
+        # 1. 네트워크 인터페이스 확인
+        self.add_log("📡 네트워크 인터페이스 확인 중...")
+        iface, src_ip = get_default_iface_and_ip()
+        self.add_log(f"인터페이스: {iface}, 소스 IP: {src_ip}")
+        
+        # 2. 연결성 사전 확인
+        self.add_log("🌐 연결성 사전 확인 중...")
+        connectivity_ok = self.check_connectivity(target_ip)
+        
+        if not connectivity_ok:
+            self.add_log("⚠️  연결성 문제 감지됨. 패킷 전송이 실패할 수 있습니다.")
+        
+        # 3. 소켓 테스트
+        self.add_log("📨 소켓 방식 테스트 중...")
         if test_packet_send(target_ip, "socket"):
             self.add_log("✅ 소켓 패킷 전송 테스트 성공!")
-            QMessageBox.information(self, "테스트 성공", "소켓 패킷 전송 테스트 성공!")
         else:
             self.add_log("❌ 소켓 패킷 전송 테스트 실패")
-            QMessageBox.warning(self, "테스트 실패", "소켓 패킷 전송 테스트 실패")
         
-        # Scapy 테스트
-        self.add_log("Scapy 방식 테스트 중...")
+        # 4. Scapy 테스트
+        self.add_log("🔧 Scapy 방식 테스트 중...")
         if test_packet_send(target_ip, "scapy"):
             self.add_log("✅ Scapy 패킷 전송 테스트 성공!")
-            QMessageBox.information(self, "테스트 성공", "Scapy 패킷 전송 테스트 성공!")
+            QMessageBox.information(self, "테스트 성공", 
+                                  f"패킷 전송 테스트 성공!\n"
+                                  f"대상: {target_ip}\n"
+                                  f"인터페이스: {iface}\n"
+                                  f"소스 IP: {src_ip}")
         else:
             self.add_log("❌ Scapy 패킷 전송 테스트 실패")
-            QMessageBox.warning(self, "테스트 실패", "Scapy 패킷 전송 테스트 실패")
+            QMessageBox.warning(self, "테스트 실패", 
+                               f"Scapy 패킷 전송 테스트 실패\n\n"
+                               f"권장사항:\n"
+                               f"1. 관리자 권한으로 실행\n"
+                               f"2. 방화벽 설정 확인\n"
+                               f"3. 네트워크 연결 상태 확인\n"
+                               f"4. 대상 IP가 실제로 존재하는지 확인")
+    
+    def check_connectivity(self, target_ip):
+        """대상 IP와의 연결성 확인"""
+        try:
+            # 1. Ping 테스트
+            import subprocess
+            
+            if os.name == 'nt':  # Windows
+                result = subprocess.run(['ping', '-n', '1', '-w', '3000', target_ip], 
+                                      capture_output=True, text=True, timeout=5)
+            else:  # Linux/Mac
+                result = subprocess.run(['ping', '-c', '1', '-W', '3', target_ip], 
+                                      capture_output=True, text=True, timeout=5)
+            
+            if result.returncode == 0:
+                self.add_log(f"✅ Ping 성공: {target_ip}")
+                return True
+            else:
+                self.add_log(f"❌ Ping 실패: {target_ip}")
+                
+                # localhost인 경우는 연결성 문제 없음
+                if target_ip in ['127.0.0.1', 'localhost']:
+                    self.add_log("ℹ️  localhost는 항상 연결 가능합니다.")
+                    return True
+                    
+                return False
+                
+        except subprocess.TimeoutExpired:
+            self.add_log(f"⏰ Ping 타임아웃: {target_ip}")
+            return False
+        except Exception as e:
+            self.add_log(f"❌ 연결성 확인 오류: {e}")
+            return False
 
     def clean_memory(self):
         """메모리 정리"""

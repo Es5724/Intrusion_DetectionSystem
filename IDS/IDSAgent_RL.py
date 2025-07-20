@@ -132,7 +132,7 @@ try:
         from packet_capture import preprocess_packet_data
     
     # 지연 로딩 시스템 초기화
-    from lazy_loading import get_lazy_importer, get_lazy_model_loader, get_lazy_gui_manager
+    from lazy_loading import get_lazy_importer, get_lazy_model_loader
     
     # 기본 모듈들 (즉시 로딩 필요)
     from utils import is_colab, is_admin, run_as_admin, clear_screen, wait_for_enter, syn_scan
@@ -143,9 +143,8 @@ try:
     # 지연 로딩 모듈들 등록
     lazy_importer = get_lazy_importer()
     lazy_model_loader = get_lazy_model_loader()
-    lazy_gui_manager = get_lazy_gui_manager()
     
-    # 🔥 PyTorch/강화학습 모듈들 지연 로딩 등록 (100-150MB 절약)
+    #  PyTorch/강화학습 모듈들 지연 로딩 등록 (100-150MB 절약)
     def _import_reinforcement_learning():
         from reinforcement_learning import NetworkEnv, DQNAgent, train_rl_agent, plot_training_results, save_model, load_model
         return {
@@ -159,18 +158,17 @@ try:
     
     lazy_importer.register_module('reinforcement_learning', _import_reinforcement_learning)
     
-    # 🔶 머신러닝 모델 모듈들 지연 로딩 등록 (15-25MB 절약)
+    #  머신러닝 모델 모듈들 지연 로딩 등록 (15-25MB 절약)
     def _import_ml_models():
-        from ml_models import MLTrainingWindow, train_random_forest, add_rf_predictions
+        from ml_models import train_random_forest, add_rf_predictions
         return {
-            'MLTrainingWindow': MLTrainingWindow,
             'train_random_forest': train_random_forest,
             'add_rf_predictions': add_rf_predictions
         }
     
     lazy_importer.register_module('ml_models', _import_ml_models)
     
-    # 🔹 시각화 모듈들 지연 로딩 등록 (10-20MB 절약)
+    #  시각화 모듈들 지연 로딩 등록 (10-20MB 절약)
     def _import_visualization():
         import matplotlib
         matplotlib.use('Agg')  # 백엔드 설정으로 메모리 절약
@@ -734,8 +732,8 @@ def main():
                                         protocol_stats['UDP'] += 1
                                     elif protocol in ['1', 'ICMP']:
                                         protocol_stats['ICMP'] += 1
-                                else:
-                                    protocol_stats['Other'] += 1
+                                    else:
+                                        protocol_stats['Other'] += 1
                                 
                                 # 방어 모듈 기반 위협 수준 분석
                                 threat_level = analyze_threat_level(pooled_packet if isinstance(original_packet, dict) else original_packet, defense_manager=defense_manager)
@@ -1013,7 +1011,7 @@ def main():
                                         'ttl': array_data[:process_size, 4],
                                         'flags': array_data[:process_size, 5]
                                     })
-                                    
+                                
                                     # 데이터 타입 최적화
                                     df_chunk = optimize_dtypes(df_chunk)
                                     
@@ -1070,15 +1068,7 @@ def main():
             process_thread.daemon = True
             process_thread.start()
             
-            # 🔥 지연 로딩: GUI 컴포넌트 등록 (실제 사용 시에만 생성)
-            def _create_ml_window():
-                ml_modules = lazy_importer.get_module('ml_models')
-                MLTrainingWindow = ml_modules['MLTrainingWindow']
-                window = MLTrainingWindow()
-                window.root.withdraw()  # 초기에는 숨겨둠
-                return window
-            
-            lazy_gui_manager.register_component('ml_window', _create_ml_window)
+            # GUI 컴포넌트 제거됨 - CLI 전용 모드
             
             # 데이터 파일 모니터링 및 머신러닝 모델 학습 스레드 (메모리 최적화)
             def monitor_and_train():
@@ -1108,12 +1098,8 @@ def main():
                         if (current_modified_time > last_modified_time and 
                             current_time - last_training_time > training_interval):
                             
-                            # 🔥 지연 로딩: GUI 컴포넌트 실제 사용 시점에 생성
-                            ml_window = lazy_gui_manager.get_component('ml_window')
-                            
-                            # GUI 업데이트
-                            ml_window.gui_queue.put(('deiconify',))
-                            ml_window.gui_queue.put(('update_status', "데이터 파일 변경 감지 - 머신러닝 모델 학습 시작"))
+                            # 학습 시작 로그
+                            logger.info("데이터 파일 변경 감지 - 머신러닝 모델 학습 시작")
                             
                             try:
                                 # 🔥 지연 로딩: 필요한 시점에 머신러닝 모듈 로딩
@@ -1122,7 +1108,7 @@ def main():
                                     train_random_forest = ml_modules['train_random_forest']
                                 
                                 # 메모리 최적화를 위한 청크 단위 파일 처리
-                                ml_window.gui_queue.put(('update_status', "랜덤 포레스트 모델 학습 시작"))
+                                logger.info("랜덤 포레스트 모델 학습 시작")
                                 ml_stats['model_updates'] += 1
                                 
                                 # 청크 처리로 랜덤 포레스트 모델 학습
@@ -1132,15 +1118,15 @@ def main():
                                     chunk_size=10000  # 청크 크기 지정
                                 )
                                 
-                                # 메모리 사용량을 줄이기 위해 GUI 업데이트 전 임시 저장
+                                # 메모리 사용량을 줄이기 위해 임시 저장
                                 accuracy_value = float(accuracy)
                                 ml_stats['accuracy'] = accuracy_value
                                 # 혼동 행렬은 작은 크기로 요약
                                 conf_matrix_summary = conf_matrix.sum(axis=1).tolist() if hasattr(conf_matrix, 'sum') else []
                                 
-                                # GUI 업데이트
-                                ml_window.gui_queue.put(('update_metrics', accuracy_value, conf_matrix_summary))
-                                ml_window.gui_queue.put(('update_status', "랜덤 포레스트 모델 학습 완료"))
+                                # 학습 결과 로그
+                                logger.info(f"랜덤 포레스트 모델 학습 완료 - 정확도: {accuracy_value:.4f}")
+                                logger.debug(f"혼동 행렬 요약: {conf_matrix_summary}")
                                 
                                 # 메모리 관리를 위해 명시적 가비지 컬렉션 호출
                                 import gc
@@ -1181,10 +1167,10 @@ def main():
                                     buffer_path = f'experience_buffer_{args.mode}.pkl'
                                     if os.path.exists(buffer_path):
                                         if agent.load_buffer(buffer_path):
-                                            ml_window.gui_queue.put(('update_status', "기존 Experience Buffer 로드 완료"))
+                                            logger.info("기존 Experience Buffer 로드 완료")
                                 
                                 # 강화학습 훈련
-                                ml_window.gui_queue.put(('update_status', "강화학습 훈련 시작"))
+                                logger.info("강화학습 훈련 시작")
                                 
                                 # 에피소드 수를 줄이고 메모리 효율성 향상
                                 rewards, malicious_counts, buffer_stats = train_rl_agent(
@@ -1198,13 +1184,12 @@ def main():
                                 
                                 # 강화학습 모델 저장
                                 save_model(agent, f'dqn_model_{args.mode}.pth')
-                                ml_window.gui_queue.put(('update_status', f"{args.mode} 모드용 강화학습 모델 저장 완료"))
+                                logger.info(f"{args.mode} 모드용 강화학습 모델 저장 완료")
                                 
-                                # Experience Replay Buffer 통계 GUI 업데이트
+                                # Experience Replay Buffer 통계 로그
                                 buffer_stats_summary = agent.get_buffer_stats()
-                                status_msg = (f"버퍼 사용률: {buffer_stats_summary['buffer_utilization']:.1%}, "
+                                logger.info(f"버퍼 사용률: {buffer_stats_summary['buffer_utilization']:.1%}, "
                                             f"악성 경험: {buffer_stats_summary.get('malicious_experiences', 0)}")
-                                ml_window.gui_queue.put(('update_status', status_msg))
                                 
                                 # 훈련 결과 시각화 (경량 모드에서만 수행)
                                 if args.mode != "lightweight":
@@ -1219,7 +1204,7 @@ def main():
                                 gc.collect()
                                 
                             except Exception as e:
-                                ml_window.gui_queue.put(('update_status', f"모델 학습 중 오류 발생: {e}"))
+                                logger.error(f"모델 학습 중 오류 발생: {e}")
                                 # 오류 발생 시에도 타임스탬프는 업데이트하여 반복 학습 방지
                                 last_modified_time = current_modified_time
                                 last_training_time = current_time
@@ -1231,9 +1216,8 @@ def main():
             train_thread.daemon = True
             train_thread.start()
             
-            # 🔥 지연 로딩: GUI 컴포넌트는 실제 사용 시에만 초기화됨
-            # process_gui_queue는 필요할 때 자동으로 호출됨
-            logger.info("GUI 컴포넌트 지연 로딩 준비 완료")
+            # CLI 전용 모드 - GUI 컴포넌트 제거됨
+            logger.info("CLI 전용 모드로 모든 백그라운드 스레드 준비 완료")
             
             # 고급 사용자 입력 처리 스레드
             def handle_user_input():
@@ -1299,11 +1283,11 @@ def main():
                             new_icon = "🔥" if new_mode == 'performance' else "⚡"
                             
                             print_colored(f"\n{new_icon} {args.mode} → {new_mode} 모드로 전환 중...", new_color, Style.BRIGHT)
-                            
+                        
                             # 방어 메커니즘 모드 전환
                             if defense_manager.switch_mode(new_mode):
                                 print_colored(f"✅ 방어 메커니즘이 {new_mode} 모드로 전환되었습니다", Fore.GREEN)
-                                
+                            
                                 # 강화학습 환경/에이전트 모드 전환 (재학습 중이라면)
                                 if 'env' in locals() and 'agent' in locals():
                                     env.set_mode(new_mode)
