@@ -1,4 +1,4 @@
-# IDS Agent - 침입 탐지 시스템 (Intrusion Detection System)
+# IDS Agent - 침입 탐지 시스템 (Intrusion Detection System 이름 미정)
 
 <div align="center">
   <img src="https://img.shields.io/badge/Language-Python-blue" alt="Language">
@@ -287,29 +287,63 @@ python IDS/IDSAgent_RL.py
 
 ```
 Intrusion_DetectionSystem/
-├── IDSAgent_RL.py                    # 메인 통합 에이전트
-├── IDS_Training_Data_Generator.py    # 데이터 준비 인터페이스 (GUI)
-├── modules/                          # 핵심 기능 모듈
-│   ├── __init__.py
-│   ├── packet_capture.py             # 패킷 캡처 (기본 + 최적화 버전)
-│   ├── optimized_packet_capture.py   # 최적화된 패킷 캡처
-│   ├── optimized_packet_capture_simple.py  # 간단한 최적화 캡처
-│   ├── reinforcement_learning.py     # 강화학습 환경 및 DQN 에이전트
-│   ├── ml_models.py                  # 랜덤 포레스트 머신러닝 모델
-│   ├── defense_mechanism.py          # 방어 메커니즘
-│   ├── threat_alert_system.py        # 위협 알림 시스템
-│   ├── suricata_manager.py           # 수리카타 통합 관리
-│   ├── experience_replay_buffer.py   # 경험 재생 버퍼
-│   ├── model_optimization.py         # 모델 최적화
-│   └── utils.py                      # 유틸리티 함수
-├── scripts/
-│   └── components/                   # GUI 컴포넌트
-│       ├── packet_collector.py       # 패킷 수집 GUI
-│       ├── TrafficGeneratorApp.py    # 트래픽 생성기
-│       └── DataPreprocessingApp.py   # 데이터 전처리 앱
-├── logs/                             # 로그 파일 저장
-├── docs/                             # 문서
-└── README.md                         # 프로젝트 설명서
+├── IDS/ # 핵심 IDS 시스템
+│ ├── IDSAgent_RL.py # 메인 통합 에이전트 (CLI 모드)
+│ ├── IDS_Training_Data_Generator.py # 데이터 준비 인터페이스 (GUI)
+│ ├── run_AI_agent.bat # Windows 실행 스크립트
+│ ├── REQUIRED_FILES_LIST.md # 필수 파일 목록
+│ │
+│ ├── modules/ # 핵심 기능 모듈
+│ │ ├── init.py
+│ │ ├── packet_capture.py # 기본 패킷 캡처 시스템
+│ │ ├── optimized_packet_capture.py # 고성능 멀티프로세싱 캡처
+│ │ ├── optimized_packet_capture_simple.py # 간소화된 최적화 캡처 (우선사용)
+│ │ ├── reinforcement_learning.py # 강화학습 환경 및 DQN 에이전트
+│ │ ├── ml_models.py # 랜덤 포레스트 머신러닝 모델
+│ │ ├── defense_mechanism.py # 실시간 방어 메커니즘
+│ │ ├── threat_alert_system.py # 위협 알림 시스템
+│ │ ├── suricata_manager.py # 수리카타 엔진 통합 관리
+│ │ ├── experience_replay_buffer.py # 우선순위 경험 재생 버퍼
+│ │ ├── model_optimization.py # 모델 최적화 도구
+│ │ ├── memory_optimization.py # 메모리 최적화 (객체 풀링)
+│ │ ├── lazy_loading.py # 지연 로딩 시스템
+│ │ ├── port_scan_detector.py # 포트 스캔 탐지기
+│ │ └── utils.py # 유틸리티 함수
+│ │
+│ ├── scripts/
+│ │ └── components/ # GUI 컴포넌트
+│ │ ├── packet_collector.py # 패킷 수집 GUI
+│ │ ├── TrafficGeneratorApp.py # 트래픽 생성기 (공격 시뮬레이션)
+│ │ └── DataPreprocessingApp.py # 데이터 전처리 앱
+│ │
+│ ├── logs/ # 로그 파일 저장소
+│ │ ├── ids_debug.log # 디버그 로그
+│ │ └── defense_actions.log # 방어 조치 로그
+│ │
+│ └── IDS_System_Deploy/ # 배포용 시스템
+│ ├── IDS_Training_Data_Generator.py
+│ ├── install_and_run_fixed.bat
+│ ├── REQUIRED_FILES_LIST.md
+│ ├── TROUBLESHOOTING_GUIDE.md
+│ ├── modules/ [동일한 모듈들]
+│ └── scripts/components/ [동일한 컴포넌트들]
+│
+├── IDS_visualization_web/ # 웹 시각화 시스템
+│ ├── visualization/ # 데이터 시각화 모듈
+│ └── web/ # 웹 인터페이스
+│ └── templates/ # HTML 템플릿
+│
+├── docs/ # 문서 및 설계서
+│ ├── IDS_웹시스템_설계서.md
+│ ├── implementation_strategy.md
+│ ├── memory_optimization.md
+│ └── 네트워크_시뮬레이션_설계서.md
+│
+├── logs/ # 전역 로그 디렉토리
+├── install_suricata.bat # 수리카타 설치 스크립트
+├── SURICATA_INSTALLATION_GUIDE.md # 수리카타 설치 가이드
+├── ini.iss # 설치 패키지 설정
+└── README.md # 프로젝트 설명서
 ```
 
 ### IDS 에이전트 핵심 구조
@@ -742,7 +776,7 @@ IDSAgent_RL.py는 다음과 같은 5개의 백그라운드 스레드를 통해 �
 python IDSAgent_RL.py --mode performance
 ```
 
-### 위험도별 대응 전략(임의임계계값)
+### 위험도별 대응 전략(임의임계값)
 
 | 위험도 | 임계값 | 대응 조치 | 알림 방식 |
 |--------|--------|-----------|-----------|
@@ -769,5 +803,6 @@ python IDSAgent_RL.py --mode performance
 - **코드 리펙토링** : 중복 제거 및 각 모듈 개선
 - **모델 학습 및 테스트**
 - **위험도 임계값 수정**
+- **로그 저장 경로 설정**
 
 
