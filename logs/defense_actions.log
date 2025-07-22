@@ -393,3 +393,124 @@
 2025-07-20 09:16:23,184 - DefenseMechanism - INFO - 알림 시스템 초기화 완료
 2025-07-20 09:16:23,185 - DefenseMechanism - INFO - 경량 모드로 실행 중입니다.
 2025-07-20 09:16:23,185 - DefenseMechanism - INFO - 방어 메커니즘 관리자 초기화 완료 (모드: lightweight)
+2025-07-22 11:04:47,312 - DefenseMechanism - INFO - 트래픽 차단 시스템 초기화 완료
+2025-07-22 11:04:47,313 - DefenseMechanism - INFO - 알림 시스템 초기화 완료
+2025-07-22 11:04:47,314 - DefenseMechanism - INFO - 트래픽 차단 시스템 초기화 완료
+2025-07-22 11:04:47,315 - DefenseMechanism - INFO - 알림 시스템 초기화 완료
+2025-07-22 11:04:47,315 - DefenseMechanism - INFO - 경량 모드로 실행 중입니다.
+2025-07-22 11:04:47,316 - DefenseMechanism - INFO - 방어 메커니즘 관리자 초기화 완료 (모드: lightweight)
+2025-07-22 11:06:10,517 - DefenseMechanism - INFO - IP 주소 차단 성공: 192.168.45.137
+2025-07-22 11:06:10,522 - DefenseMechanism - INFO - 알림 발송 성공: 192.168.45.137
+2025-07-22 11:06:10,523 - DefenseMechanism - INFO - 패킷 처리 완료: 192.168.45.137 (신뢰도: 0.90)
+2025-07-22 11:19:09,737 - DefenseMechanism - INFO - 트래픽 차단 시스템 초기화 완료
+2025-07-22 11:19:09,738 - DefenseMechanism - INFO - 알림 시스템 초기화 완료
+2025-07-22 11:19:09,739 - DefenseMechanism - INFO - 트래픽 차단 시스템 초기화 완료
+2025-07-22 11:19:09,740 - DefenseMechanism - INFO - 알림 시스템 초기화 완료
+2025-07-22 11:19:09,741 - DefenseMechanism - INFO - 경량 모드로 실행 중입니다.
+2025-07-22 11:19:09,741 - DefenseMechanism - INFO - 방어 메커니즘 관리자 초기화 완료 (모드: lightweight)
+2025-07-22 11:26:39,297 - DefenseMechanism - INFO - 트래픽 차단 시스템 초기화 완료
+2025-07-22 11:26:39,298 - DefenseMechanism - INFO - 알림 시스템 초기화 완료
+2025-07-22 11:26:39,298 - DefenseMechanism - INFO - 트래픽 차단 시스템 초기화 완료
+2025-07-22 11:26:39,299 - DefenseMechanism - INFO - 알림 시스템 초기화 완료
+2025-07-22 11:26:39,299 - DefenseMechanism - INFO - 경량 모드로 실행 중입니다.
+2025-07-22 11:26:39,300 - DefenseMechanism - INFO - 방어 메커니즘 관리자 초기화 완료 (모드: lightweight)
+2025-07-22 11:27:46,439 - DefenseMechanism - INFO - IP 주소 차단 성공: 192.168.45.137
+2025-07-22 11:27:46,444 - DefenseMechanism - INFO - 알림 발송 성공: 192.168.45.137
+2025-07-22 11:27:46,445 - DefenseMechanism - INFO - 패킷 처리 완료: 192.168.45.137 (신뢰도: 0.90)
+2025-07-22 11:28:27,630 - DefenseMechanism - INFO - 이미 차단된 IP 주소: 192.168.45.137
+2025-07-22 11:28:27,637 - DefenseMechanism - INFO - 알림 발송 성공: 192.168.45.137
+2025-07-22 11:28:27,638 - DefenseMechanism - INFO - 패킷 처리 완료: 192.168.45.137 (신뢰도: 0.90)
+2025-07-22 11:28:27,859 - DefenseMechanism - INFO - 중복 위협 무시: 192.168.45.137 (최근에 이미 대응함)
+2025-07-22 11:28:33,169 - DefenseMechanism - INFO - 이미 차단된 IP 주소: 192.168.45.137
+2025-07-22 11:28:33,177 - DefenseMechanism - INFO - 알림 발송 성공: 192.168.45.137
+2025-07-22 11:28:33,179 - DefenseMechanism - INFO - 패킷 처리 완료: 192.168.45.137 (신뢰도: 0.90)
+2025-07-22 11:28:33,383 - DefenseMechanism - INFO - 중복 위협 무시: 192.168.45.137 (최근에 이미 대응함)
+2025-07-22 11:28:33,396 - DefenseMechanism - INFO - 중복 위협 무시: 192.168.45.137 (최근에 이미 대응함)
+2025-07-22 11:28:33,400 - DefenseMechanism - INFO - 중복 위협 무시: 192.168.45.137 (최근에 이미 대응함)
+2025-07-22 11:28:33,675 - DefenseMechanism - INFO - 중복 위협 무시: 192.168.45.137 (최근에 이미 대응함)
+2025-07-22 11:28:33,682 - DefenseMechanism - INFO - 중복 위협 무시: 192.168.45.137 (최근에 이미 대응함)
+2025-07-22 11:28:33,693 - DefenseMechanism - INFO - 중복 위협 무시: 192.168.45.137 (최근에 이미 대응함)
+2025-07-22 11:28:33,711 - DefenseMechanism - INFO - 중복 위협 무시: 192.168.45.137 (최근에 이미 대응함)
+2025-07-22 11:28:33,716 - DefenseMechanism - INFO - 중복 위협 무시: 192.168.45.137 (최근에 이미 대응함)
+2025-07-22 11:28:46,692 - DefenseMechanism - INFO - 이미 차단된 IP 주소: 192.168.45.137
+2025-07-22 11:28:46,696 - DefenseMechanism - INFO - 알림 발송 성공: 192.168.45.137
+2025-07-22 11:28:46,697 - DefenseMechanism - INFO - 패킷 처리 완료: 192.168.45.137 (신뢰도: 0.90)
+2025-07-22 11:29:41,028 - DefenseMechanism - INFO - 이미 차단된 IP 주소: 192.168.45.137
+2025-07-22 11:29:41,033 - DefenseMechanism - INFO - 알림 발송 성공: 192.168.45.137
+2025-07-22 11:29:41,033 - DefenseMechanism - INFO - 패킷 처리 완료: 192.168.45.137 (신뢰도: 0.90)
+2025-07-22 11:29:47,655 - DefenseMechanism - INFO - 이미 차단된 IP 주소: 192.168.45.137
+2025-07-22 11:29:47,659 - DefenseMechanism - INFO - 알림 발송 성공: 192.168.45.137
+2025-07-22 11:29:47,660 - DefenseMechanism - INFO - 패킷 처리 완료: 192.168.45.137 (신뢰도: 0.90)
+2025-07-22 11:30:03,985 - DefenseMechanism - INFO - 이미 차단된 IP 주소: 192.168.45.137
+2025-07-22 11:30:03,988 - DefenseMechanism - INFO - 알림 발송 성공: 192.168.45.137
+2025-07-22 11:30:03,990 - DefenseMechanism - INFO - 패킷 처리 완료: 192.168.45.137 (신뢰도: 0.90)
+2025-07-22 11:30:11,999 - DefenseMechanism - INFO - 이미 차단된 IP 주소: 192.168.45.137
+2025-07-22 11:30:12,002 - DefenseMechanism - INFO - 알림 발송 성공: 192.168.45.137
+2025-07-22 11:30:12,003 - DefenseMechanism - INFO - 패킷 처리 완료: 192.168.45.137 (신뢰도: 0.90)
+2025-07-22 11:30:23,680 - DefenseMechanism - INFO - 이미 차단된 IP 주소: 192.168.45.137
+2025-07-22 11:30:23,685 - DefenseMechanism - INFO - 알림 발송 성공: 192.168.45.137
+2025-07-22 11:30:23,686 - DefenseMechanism - INFO - 패킷 처리 완료: 192.168.45.137 (신뢰도: 0.90)
+2025-07-22 11:30:23,900 - DefenseMechanism - INFO - 중복 위협 무시: 192.168.45.137 (최근에 이미 대응함)
+2025-07-22 11:30:24,108 - DefenseMechanism - INFO - 중복 위협 무시: 192.168.45.137 (최근에 이미 대응함)
+2025-07-22 11:30:24,297 - DefenseMechanism - INFO - 중복 위협 무시: 192.168.45.137 (최근에 이미 대응함)
+2025-07-22 11:30:36,150 - DefenseMechanism - INFO - 이미 차단된 IP 주소: 192.168.45.137
+2025-07-22 11:30:36,155 - DefenseMechanism - INFO - 알림 발송 성공: 192.168.45.137
+2025-07-22 11:30:36,155 - DefenseMechanism - INFO - 패킷 처리 완료: 192.168.45.137 (신뢰도: 0.90)
+2025-07-22 11:30:42,106 - DefenseMechanism - INFO - 이미 차단된 IP 주소: 192.168.45.137
+2025-07-22 11:30:42,109 - DefenseMechanism - INFO - 알림 발송 성공: 192.168.45.137
+2025-07-22 11:30:42,110 - DefenseMechanism - INFO - 패킷 처리 완료: 192.168.45.137 (신뢰도: 0.90)
+2025-07-22 11:30:42,314 - DefenseMechanism - INFO - 중복 위협 무시: 192.168.45.137 (최근에 이미 대응함)
+2025-07-22 11:30:42,619 - DefenseMechanism - INFO - 중복 위협 무시: 192.168.45.137 (최근에 이미 대응함)
+2025-07-22 11:30:42,625 - DefenseMechanism - INFO - 중복 위협 무시: 192.168.45.137 (최근에 이미 대응함)
+2025-07-22 11:30:42,827 - DefenseMechanism - INFO - 중복 위협 무시: 192.168.45.137 (최근에 이미 대응함)
+2025-07-22 11:30:49,237 - DefenseMechanism - INFO - 이미 차단된 IP 주소: 192.168.45.137
+2025-07-22 11:30:49,240 - DefenseMechanism - INFO - 알림 발송 성공: 192.168.45.137
+2025-07-22 11:30:49,241 - DefenseMechanism - INFO - 패킷 처리 완료: 192.168.45.137 (신뢰도: 0.90)
+2025-07-22 11:30:54,307 - DefenseMechanism - INFO - 이미 차단된 IP 주소: 192.168.45.137
+2025-07-22 11:30:54,310 - DefenseMechanism - INFO - 알림 발송 성공: 192.168.45.137
+2025-07-22 11:30:54,311 - DefenseMechanism - INFO - 패킷 처리 완료: 192.168.45.137 (신뢰도: 0.90)
+2025-07-22 11:30:54,512 - DefenseMechanism - INFO - 중복 위협 무시: 192.168.45.137 (최근에 이미 대응함)
+2025-07-22 11:30:54,717 - DefenseMechanism - INFO - 중복 위협 무시: 192.168.45.137 (최근에 이미 대응함)
+2025-07-22 11:30:54,723 - DefenseMechanism - INFO - 중복 위협 무시: 192.168.45.137 (최근에 이미 대응함)
+2025-07-22 11:30:54,741 - DefenseMechanism - INFO - 중복 위협 무시: 192.168.45.137 (최근에 이미 대응함)
+2025-07-22 11:30:54,905 - DefenseMechanism - INFO - 중복 위협 무시: 192.168.45.137 (최근에 이미 대응함)
+2025-07-22 11:31:06,102 - DefenseMechanism - INFO - 이미 차단된 IP 주소: 192.168.45.137
+2025-07-22 11:31:06,106 - DefenseMechanism - INFO - 알림 발송 성공: 192.168.45.137
+2025-07-22 11:31:06,108 - DefenseMechanism - INFO - 패킷 처리 완료: 192.168.45.137 (신뢰도: 0.90)
+2025-07-22 11:31:06,301 - DefenseMechanism - INFO - 중복 위협 무시: 192.168.45.137 (최근에 이미 대응함)
+2025-07-22 11:31:06,515 - DefenseMechanism - INFO - 중복 위협 무시: 192.168.45.137 (최근에 이미 대응함)
+2025-07-22 11:31:06,520 - DefenseMechanism - INFO - 중복 위협 무시: 192.168.45.137 (최근에 이미 대응함)
+2025-07-22 11:31:06,688 - DefenseMechanism - INFO - 중복 위협 무시: 192.168.45.137 (최근에 이미 대응함)
+2025-07-22 11:31:06,699 - DefenseMechanism - INFO - 중복 위협 무시: 192.168.45.137 (최근에 이미 대응함)
+2025-07-22 11:31:06,705 - DefenseMechanism - INFO - 중복 위협 무시: 192.168.45.137 (최근에 이미 대응함)
+2025-07-22 11:32:47,157 - DefenseMechanism - INFO - 트래픽 차단 시스템 초기화 완료
+2025-07-22 11:32:47,157 - DefenseMechanism - INFO - 알림 시스템 초기화 완료
+2025-07-22 11:32:47,158 - DefenseMechanism - INFO - 트래픽 차단 시스템 초기화 완료
+2025-07-22 11:32:47,158 - DefenseMechanism - INFO - 알림 시스템 초기화 완료
+2025-07-22 11:32:47,158 - DefenseMechanism - INFO - 경량 모드로 실행 중입니다.
+2025-07-22 11:32:47,159 - DefenseMechanism - INFO - 방어 메커니즘 관리자 초기화 완료 (모드: lightweight)
+2025-07-22 11:33:10,474 - DefenseMechanism - INFO - IP 주소 차단 성공: 192.168.45.137
+2025-07-22 11:33:10,478 - DefenseMechanism - INFO - 알림 발송 성공: 192.168.45.137
+2025-07-22 11:33:10,478 - DefenseMechanism - INFO - 패킷 처리 완료: 192.168.45.137 (신뢰도: 0.90)
+2025-07-22 11:41:02,795 - DefenseMechanism - INFO - 트래픽 차단 시스템 초기화 완료
+2025-07-22 11:41:02,796 - DefenseMechanism - INFO - 알림 시스템 초기화 완료
+2025-07-22 11:41:02,797 - DefenseMechanism - INFO - 트래픽 차단 시스템 초기화 완료
+2025-07-22 11:41:02,797 - DefenseMechanism - INFO - 알림 시스템 초기화 완료
+2025-07-22 11:41:02,798 - DefenseMechanism - INFO - 경량 모드로 실행 중입니다.
+2025-07-22 11:41:02,799 - DefenseMechanism - INFO - 방어 메커니즘 관리자 초기화 완료 (모드: lightweight)
+2025-07-23 08:42:26,509 - DefenseMechanism - INFO - 트래픽 차단 시스템 초기화 완료
+2025-07-23 08:42:26,509 - DefenseMechanism - INFO - 알림 시스템 초기화 완료
+2025-07-23 08:42:26,510 - DefenseMechanism - INFO - 트래픽 차단 시스템 초기화 완료
+2025-07-23 08:42:26,510 - DefenseMechanism - INFO - 알림 시스템 초기화 완료
+2025-07-23 08:42:26,510 - DefenseMechanism - INFO - 경량 모드로 실행 중입니다.
+2025-07-23 08:42:26,510 - DefenseMechanism - INFO - 방어 메커니즘 관리자 초기화 완료 (모드: lightweight)
+2025-07-23 08:43:36,627 - DefenseMechanism - INFO - IP 주소 차단 성공: 192.168.45.137
+2025-07-23 08:43:36,630 - DefenseMechanism - INFO - 알림 발송 성공: 192.168.45.137
+2025-07-23 08:43:36,630 - DefenseMechanism - INFO - 패킷 처리 완료: 192.168.45.137 (신뢰도: 0.90)
+2025-07-23 08:43:36,642 - DefenseMechanism - INFO - 중복 위협 무시: 192.168.45.137 (최근에 이미 대응함)
+2025-07-23 08:47:24,945 - DefenseMechanism - INFO - 트래픽 차단 시스템 초기화 완료
+2025-07-23 08:47:24,945 - DefenseMechanism - INFO - 알림 시스템 초기화 완료
+2025-07-23 08:47:24,945 - DefenseMechanism - INFO - 트래픽 차단 시스템 초기화 완료
+2025-07-23 08:47:24,945 - DefenseMechanism - INFO - 알림 시스템 초기화 완료
+2025-07-23 08:47:24,945 - DefenseMechanism - INFO - 경량 모드로 실행 중입니다.
+2025-07-23 08:47:24,945 - DefenseMechanism - INFO - 방어 메커니즘 관리자 초기화 완료 (모드: lightweight)

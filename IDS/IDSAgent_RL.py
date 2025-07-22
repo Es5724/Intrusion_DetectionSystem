@@ -477,6 +477,117 @@ def show_help_menu():
     print_colored("계속하려면 Enter 키를 누르세요...", Fore.YELLOW)
     input()
 
+def monitor_system_resources():
+    """
+    시스템 리소스 모니터링 및 상태 반환
+    
+    Returns:
+        str: 'reduce_processing', 'can_increase', 'maintain'
+    """
+    try:
+        import psutil
+        cpu_usage = psutil.cpu_percent(interval=0.1)
+        memory_mb = psutil.Process().memory_info().rss / (1024 * 1024)
+        
+        if cpu_usage > 80 or memory_mb > 150:
+            logger.warning(f"리소스 부하 감지 - CPU: {cpu_usage:.1f}%, 메모리: {memory_mb:.1f}MB")
+            return "reduce_processing"
+        elif cpu_usage < 50 and memory_mb < 120:
+            return "can_increase"
+        else:
+            return "maintain"
+    except Exception:
+        return "maintain"
+
+def cleanup_memory_completely():
+    """
+    시스템 종료 시 완전한 메모리 정리
+    """
+    try:
+        import gc
+        import psutil
+        
+        print("🧹 메모리 완전 정리 시작...")
+        initial_memory = psutil.Process().memory_info().rss / (1024 * 1024)
+        
+        # 강력한 가비지 컬렉션 (5번 반복)
+        total_collected = 0
+        for i in range(5):
+            collected = gc.collect()
+            total_collected += collected
+            if collected == 0:
+                break
+        
+        # 전역 변수 정리
+        import sys
+        for module_name in list(sys.modules.keys()):
+            if 'scapy' in module_name or 'numpy' in module_name:
+                try:
+                    if hasattr(sys.modules[module_name], '__dict__'):
+                        for var_name in list(sys.modules[module_name].__dict__.keys()):
+                            if var_name.startswith('_cache') or var_name.startswith('cache'):
+                                delattr(sys.modules[module_name], var_name)
+                except:
+                    pass
+        
+        final_memory = psutil.Process().memory_info().rss / (1024 * 1024)
+        cleaned_memory = initial_memory - final_memory
+        
+        print(f"✅ 메모리 정리 완료: {total_collected}개 객체 해제, {cleaned_memory:+.1f}MB 정리")
+        
+    except Exception as e:
+        print(f"메모리 정리 중 오류: {e}")
+
+def get_adaptive_process_count(queue_size, max_queue_size=10000):
+    """
+    큐 크기와 시스템 리소스에 따른 적응형 처리 개수 계산 (절충안 버전)
+    
+    Args:
+        queue_size: 현재 큐 크기
+        max_queue_size: 최대 큐 크기 (기본값: 10000)
+    
+    Returns:
+        int: 처리할 패킷 개수
+    """
+    if queue_size <= 0:
+        return 0
+    
+    # 시스템 리소스 상태 확인
+    resource_status = monitor_system_resources()
+    
+    # 큐 사용률 계산 (0.0 ~ 1.0)
+    queue_utilization = queue_size / max_queue_size
+    
+    # 기본 처리량 계산 (절충안: 보수적 개선)
+    if queue_utilization >= 0.8:  # 80% 이상: 위험 상황
+        # 큐의 30%를 한 번에 처리하되 최대 1500개로 제한
+        base_process = min(1500, max(queue_size * 0.3, 300))
+        logger.warning(f"큐 과부하 감지 - 처리량 증가: {int(base_process)}개 (큐 크기: {queue_size})")
+    
+    elif queue_utilization >= 0.5:  # 50% 이상: 경고 상황  
+        # 큐의 20%를 한 번에 처리하되 최대 800개로 제한
+        base_process = min(800, max(queue_size * 0.2, 200))
+        logger.info(f"큐 부하 증가 - 처리량 조정: {int(base_process)}개 (큐 크기: {queue_size})")
+    
+    else:  # 50% 미만: 정상 상황
+        base_process = 150  # 기본값 3배 증가 (50 → 150)
+    
+    # 리소스 상태에 따른 조정
+    if resource_status == "reduce_processing":
+        # CPU/메모리 부하 시 처리량 50% 감소
+        adjusted_process = int(base_process * 0.5)
+        logger.info(f"리소스 보호 모드 - 처리량 감소: {adjusted_process}개")
+        return max(adjusted_process, 50)  # 최소 50개는 보장
+    
+    elif resource_status == "can_increase":
+        # 리소스 여유 시 처리량 50% 증가
+        adjusted_process = int(base_process * 1.5)
+        logger.debug(f"리소스 여유 - 처리량 증가: {adjusted_process}개")
+        return min(adjusted_process, 2000)  # 최대 2000개로 제한
+    
+    else:  # maintain
+        return int(base_process)
+
 def main():
     # 전역 통계 변수들
     global threat_stats, defense_stats, ml_stats, start_time
@@ -700,51 +811,134 @@ def main():
                     current_time = time.time()
                     elapsed_time = current_time - start_time
                     
-                    # 초당 패킷 수 계산
+                    # 초당 패킷 수 계산 및 메모리 관리
                     if current_time - last_stats_time >= 1.0:  # 1초마다 계산
                         packets_per_second = current_count - last_packet_count
                         if packets_per_second > peak_packets_per_second:
                             peak_packets_per_second = packets_per_second
                         last_packet_count = current_count
                         last_stats_time = current_time
+                        
+                        # 메모리 누수 방지: 적극적 메모리 관리 (30초마다)
+                        if int(elapsed_time) % 30 == 0 and int(elapsed_time) > 0:
+                            import gc
+                            
+                            # 강제 가비지 컬렉션 (3번 실행)
+                            collected_total = 0
+                            for _ in range(3):
+                                collected_total += gc.collect()
+                            
+                            # 메모리 사용량 체크
+                            try:
+                                import psutil
+                                current_memory = psutil.Process().memory_info().rss / (1024 * 1024)
+                                if current_memory > 150:  # 150MB 이상시 강력한 정리
+                                    logger.warning(f"높은 메모리 사용량 감지: {current_memory:.1f}MB - 적극적 정리 시작")
+                                    
+                                    # 통계 변수 정리 (5분치만 유지)
+                                    if hasattr(locals(), 'protocol_stats'):
+                                        for key in protocol_stats:
+                                            if protocol_stats[key] > 100000:  # 너무 큰 값은 리셋
+                                                protocol_stats[key] = protocol_stats[key] // 2
+                                    
+                                    # 추가 가비지 컬렉션
+                                    collected_total += gc.collect()
+                                
+                                if collected_total > 0:
+                                    logger.debug(f"메모리 정리 완료: {collected_total}개 객체 해제, 현재 {current_memory:.1f}MB")
+                            except Exception as e:
+                                logger.debug(f"메모리 체크 오류: {e}")
                     
                     # 큐에서 패킷을 가져와서 통계 업데이트
                     packet_pool = get_packet_pool()  # 패킷 풀 가져오기
                     try:
+                        # 🔥 수정: 두 큐 모두 확인하여 총 큐 크기 계산
+                        packet_queue_size = packet_core.packet_queue.qsize()
+                        processed_queue_size = getattr(packet_core, 'processed_queue', queue.Queue()).qsize()
+                        total_queue_size = packet_queue_size + processed_queue_size
+                        
+                        # 적응형 처리에는 총 큐 크기 사용
+                        max_process_count = get_adaptive_process_count(total_queue_size)
+                        
+                        # 🔥 개선된 로깅: 큐 상태 세부 정보 포함
+                        if total_queue_size > 0 and int(elapsed_time) % 10 == 0:
+                            logger.info(f"큐 상태 - 패킷큐: {packet_queue_size}, 처리큐: {processed_queue_size}, 총큐: {total_queue_size}, 처리량: {max_process_count}, 리소스: {monitor_system_resources()}")
+                        elif total_queue_size == 0 and int(elapsed_time) % 60 == 0:
+                            # 큐가 비어있을 때 1분마다 원인 진단 로깅
+                            total_captured = packet_core.get_packet_count()
+                            logger.warning(f"큐 비어있음 - 총 캡처: {total_captured}, 캡처 상태: {packet_core.is_running}")
+                        
                         processed_count = 0
-                        while not packet_core.packet_queue.empty() and processed_count < 50:  # 한 번에 최대 50개만 처리
-                            original_packet = packet_core.packet_queue.get_nowait()
-                            processed_count += 1
+                        
+                        # 🔥 수정: processed_queue를 우선적으로 처리 (더 많은 패킷이 있음)
+                        target_queue = None
+                        queue_name = ""
+                        
+                        if hasattr(packet_core, 'processed_queue') and not packet_core.processed_queue.empty():
+                            target_queue = packet_core.processed_queue
+                            queue_name = "processed_queue"
+                        elif not packet_core.packet_queue.empty():
+                            target_queue = packet_core.packet_queue
+                            queue_name = "packet_queue"
+                        
+                        if target_queue:
+                            # 처리 시작 로깅 (첫 번째 패킷만)
+                            if total_queue_size > 0 and int(elapsed_time) % 30 == 0:
+                                logger.debug(f"패킷 처리 시작 - 사용 큐: {queue_name}, 큐 크기: {target_queue.qsize()}, 처리량: {max_process_count}")
                             
-                            # 풀에서 패킷 객체 가져와서 사용
-                            pooled_packet = packet_pool.get()
-                            
-                            try:
-                                if isinstance(original_packet, dict):
-                                    # 원본 데이터를 풀 객체에 복사
-                                    pooled_packet.update(original_packet)
+                            while not target_queue.empty() and processed_count < max_process_count:
+                                original_packet = None
+                                pooled_packet = None
+                                
+                                try:
+                                    original_packet = target_queue.get_nowait()
+                                    processed_count += 1
                                     
-                                    # 프로토콜 통계
-                                    protocol = str(pooled_packet.get('protocol', 'Other')).upper()
-                                    if protocol in ['6', 'TCP']:
-                                        protocol_stats['TCP'] += 1
-                                    elif protocol in ['17', 'UDP']:
-                                        protocol_stats['UDP'] += 1
-                                    elif protocol in ['1', 'ICMP']:
-                                        protocol_stats['ICMP'] += 1
-                                    else:
-                                        protocol_stats['Other'] += 1
-                                
-                                # 방어 모듈 기반 위협 수준 분석
-                                threat_level = analyze_threat_level(pooled_packet if isinstance(original_packet, dict) else original_packet, defense_manager=defense_manager)
-                                threat_stats[threat_level] += 1
-                                
-                                if threat_level in ['high', 'medium']:
-                                    total_threats_detected += 1
-                            finally:
-                                # 사용 완료 후 풀에 반환
-                                packet_pool.put(pooled_packet)
-                                
+                                    # 풀에서 패킷 객체 가져오기
+                                    pooled_packet = packet_pool.get()
+                                    
+                                    if isinstance(original_packet, dict):
+                                        # 원본 데이터를 풀 객체에 복사
+                                        pooled_packet.clear()  # 이전 데이터 완전 삭제
+                                        pooled_packet.update(original_packet)
+                                        
+                                        # 프로토콜 통계
+                                        protocol = str(pooled_packet.get('protocol', 'Other')).upper()
+                                        if protocol in ['6', 'TCP']:
+                                            protocol_stats['TCP'] += 1
+                                        elif protocol in ['17', 'UDP']:
+                                            protocol_stats['UDP'] += 1
+                                        elif protocol in ['1', 'ICMP']:
+                                            protocol_stats['ICMP'] += 1
+                                        else:
+                                            protocol_stats['Other'] += 1
+                                    
+                                    # 방어 모듈 기반 위협 수준 분석
+                                    threat_level = analyze_threat_level(pooled_packet if isinstance(original_packet, dict) else original_packet, defense_manager=defense_manager)
+                                    threat_stats[threat_level] += 1
+                                    
+                                    if threat_level in ['high', 'medium']:
+                                        total_threats_detected += 1
+                                        
+                                except queue.Empty:
+                                    break
+                                except Exception as e:
+                                    logger.debug(f"패킷 처리 중 오류: {e}")
+                                finally:
+                                    # 메모리 누수 방지: 명시적 객체 해제
+                                    if pooled_packet is not None:
+                                        try:
+                                            pooled_packet.clear()  # 딕셔너리 완전 비우기
+                                            packet_pool.put(pooled_packet)
+                                        except:
+                                            pass
+                                    
+                                    # 원본 패킷 명시적 삭제
+                                    if original_packet is not None:
+                                        del original_packet
+                                    
+                                    pooled_packet = None
+                                    
                     except queue.Empty:
                         pass
                     except Exception as e:
@@ -780,7 +974,30 @@ def main():
                         # 패킷 캡처 통계
                         print_colored("📦 패킷 캡처 통계", Fore.YELLOW, Style.BRIGHT)
                         print_colored(f"   총 캡처: {current_count:,}개  |  초당 패킷: {packets_per_second}/s  |  최고 처리량: {peak_packets_per_second}/s", Fore.WHITE)
-                        print_colored(f"   큐 크기: {packet_core.packet_queue.qsize():,}개  |  처리 상태: {'🟢 활성' if packet_core.is_running else '🔴 중지'}", Fore.WHITE)
+                        
+                        # 적응형 큐 처리 정보 추가
+                        current_packet_queue_size = packet_core.packet_queue.qsize()
+                        current_processed_queue_size = getattr(packet_core, 'processed_queue', queue.Queue()).qsize()
+                        current_total_queue_size = current_packet_queue_size + current_processed_queue_size
+                        current_process_count = get_adaptive_process_count(current_total_queue_size)
+                        queue_utilization = (current_total_queue_size / 10000) * 100  # 백분율로 변환
+                        
+                        # 🔥 추가: 큐 세부 정보 표시
+                        queue_detail = f"패킷큐={current_packet_queue_size}, 처리큐={current_processed_queue_size}"
+                        
+                        # 큐 상태에 따른 색상 결정
+                        if queue_utilization >= 80:
+                            queue_color = Fore.RED  # 위험
+                        elif queue_utilization >= 50:
+                            queue_color = Fore.YELLOW  # 경고
+                        else:
+                            queue_color = Fore.GREEN  # 정상
+                        
+                        # 리소스 상태 확인
+                        resource_status = monitor_system_resources()
+                        status_text = {"can_increase": "여유", "maintain": "보통", "reduce_processing": "부하"}[resource_status]
+                        
+                        print_colored(f"   큐 크기: {current_total_queue_size:,}개 ({queue_utilization:.1f}%) [{queue_detail}]  |  적응형 처리량: {current_process_count}개/회  |  리소스: {status_text}  |  처리 상태: {'활성' if packet_core.is_running else '중지'}", queue_color)
                         
                         # 프로토콜 분석
                         total_protocols = sum(protocol_stats.values())
@@ -808,27 +1025,34 @@ def main():
                         # 머신러닝 상태
                         print_colored("🤖 AI/ML 엔진 상태", Fore.GREEN, Style.BRIGHT)
                         
-                        # 실제 메모리 사용량 측정
+                        # 실제 시스템 리소스 사용량 측정
                         try:
                             import psutil
                             process = psutil.Process()
                             memory_info = process.memory_info()
                             memory_mb = memory_info.rss / (1024 * 1024)
                             memory_percent = process.memory_percent()
+                            cpu_usage = psutil.cpu_percent(interval=0.1)
                         except:
                             memory_mb = 0
                             memory_percent = packet_core.packet_queue.qsize() / 10000 * 100  # 추정치
+                            cpu_usage = 0
+                        
+                        # 리소스 상태 확인
+                        resource_status = monitor_system_resources()
+                        status_color = Fore.GREEN if resource_status == "can_increase" else Fore.YELLOW if resource_status == "maintain" else Fore.RED
+                        status_text = {"can_increase": "여유", "maintain": "보통", "reduce_processing": "부하"}[resource_status]
                         
                         accuracy_display = f"{ml_stats['accuracy']:.2%}" if ml_stats['accuracy'] > 0 else "계산 중"
                         print_colored(f"   예측 수행: {ml_stats['predictions']:,}회  |  모델 정확도: {accuracy_display}  |  업데이트: {ml_stats['model_updates']:,}회", Fore.WHITE)
-                        print_colored(f"   메모리 사용: {memory_mb:.1f}MB ({memory_percent:.1f}%)", Fore.WHITE)
+                        print_colored(f"   메모리: {memory_mb:.1f}MB ({memory_percent:.1f}%)  |  CPU: {cpu_usage:.1f}%  |  리소스 상태: {status_text}", status_color)
                         
                         # 하단 정보
                         print_colored("="*80, Fore.CYAN)
                         print_colored("💡 명령어: h(도움말) s(상태) p(패킷) d(방어) m(모드) q(종료) | Enter: 명령 입력", Fore.YELLOW)
                         print()
                         
-                    time.sleep(1)  # 1초마다 체크
+                    time.sleep(0.5)  # 0.5초마다 체크 (절충안: 2배 빈번)
                 
                 # 스레드 종료 시 통계 딕셔너리 반환
                 stats_pool.put(protocol_stats)
@@ -846,12 +1070,16 @@ def main():
                 while packet_core.is_running:
                     current_time = time.time()
                     
-                    # 5분마다 가비지 컬렉션 수행
+                    # 5분마다 강력한 메모리 정리 수행
                     if current_time - last_gc_time >= 300:  # 5분
-                        gc.collect()
+                        # 다중 가비지 컬렉션 수행
+                        total_collected = 0
+                        for _ in range(3):
+                            total_collected += gc.collect()
+                        
                         last_gc_time = current_time
                         
-                        # 메모리 사용량 로깅
+                        # 메모리 사용량 로깅 및 누수 감지
                         try:
                             import psutil
                             process = psutil.Process()
@@ -1414,6 +1642,9 @@ def main():
                 print("\n프로그램을 종료합니다...")
                 packet_core.stop_capture()
         
+        # 정상 종료 시 메모리 정리
+        cleanup_memory_completely()
+        
         # Enter 키를 누를 때까지 대기
         wait_for_enter()
         
@@ -1452,12 +1683,22 @@ def main():
         except Exception as e:
             logger.debug(f"통계 출력 오류: {e}")
             pass
+        
+        # 완전한 메모리 정리 수행
+        cleanup_memory_completely()
             
         wait_for_enter()
     except Exception as e:
         print(f"\n오류가 발생했습니다: {str(e)}")
         log_exception(e, "프로그램 실행 중 심각한 오류 발생")
+        
+        # 오류 상황에서도 메모리 정리
+        cleanup_memory_completely()
         wait_for_enter()
+    
+    finally:
+        # 최종 메모리 정리 (모든 경우)
+        cleanup_memory_completely()
 
 if __name__ == "__main__":
     main() 
