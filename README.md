@@ -1,4 +1,4 @@
-# IDS Agent - 침입 탐지 시스템 (Intrusion Detection System 이름 미정)
+# IPS Agent - 침입 방지 시스템 (Intrusion Prevention System)
 
 <div align="center">
   <img src="https://img.shields.io/badge/Language-Python-blue" alt="Language">
@@ -27,7 +27,7 @@
 
 ## 프로젝트 개요
 
-실시간으로 네트워크 보안 취약점을 탐지하고 자동으로 대응하는 AI 기반 침입 탐지 시스템입니다.   
+실시간으로 네트워크 보안 취약점을 탐지하고 자동으로 차단하는 AI 기반 침입 방지 시스템입니다.   
 랜덤 포레스트와 강화학습의 장점을 결합한 하이브리드 접근 방식을 통해 높은 정확도와 적응성을 제공합니다.
 
 ### 시스템 핵심 기능

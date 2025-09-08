@@ -266,7 +266,7 @@ class ThreatDashboard:
     def run(self):
         """대시보드 실행"""
         self.root = tk.Tk()
-        self.root.title("IDS 위협 모니터링 대시보드")
+        self.root.title("IPS 위협 모니터링 대시보드")
         self.root.geometry("800x600")
         
         # 스타일 설정
