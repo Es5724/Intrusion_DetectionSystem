@@ -61,7 +61,9 @@ class IPSRandomForestTrainer:
         weights_path = os.path.join(self.data_dir, "class_weights.json")
         if os.path.exists(weights_path):
             with open(weights_path, 'r') as f:
-                self.class_weights = json.load(f)
+                weights_json = json.load(f)
+                # JSON에서 문자열 키를 정수로 변환
+                self.class_weights = {int(k): v for k, v in weights_json.items()}
             print(f"  클래스 가중치 로드: {self.class_weights}")
         
         return datasets['train'], datasets['val'], datasets['test']

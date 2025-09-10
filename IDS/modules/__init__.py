@@ -106,6 +106,12 @@ try:
 except ImportError:
     print("port_scan_detector 모듈을 불러올 수 없습니다.")
 
+# 새로운 Conservative RL 시스템 추가
+try:
+    from .defense_policy_env import DefensePolicyEnv
+    from .conservative_rl_agent import ConservativeRLAgent
+except ImportError:
+    print("Conservative RL 모듈을 불러올 수 없습니다.")
 # 모델 최적화
 try:
     from .model_optimization import ModelOptimizer, QuantizedDQNAgent, TinyMLConverter
@@ -123,7 +129,7 @@ __all__ = [
     'DefenseManager', 'create_defense_manager', 'register_to_packet_capture',
     'ThreatAlertSystem',
     'PortScanDetector', 'VulnerabilityScanner', 'SecurityHardening',
-    'ModelOptimizer', 'QuantizedDQNAgent', 'TinyMLConverter'
+    'ModelOptimizer','ConservativeRLAgent', 'DefensePolicyEnv'
 ] 
 
 # 수리카타 지원이 있는 경우에만 export
