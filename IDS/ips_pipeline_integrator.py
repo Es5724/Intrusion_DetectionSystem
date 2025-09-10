@@ -10,23 +10,25 @@ import pandas as pd
 import joblib
 import json
 import os
+import sys
 import time
 import logging
+import torch
+import psutil
 from datetime import datetime
 from typing import Dict, List, Tuple, Optional, Any
 from dataclasses import dataclass
 
-# IPS 모듈들 import
-try:
-    from .conservative_rl_agent import ConservativeRLAgent
-    from .defense_policy_env import DefensePolicyEnv
-    from .ope_evaluator import OPEEvaluator
-    from .defense_mechanism import DefenseManager
-except ImportError:
-    from conservative_rl_agent import ConservativeRLAgent
-    from defense_policy_env import DefensePolicyEnv
-    from ope_evaluator import OPEEvaluator
-    from defense_mechanism import DefenseManager
+# modules 디렉토리를 Python 경로에 추가
+sys.path.append('modules')
+
+# 모든 필요한 모듈을 처음부터 완전히 임포트
+from modules.conservative_rl_agent import ConservativeRLAgent
+from modules.defense_policy_env import DefensePolicyEnv
+from modules.ope_evaluator import OPEEvaluator
+from modules.defense_mechanism import DefenseManager, create_defense_manager
+from modules.experience_replay_buffer import ExperienceReplayBuffer, IDSExperienceReplayBuffer
+import modules.utils as utils
 
 # 로깅 설정
 logger = logging.getLogger('IPSPipeline')
@@ -62,7 +64,7 @@ class IPSPipelineIntegrator:
     완전한 2단계 파이프라인 구현
     """
     
-    def __init__(self, config_path="../defense_config.json"):
+    def __init__(self, config_path="defense_config.json"):
         """파이프라인 초기화"""
         
         # 설정 로드
@@ -112,8 +114,8 @@ class IPSPipelineIntegrator:
         return {
             "pipeline": {
                 "mode": "standard",
-                "rf_model_path": "../ips_random_forest_model.pkl",
-                "rl_agent_path": "../defense_policy_agent.pth",
+                "rf_model_path": "ips_random_forest_model.pkl",
+                "rl_agent_path": "defense_policy_agent.pth",
                 "enable_ope": True,
                 "log_buffer_size": 10000
             },
@@ -126,7 +128,7 @@ class IPSPipelineIntegrator:
     
     def _initialize_rf_detector(self):
         """RF 탐지기 초기화"""
-        model_path = self.config.get("pipeline", {}).get("rf_model_path", "../ips_random_forest_model.pkl")
+        model_path = self.config.get("pipeline", {}).get("rf_model_path", "ips_random_forest_model.pkl")
         
         try:
             rf_model = joblib.load(model_path)
@@ -156,14 +158,13 @@ class IPSPipelineIntegrator:
         """RL 환경 초기화"""
         return DefensePolicyEnv(
             rf_model_path=self.config.get("pipeline", {}).get("rf_model_path"),
-            config_path="../defense_config.json"
+            config_path="defense_config.json"
         )
     
     def _initialize_defense_manager(self):
         """방어 관리자 초기화"""
         try:
-            from defense_mechanism import create_defense_manager
-            return create_defense_manager("../defense_config.json")
+            return create_defense_manager("defense_config.json")
         except Exception as e:
             logger.error(f"방어 관리자 초기화 실패: {e}")
             return None
@@ -362,7 +363,6 @@ class IPSPipelineIntegrator:
     def _collect_system_state(self) -> Dict:
         """현재 시스템 상태 수집"""
         try:
-            import psutil
             
             return {
                 'cpu_usage': psutil.cpu_percent() / 100.0,
@@ -410,7 +410,6 @@ class IPSPipelineIntegrator:
     def _calculate_decision_confidence(self, state: np.ndarray, action: int) -> float:
         """RL 결정 신뢰도 계산"""
         try:
-            import torch
             
             self.rl_agent.q_network.eval()
             with torch.no_grad():

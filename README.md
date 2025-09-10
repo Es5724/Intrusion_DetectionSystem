@@ -836,8 +836,66 @@ python IDSAgent_RL.py --mode performance
 | **0.10-0.29** | 허용(0) | 정상 처리, 기본 로그 기록 | OPE 정상 보상 (+5) |
 | **0.10 미만** | 허용(0) | 즉시 허용, 로그 최소화 | OPE 효율 보상 (+3) |
 
-## 향후 개발 계획
+## 현재 구현 상태
 
+### 완료된 구성 요소 (2025-09-10 기준)
+
+#### ✅ 핵심 시스템 (100% 완료)
+- **IPSAgent_RL.py**: 메인 시스템 (IDS→IPS 변경 완료)
+- **패킷 캡처 시스템**: 실시간 패킷 수집 및 처리
+- **방어 메커니즘**: IP 차단, 트래픽 제어, 자동 대응
+- **메모리 최적화**: 객체 풀링, 지연 로딩 (125-195MB 절약)
+
+#### ✅ RF 탐지 시스템 (100% 완료)
+- **CIC-IDS-2017 데이터 처리**: 283만 샘플, 시간 기반 train/test 분리
+- **RF 모델**: ips_random_forest_model.pkl (PR-AUC 0.9975, Calibrated)
+- **평가 지표**: PR-AUC, MCC, Detection Latency, Calibration
+- **데이터 품질**: 중복 제거, 클래스 불균형 처리
+
+#### ✅ Conservative RL 시스템 (100% 완료)  
+- **DefensePolicyEnv**: 6개 액션, 10차원 상태 공간
+- **ConservativeRLAgent**: Conservative Q-Learning, 3가지 모드 (standard/quantized/tiny)
+- **영속성 보장**: 기존 ExperienceReplayBuffer 완전 호환
+- **통합 기능**: QuantizedDQNAgent, TinyMLConverter 기능 통합 (중복 제거)
+
+#### ✅ OPE 평가 시스템 (100% 완료)
+- **평가 방법**: Importance Sampling, Doubly Robust, Direct Method, WIS
+- **정책 비교**: 통계적 유의성 검정, 신뢰구간 계산
+- **안전성**: 보수적 성능 추정, 객관적 평가
+
+#### ✅ 통합 파이프라인 (95% 완료)
+- **ips_pipeline_integrator.py**: RF → RL → 방어 실행 자동화
+- **데이터 구조**: ThreatDetectionResult, DefenseActionResult
+- **Fallback 정책**: 각 단계별 안전 장치
+- **상태 관리**: 파이프라인 통계, 영속성 저장
+
+### 부분 완료 또는 알려진 제한사항
+
+#### ⚠️ 데이터 품질 이슈 (해결 예정)
+- **CIC-IDS-2017 데이터 누수**: F1=1.00 비현실적 성능
+- **대안**: KISTI-IDS-2022 데이터셋 교체 계획 (4-5주차)
+- **현재 활용**: RL 파이프라인 개념 검증 및 알고리즘 테스트
+
+#### 🔄 통합 작업 (진행 중)
+- **IPSAgent_RL.py 연동**: 새로운 파이프라인 시스템 통합
+- **실시간 시스템**: 기존 멀티스레드와 새 파이프라인 연결
+- **GUI 시스템**: 새로운 모듈들과 기존 GUI 연동
+
+#### ⏳ 미구현 기능들
+- **Advanced 버전**: Suricata + RF + RL 3단계 파이프라인
+- **웹 시각화**: 실시간 대시보드 및 차트 시스템
+- **헤드리스 모드**: Docker 컨테이너 배포
+- **자동화 시스템**: CI/CD 기반 모델 재학습
+
+### 시스템 안정성
+
+#### ✅ 완전한 호환성 보장
+- **기존 시스템**: NetworkEnv, DQNAgent 완전 보존
+- **영속성**: save/load 인터페이스 100% 호환
+- **Fallback**: 모든 단계에서 안전 장치 구현
+- **점진적 전환**: 기존 시스템과 병행 운영 가능
+
+## 향후 개발 계획
 
 - **성능 최적화**: 핵심 병목 구간(패킷 캡처/분석) C언어 변경 고려 (Cython 활용),  메모리 추가 최적화
 - **헤드리스 모드 구현**: 시스템 서비스로 백그라운드 동작 구현 

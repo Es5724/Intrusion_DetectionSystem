@@ -28,8 +28,8 @@ def install_missing_packages():
             subprocess.check_call([sys.executable, '-m', 'pip', 'install', package])
             print(f"{package} 모듈 설치 완료!")
 
-# 모듈 임포트 전에 필요한 패키지 설치
-install_missing_packages()
+# 모듈 임포트 전에 필요한 패키지 설치 (필요시에만 활성화)
+# install_missing_packages()  # 주석 처리: 이미 설치된 환경에서는 불필요
 
 # 모듈 임포트
 from .packet_capture import PacketCapture, PacketCaptureCore, preprocess_packet_data
