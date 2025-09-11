@@ -110,11 +110,12 @@ except ImportError:
 try:
     from .defense_policy_env import DefensePolicyEnv
     from .conservative_rl_agent import ConservativeRLAgent
+    from .ope_evaluator import OPEEvaluator
 except ImportError:
     print("Conservative RL 모듈을 불러올 수 없습니다.")
 # 모델 최적화
 try:
-    from .model_optimization import ModelOptimizer, QuantizedDQNAgent, TinyMLConverter
+    from .model_optimization import ModelOptimizer
 except ImportError:
     print("model_optimization 모듈을 불러올 수 없습니다.")
 
@@ -129,7 +130,7 @@ __all__ = [
     'DefenseManager', 'create_defense_manager', 'register_to_packet_capture',
     'ThreatAlertSystem',
     'PortScanDetector', 'VulnerabilityScanner', 'SecurityHardening',
-    'ModelOptimizer','ConservativeRLAgent', 'DefensePolicyEnv'
+    'ModelOptimizer', 'ConservativeRLAgent', 'DefensePolicyEnv', 'OPEEvaluator'
 ] 
 
 # 수리카타 지원이 있는 경우에만 export
