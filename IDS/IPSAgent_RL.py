@@ -150,19 +150,27 @@ try:
     lazy_importer = get_lazy_importer()
     lazy_model_loader = get_lazy_model_loader()
     
-    #  PyTorch/강화학습 모듈들 지연 로딩 등록 (100-150MB 절약)
-    def _import_reinforcement_learning():
+    #  새로운 Conservative RL 시스템 지연 로딩 등록 (100-150MB 절약)
+    def _import_conservative_rl():
+        from conservative_rl_agent import ConservativeRLAgent
+        from defense_policy_env import DefensePolicyEnv
+        from ope_evaluator import OPEEvaluator
+        # 호환성을 위해 기존 시스템도 포함
         from reinforcement_learning import NetworkEnv, DQNAgent, train_rl_agent, plot_training_results, save_model, load_model
         return {
+            'ConservativeRLAgent': ConservativeRLAgent,
+            'DefensePolicyEnv': DefensePolicyEnv,
+            'OPEEvaluator': OPEEvaluator,
+            # 기존 시스템 (Fallback용)
             'NetworkEnv': NetworkEnv,
-            'DQNAgent': DQNAgent, 
+            'DQNAgent': DQNAgent,
             'train_rl_agent': train_rl_agent,
             'plot_training_results': plot_training_results,
             'save_model': save_model,
             'load_model': load_model
         }
     
-    lazy_importer.register_module('reinforcement_learning', _import_reinforcement_learning)
+    lazy_importer.register_module('conservative_rl', _import_conservative_rl)
     
     #  머신러닝 모델 모듈들 지연 로딩 등록 (15-25MB 절약)
     def _import_ml_models():
@@ -189,13 +197,25 @@ try:
     import pickle
     
     def _load_random_forest():
-        return joblib.load('random_forest_model.pkl')
+        # KISTI 모델 우선 사용
+        if os.path.exists('kisti_random_forest_model.pkl'):
+            logger.info("KISTI RF 모델 로딩")
+            return joblib.load('kisti_random_forest_model.pkl')
+        elif os.path.exists('ips_random_forest_model.pkl'):
+            logger.info("CIC RF 모델 로딩")
+            return joblib.load('ips_random_forest_model.pkl')
+        else:
+            logger.warning("RF 모델 파일을 찾을 수 없음")
+            return joblib.load('random_forest_model.pkl')  # Fallback
     
-    def _load_dqn_model(mode):
+    def _load_conservative_rl_model():
         import torch
-        return torch.load(f'dqn_model_{mode}.pth')
+        if os.path.exists('defense_policy_agent.pth'):
+            return torch.load('defense_policy_agent.pth')
+        return None
     
-    lazy_model_loader.register_model('random_forest', 'random_forest_model.pkl', _load_random_forest)
+    lazy_model_loader.register_model('random_forest', 'kisti_random_forest_model.pkl', _load_random_forest)
+    lazy_model_loader.register_model('conservative_rl', 'defense_policy_agent.pth', _load_conservative_rl_model)
     
     logger.info("지연 로딩 시스템 초기화 완료 - 메모리 절약 예상: 125-195MB")
     
@@ -703,25 +723,21 @@ def main():
                 # 랜덤 포레스트 모델 학습
                 model, accuracy, conf_matrix = train_random_forest(preprocessed_data_path)
                 
-                # 🔥 지연 로딩: 필요한 시점에 강화학습 모듈 로딩
-                print("강화학습 모듈 로딩 중...")
-                rl_modules = lazy_importer.get_module('reinforcement_learning')
-                NetworkEnv = rl_modules['NetworkEnv']
-                DQNAgent = rl_modules['DQNAgent']
-                train_rl_agent = rl_modules['train_rl_agent']
+                # 🔥 지연 로딩: 새로운 Conservative RL 시스템 로딩
+                print("Conservative RL 시스템 로딩 중...")
+                rl_modules = lazy_importer.get_module('conservative_rl')
+                ConservativeRLAgent = rl_modules['ConservativeRLAgent']
+                DefensePolicyEnv = rl_modules['DefensePolicyEnv']
+                OPEEvaluator = rl_modules['OPEEvaluator']
                 
-                # 강화학습 환경과 에이전트 초기화 (모드 적용)
-                env = NetworkEnv(max_steps=1000, mode=args.mode)
-                state_size = env.observation_space.shape[0]
-                action_size = env.action_space.n
-                
-                # 새로운 Experience Replay Buffer를 사용하는 DQNAgent 초기화
-                agent = DQNAgent(
-                    state_size, 
-                    action_size, 
-                    mode=args.mode,
-                    use_prioritized_replay=True,  # Prioritized Experience Replay 사용
-                    replay_buffer_capacity=10000  # 버퍼 크기 설정
+                # 새로운 RL 대응 정책 환경과 에이전트 초기화
+                env = DefensePolicyEnv()
+                agent = ConservativeRLAgent(
+                    state_size=10,  # DefensePolicyEnv 상태 크기
+                    action_size=6,  # 6개 대응 액션
+                    mode="standard",
+                    use_prioritized_replay=True,
+                    buffer_capacity=10000
                 )
                 
                 # 강화학습 훈련 실행 (개선된 버전)
@@ -1441,40 +1457,36 @@ def main():
                                 
                                 # 🔥 지연 로딩: 필요할 때만 강화학습 환경과 에이전트 초기화
                                 if env is None or agent is None:
-                                    # 강화학습 모듈들 지연 로딩
+                                    # Conservative RL 시스템 지연 로딩
                                     if rl_modules is None:
-                                        logger.info("강화학습 모듈 지연 로딩 시작...")
-                                        rl_modules = lazy_importer.get_module('reinforcement_learning')
-                                        NetworkEnv = rl_modules['NetworkEnv']
-                                        DQNAgent = rl_modules['DQNAgent']
-                                        load_model = rl_modules['load_model']
-                                        train_rl_agent = rl_modules['train_rl_agent']
-                                        save_model = rl_modules['save_model']
-                                        logger.info("강화학습 모듈 지연 로딩 완료")
+                                        logger.info("Conservative RL 시스템 지연 로딩 시작...")
+                                        rl_modules = lazy_importer.get_module('conservative_rl')
+                                        ConservativeRLAgent = rl_modules['ConservativeRLAgent']
+                                        DefensePolicyEnv = rl_modules['DefensePolicyEnv']
+                                        OPEEvaluator = rl_modules['OPEEvaluator']
+                                        logger.info("Conservative RL 시스템 지연 로딩 완료")
                                     
-                                    env = NetworkEnv(max_steps=1000, mode=args.mode)
-                                    state_size = env.observation_space.shape[0]
-                                    action_size = env.action_space.n
-                                    
-                                    # 새로운 Experience Replay Buffer를 사용하는 DQNAgent 초기화
-                                    agent = DQNAgent(
-                                        state_size, 
-                                        action_size, 
-                                        mode=args.mode,
+                                    # 새로운 RL 대응 정책 시스템 초기화
+                                    env = DefensePolicyEnv()
+                                    agent = ConservativeRLAgent(
+                                        state_size=10,
+                                        action_size=6,
+                                        mode="standard",
                                         use_prioritized_replay=True,
-                                        replay_buffer_capacity=10000
+                                        buffer_capacity=10000
                                     )
                                     
-                                    # 기존 모델 로드 시도
-                                    model_path = f'dqn_model_{args.mode}.pth'
-                                    if os.path.exists(model_path):
-                                        load_model(agent, model_path)
+                                    # Conservative RL 모델 로드 시도
+                                    conservative_model_path = 'defense_policy_agent.pth'
+                                    if os.path.exists(conservative_model_path):
+                                        if agent.load_model(conservative_model_path):
+                                            logger.info("기존 Conservative RL 모델 로드 완료")
                                     
-                                    # 기존 Experience Buffer 로드 시도
-                                    buffer_path = f'experience_buffer_{args.mode}.pkl'
+                                    # Conservative RL Buffer 로드 시도
+                                    buffer_path = 'defense_policy_buffer.pkl'
                                     if os.path.exists(buffer_path):
                                         if agent.load_buffer(buffer_path):
-                                            logger.info("기존 Experience Buffer 로드 완료")
+                                            logger.info("기존 Conservative RL 버퍼 로드 완료")
                                 
                                 # 강화학습 훈련
                                 logger.info("강화학습 훈련 시작")
@@ -1489,9 +1501,10 @@ def main():
                                     buffer_save_path=f"experience_buffer_{args.mode}"
                                 )
                                 
-                                # 강화학습 모델 저장
-                                save_model(agent, f'dqn_model_{args.mode}.pth')
-                                logger.info(f"{args.mode} 모드용 강화학습 모델 저장 완료")
+                                # Conservative RL 모델 저장
+                                agent.save_model('defense_policy_agent.pth')
+                                agent.save_buffer('defense_policy_buffer.pkl')
+                                logger.info("Conservative RL 모델 및 버퍼 저장 완료")
                                 
                                 # Experience Replay Buffer 통계 로그
                                 buffer_stats_summary = agent.get_buffer_stats()

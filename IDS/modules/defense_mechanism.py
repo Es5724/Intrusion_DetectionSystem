@@ -34,16 +34,24 @@ try:
     from .threat_alert_system import ThreatAlertSystem
     THREAT_ALERT_SUPPORT = True
 except ImportError:
-    THREAT_ALERT_SUPPORT = False
-    print("위협 알림 시스템을 찾을 수 없습니다. 기본 알림 기능만 사용됩니다.")
+    try:
+        from threat_alert_system import ThreatAlertSystem
+        THREAT_ALERT_SUPPORT = True
+    except ImportError:
+        THREAT_ALERT_SUPPORT = False
+        print("위협 알림 시스템을 찾을 수 없습니다. 기본 알림 기능만 사용됩니다.")
 
 # 포트 스캔 탐지 시스템 추가
 try:
     from .port_scan_detector import PortScanDetector, VulnerabilityScanner, SecurityHardening
     PORT_SCAN_SUPPORT = True
 except ImportError:
-    PORT_SCAN_SUPPORT = False
-    print("포트 스캔 탐지 시스템을 찾을 수 없습니다. 기본 탐지 기능만 사용됩니다.")
+    try:
+        from port_scan_detector import PortScanDetector, VulnerabilityScanner, SecurityHardening
+        PORT_SCAN_SUPPORT = True
+    except ImportError:
+        PORT_SCAN_SUPPORT = False
+        print("포트 스캔 탐지 시스템을 찾을 수 없습니다. 기본 탐지 기능만 사용됩니다.")
 
 # 로그 디렉토리 생성
 log_dir = "logs"
@@ -632,6 +640,12 @@ class BlockMaliciousTraffic:
         if not self._is_valid_ip(ip_address):
             logger.error(f"유효하지 않은 IP 주소: {ip_address}")
             return False
+        
+        # 사설 IP 보호 (차단 금지)
+        if self._is_private_ip(ip_address):
+            logger.warning(f"사설 IP 차단 시도 차단됨: {ip_address} (내부 네트워크 보호)")
+            return False
+        
         if ip_address in self.blocked_ips:
             logger.info(f"이미 차단된 IP 주소: {ip_address}")
             return True
@@ -761,6 +775,24 @@ class BlockMaliciousTraffic:
         try:
             socket.inet_aton(ip_address)
             return True
+        except:
+            return False
+    
+    def _is_private_ip(self, ip_address):
+        """사설 IP 주소 확인 (차단 금지 대상)"""
+        try:
+            # 사설 IP 범위 확인
+            private_ranges = [
+                '127.',          # 루프백
+                '10.',           # Class A 사설 IP
+                '172.16.', '172.17.', '172.18.', '172.19.',  # Class B 사설 IP 시작
+                '172.20.', '172.21.', '172.22.', '172.23.',
+                '172.24.', '172.25.', '172.26.', '172.27.',
+                '172.28.', '172.29.', '172.30.', '172.31.',  # Class B 사설 IP 끝
+                '192.168.'       # Class C 사설 IP
+            ]
+            
+            return any(ip_address.startswith(prefix) for prefix in private_ranges)
         except:
             return False
     
@@ -1091,6 +1123,11 @@ class AutoDefenseActions:
     def _high_threat_response(self, ip, protocol):
         """매우 높은 위협에 대한 대응"""
         try:
+            # 사설 IP 보호 확인
+            if self._is_private_ip(ip):
+                log_with_cache('WARNING', f"사설 IP 영구 차단 시도 차단됨: {ip} (내부 네트워크 보호)")
+                return
+            
             # 1. IP 차단
             self.blocker.block_ip(ip)
             
@@ -1110,9 +1147,32 @@ class AutoDefenseActions:
         except Exception as e:
             log_with_cache('ERROR', f"높은 위협 대응 중 오류: {str(e)}")
     
+    def _is_private_ip(self, ip_address):
+        """사설 IP 주소 확인 (차단 금지 대상)"""
+        try:
+            # 사설 IP 범위 확인
+            private_ranges = [
+                '127.',          # 루프백
+                '10.',           # Class A 사설 IP
+                '172.16.', '172.17.', '172.18.', '172.19.',  # Class B 사설 IP 시작
+                '172.20.', '172.21.', '172.22.', '172.23.',
+                '172.24.', '172.25.', '172.26.', '172.27.',
+                '172.28.', '172.29.', '172.30.', '172.31.',  # Class B 사설 IP 끝
+                '192.168.'       # Class C 사설 IP
+            ]
+            
+            return any(ip_address.startswith(prefix) for prefix in private_ranges)
+        except:
+            return False
+    
     def _medium_threat_response(self, ip, protocol):
         """높은 위협에 대한 대응"""
         try:
+            # 사설 IP 보호 확인
+            if self._is_private_ip(ip):
+                log_with_cache('WARNING', f"사설 IP 임시 차단 시도 차단됨: {ip} (내부 네트워크 보호)")
+                return
+            
             # 1. 임시 IP 차단 (30분)
             self.blocker.block_ip(ip)
             
