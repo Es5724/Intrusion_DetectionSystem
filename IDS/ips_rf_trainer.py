@@ -42,7 +42,18 @@ class IPSRandomForestTrainer:
         datasets = {}
         
         for split in ['train', 'val', 'test']:
-            file_path = os.path.join(self.data_dir, f"cic_ids_2017_{split}.csv")
+            # KISTI 데이터 우선 사용, 없으면 CIC 데이터 사용
+            kisti_path = os.path.join(self.data_dir, f"kisti_quick_{split}.csv")
+            cic_path = os.path.join(self.data_dir, f"cic_ids_2017_{split}.csv")
+            
+            if os.path.exists(kisti_path):
+                file_path = kisti_path
+                print(f"  KISTI 데이터 사용: {split}")
+            elif os.path.exists(cic_path):
+                file_path = cic_path
+                print(f"  CIC 데이터 사용: {split}")
+            else:
+                raise FileNotFoundError(f"데이터 파일을 찾을 수 없습니다: {kisti_path} 또는 {cic_path}")
             
             if not os.path.exists(file_path):
                 raise FileNotFoundError(f"데이터 파일을 찾을 수 없습니다: {file_path}")
@@ -78,14 +89,27 @@ class IPSRandomForestTrainer:
         exclude_columns = ['is_malicious', 'attack_type']
         feature_columns = [col for col in df.columns if col not in exclude_columns]
         
-        X = df[feature_columns]
+        X = df[feature_columns].copy()
         y = df['is_malicious']
+        
+        # 문자열 컬럼 처리 (IP 주소 등)
+        string_columns = X.select_dtypes(include=['object']).columns
+        if len(string_columns) > 0:
+            print(f"문자열 컬럼 발견: {list(string_columns)}")
+            
+            from sklearn.preprocessing import LabelEncoder
+            
+            for col in string_columns:
+                print(f"  {col} 컬럼 인코딩 중...")
+                le = LabelEncoder()
+                X[col] = le.fit_transform(X[col].astype(str))
         
         # 특성명 저장
         self.feature_names = feature_columns
         
         print(f"특성 수: {len(feature_columns)}개")
         print(f"샘플 수: {len(df):,}개")
+        print(f"문자열 컬럼 처리: {len(string_columns)}개")
         
         return X, y
     
@@ -284,15 +308,22 @@ class IPSRandomForestTrainer:
         """모델 및 평가 결과 저장"""
         print("\n=== 모델 저장 ===")
         
-        # 통합 모델 저장 (Calibrated 모델 우선)
-        if self.calibrated_model:
-            model_path = "ips_random_forest_model.pkl"
-            joblib.dump(self.calibrated_model, model_path)
-            print(f"  IPS RF 모델 (Calibrated): {model_path}")
+        # 데이터셋에 따른 모델 저장
+        kisti_train_path = os.path.join(self.data_dir, "kisti_quick_train.csv")
+        if os.path.exists(kisti_train_path):
+            model_path = "kisti_random_forest_model.pkl"
+            dataset_name = "KISTI-IDS-2022"
         else:
             model_path = "ips_random_forest_model.pkl"
+            dataset_name = "CIC-IDS-2017"
+        
+        # 통합 모델 저장 (Calibrated 모델 우선)
+        if self.calibrated_model:
+            joblib.dump(self.calibrated_model, model_path)
+            print(f"  {dataset_name} RF 모델 (Calibrated): {model_path}")
+        else:
             joblib.dump(self.model, model_path)
-            print(f"  IPS RF 모델 (기본): {model_path}")
+            print(f"  {dataset_name} RF 모델 (기본): {model_path}")
         
         # 평가 결과 저장
         results_path = os.path.join(self.data_dir, "rf_evaluation_results.json")

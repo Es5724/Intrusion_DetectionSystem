@@ -128,7 +128,19 @@ class IPSPipelineIntegrator:
     
     def _initialize_rf_detector(self):
         """RF 탐지기 초기화"""
-        model_path = self.config.get("pipeline", {}).get("rf_model_path", "ips_random_forest_model.pkl")
+        # KISTI 모델 우선 사용, 없으면 CIC 모델 사용
+        kisti_model_path = "kisti_random_forest_model.pkl"
+        cic_model_path = "ips_random_forest_model.pkl"
+        
+        if os.path.exists(kisti_model_path):
+            model_path = kisti_model_path
+            logger.info("KISTI-IDS-2022 기반 RF 모델 사용")
+        elif os.path.exists(cic_model_path):
+            model_path = cic_model_path
+            logger.info("CIC-IDS-2017 기반 RF 모델 사용")
+        else:
+            logger.error("RF 모델 파일을 찾을 수 없습니다")
+            return None
         
         try:
             rf_model = joblib.load(model_path)
