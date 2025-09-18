@@ -163,7 +163,7 @@ try:
             'OPEEvaluator': OPEEvaluator,
             # 기존 시스템 (Fallback용)
             'NetworkEnv': NetworkEnv,
-            'DQNAgent': DQNAgent,
+            'DQNAgent': DQNAgent, 
             'train_rl_agent': train_rl_agent,
             'plot_training_results': plot_training_results,
             'save_model': save_model,
@@ -947,7 +947,7 @@ def main():
                     # 큐에서 패킷을 가져와서 통계 업데이트
                     packet_pool = get_packet_pool()  # 패킷 풀 가져오기
                     try:
-                        # 🔥 수정: 두 큐 모두 확인하여 총 큐 크기 계산
+                        #  수정: 두 큐 모두 확인하여 총 큐 크기 계산
                         packet_queue_size = packet_core.packet_queue.qsize()
                         processed_queue_size = getattr(packet_core, 'processed_queue', queue.Queue()).qsize()
                         total_queue_size = packet_queue_size + processed_queue_size
@@ -955,7 +955,7 @@ def main():
                         # 적응형 처리에는 총 큐 크기 사용
                         max_process_count = get_adaptive_process_count(total_queue_size)
                         
-                        # 🔥 개선된 로깅: 큐 상태 세부 정보 포함
+                        #  개선된 로깅: 큐 상태 세부 정보 포함
                         if total_queue_size > 0 and int(elapsed_time) % 10 == 0:
                             logger.info(f"큐 상태 - 패킷큐: {packet_queue_size}, 처리큐: {processed_queue_size}, 총큐: {total_queue_size}, 처리량: {max_process_count}, 리소스: {monitor_system_resources()}")
                         elif total_queue_size == 0 and int(elapsed_time) % 60 == 0:
@@ -965,7 +965,7 @@ def main():
                         
                         processed_count = 0
                         
-                        # 🔥 수정: processed_queue를 우선적으로 처리 (더 많은 패킷이 있음)
+                        #  수정: processed_queue를 우선적으로 처리 (더 많은 패킷이 있음)
                         target_queue = None
                         queue_name = ""
                         
@@ -1007,11 +1007,11 @@ def main():
                                             protocol_stats['ICMP'] += 1
                                         else:
                                             protocol_stats['Other'] += 1
-                                        
+                            
                                         # 방어 모듈 기반 위협 수준 분석
                                         threat_level = analyze_threat_level(pooled_packet if isinstance(original_packet, dict) else original_packet, defense_manager=defense_manager)
                                         threat_stats[threat_level] += 1
-                                        
+                            
                                         if threat_level in ['high', 'medium']:
                                             total_threats_detected += 1
                                             
@@ -1077,7 +1077,7 @@ def main():
                         current_process_count = get_adaptive_process_count(current_total_queue_size)
                         queue_utilization = (current_total_queue_size / 10000) * 100  # 백분율로 변환
                         
-                        # 🔥 추가: 큐 세부 정보 표시
+                        #  추가: 큐 세부 정보 표시
                         queue_detail = f"패킷큐={current_packet_queue_size}, 처리큐={current_processed_queue_size}"
                         
                         # 큐 상태에 따른 색상 결정
@@ -1334,19 +1334,19 @@ def main():
                                         'ttl': array_data[:process_size, 4],
                                         'flags': array_data[:process_size, 5]
                                     })
+                            
+                                # 데이터 타입 최적화
+                                df_chunk = optimize_dtypes(df_chunk)
                                 
-                                    # 데이터 타입 최적화
-                                    df_chunk = optimize_dtypes(df_chunk)
+                                # CSV 파일로 저장 (append 모드)
+                                file_exists = os.path.isfile(filename)
+                                df_chunk.to_csv(filename, mode='a', header=not file_exists, index=False)
                                     
-                                    # CSV 파일로 저장 (append 모드)
-                                    file_exists = os.path.isfile(filename)
-                                    df_chunk.to_csv(filename, mode='a', header=not file_exists, index=False)
-                                    
-                                    # ML 예측 수행 (경량화)
-                                    ml_stats['predictions'] += process_size
-                                    
-                                    # 로그에만 기록 (화면 출력 없음)
-                                    logger.info(f"패킷 {process_size}개가 {filename}에 저장됨")
+                                # ML 예측 수행 (경량화)
+                                ml_stats['predictions'] += process_size
+                                
+                                # 로그에만 기록 (화면 출력 없음)
+                                logger.info(f"패킷 {process_size}개가 {filename}에 저장됨")
                                 
                             except Exception as save_error:
                                 logger.error(f"패킷 저장 중 오류: {save_error}")
@@ -1608,11 +1608,11 @@ def main():
                             if defense_manager.switch_mode(new_mode):
                                 print_colored(f"방어 메커니즘이 {new_mode} 모드로 전환되었습니다", Fore.GREEN)
                             
-                                # 강화학습 환경/에이전트 모드 전환 (재학습 중이라면)
-                                if 'env' in locals() and 'agent' in locals():
-                                    env.set_mode(new_mode)
-                                    agent.switch_mode(new_mode)
-                                    print_colored(f"강화학습 모델이 {new_mode} 모드로 전환되었습니다", Fore.GREEN)
+                            # 강화학습 환경/에이전트 모드 전환 (재학습 중이라면)
+                            if 'env' in locals() and 'agent' in locals():
+                                env.set_mode(new_mode)
+                                agent.switch_mode(new_mode)
+                                print_colored(f"강화학습 모델이 {new_mode} 모드로 전환되었습니다", Fore.GREEN)
                                 
                                 # 전역 모드 설정 업데이트
                                 args.mode = new_mode
