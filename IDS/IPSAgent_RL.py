@@ -129,21 +129,18 @@ try:
             use_optimized_capture = True
             logger.info("최적화된 패킷 캡처 모듈 사용")
         except ImportError:
-            from packet_capture import PacketCapture, PacketCaptureCore, preprocess_packet_data
+            from packet_capture import PacketCapture, PacketCaptureCore
             use_optimized_capture = False
             logger.info("기본 패킷 캡처 모듈 사용")
     
-    # preprocess_packet_data는 항상 packet_capture에서 가져옴
-    if use_optimized_capture:
-        from packet_capture import preprocess_packet_data
+    # 최적화된 캡처 사용 시 추가 임포트 없음
     
     # 지연 로딩 시스템 초기화
     from lazy_loading import get_lazy_importer, get_lazy_model_loader
     
     # 기본 모듈들 (즉시 로딩 필요)
-    from utils import is_colab, is_admin, run_as_admin, clear_screen, wait_for_enter, syn_scan
+    from utils import is_colab, is_admin, run_as_admin, clear_screen, wait_for_enter
     from defense_mechanism import create_defense_manager, register_to_packet_capture
-    from threat_alert_system import ThreatAlertSystem  # 위협 알림 시스템 추가
     from memory_optimization import get_packet_pool, get_stats_pool, get_batch_processor, get_dataframe_pool  # 객체 풀링 추가
     
     # 지연 로딩 모듈들 등록
@@ -174,10 +171,9 @@ try:
     
     #  머신러닝 모델 모듈들 지연 로딩 등록 (15-25MB 절약)
     def _import_ml_models():
-        from ml_models import train_random_forest, add_rf_predictions
+        from ml_models import train_random_forest
         return {
-            'train_random_forest': train_random_forest,
-            'add_rf_predictions': add_rf_predictions
+            'train_random_forest': train_random_forest
         }
     
     lazy_importer.register_module('ml_models', _import_ml_models)
@@ -241,7 +237,11 @@ def print_colored(text, color=Fore.WHITE, style=Style.NORMAL, end='\n'):
         print(text, end=end)
 
 def print_header():
-    """메인 헤더 출력"""
+    """
+    메인 헤더 출력
+    
+    IPS 시스템의 메인 헤더를 ASCII 아트와 함께 출력합니다.
+    """
     clear_screen()
     print_colored("=" * 80, Fore.CYAN, Style.BRIGHT)
     print_colored("""
@@ -507,8 +507,13 @@ def monitor_system_resources():
     """
     시스템 리소스 모니터링 및 상태 반환
     
+    CPU와 메모리 사용량을 체크하여 시스템 부하 상태를 판단합니다.
+    
     Returns:
-        str: 'reduce_processing', 'can_increase', 'maintain'
+        str: 시스템 리소스 상태
+            - 'reduce_processing': CPU > 80% 또는 메모리 > 150MB (부하)
+            - 'can_increase': CPU < 50% 그리고 메모리 < 120MB (여유)
+            - 'maintain': 그 외 정상 범위 (보통)
     """
     try:
         import psutil
@@ -589,14 +594,20 @@ def cleanup_memory_completely():
 
 def get_adaptive_process_count(queue_size, max_queue_size=10000):
     """
-    큐 크기와 시스템 리소스에 따른 적응형 처리 개수 계산 (절충안 버전)
+    큐 크기와 시스템 리소스에 따른 적응형 처리 개수 계산
+    
+    큐 사용률과 시스템 리소스 상태를 고려하여 한 번에 처리할 패킷 개수를 동적으로 조절합니다.
     
     Args:
-        queue_size: 현재 큐 크기
-        max_queue_size: 최대 큐 크기 (기본값: 10000)
+        queue_size (int): 현재 큐 크기
+        max_queue_size (int): 최대 큐 크기 (기본값: 10000)
     
     Returns:
-        int: 처리할 패킷 개수
+        int: 처리할 패킷 개수 (50~2000개)
+            - 큐 80% 이상: 최대 1500개 (과부하 상황)
+            - 큐 50~80%: 최대 800개 (경고 상황)
+            - 큐 50% 미만: 150개 (정상 상황)
+            - 리소스 상태에 따라 ±50% 조정
     """
     if queue_size <= 0:
         return 0
@@ -638,14 +649,20 @@ def get_adaptive_process_count(queue_size, max_queue_size=10000):
         return int(base_process)
 
 def main():
-    # 전역 통계 변수들
+    """
+    IPS 시스템 메인 함수
+    
+    전체 시스템을 초기화하고 패킷 캡처, 위협 분석, 방어 메커니즘을 실행합니다.
+    실시간 대시보드와 사용자 명령어 인터페이스를 제공합니다.
+    """
+    # ========== 전역 변수 초기화 ==========
     global threat_stats, defense_stats, ml_stats, start_time, hybrid_log_manager
     threat_stats = {'high': 0, 'medium': 0, 'low': 0, 'safe': 0}
     defense_stats = {'blocked': 0, 'monitored': 0, 'alerts': 0}
     ml_stats = {'predictions': 0, 'accuracy': 0.0, 'model_updates': 0}
     start_time = time.time()
     
-    # 하이브리드 로그 관리자 초기화
+    # ========== 로그 시스템 초기화 ==========
     try:
         from modules.hybrid_log_manager import HybridLogManager
         hybrid_log_manager = HybridLogManager()
@@ -679,10 +696,10 @@ def main():
             print_colored(f"❌ 웹 서버 시작 실패: {e}", Fore.RED)
     
     try:
-        # 시작 애니메이션
+        # ========== 시작 애니메이션 및 UI 초기화 ==========
         show_startup_animation()
         
-        # 모드 선택 (CLI 인수 또는 메뉴)
+        # ========== 운영 모드 선택 ==========
         if args.mode is None and not args.no_menu:
             # 명령줄에서 모드를 지정하지 않았고, 메뉴 비활성화도 아닌 경우
             # 사용자에게 모드 선택 메뉴 표시
@@ -715,7 +732,7 @@ def main():
             if os.path.exists(preprocessed_data_path):
                 print("\n데이터 파일을 찾았습니다. 머신러닝 모델 학습을 시작합니다...")
                 
-                # 🔥 지연 로딩: 필요한 시점에 머신러닝 모듈 로딩
+                #  지연 로딩: 필요한 시점에 머신러닝 모듈 로딩
                 print("머신러닝 모듈 로딩 중...")
                 ml_modules = lazy_importer.get_module('ml_models')
                 train_random_forest = ml_modules['train_random_forest']
@@ -723,7 +740,7 @@ def main():
                 # 랜덤 포레스트 모델 학습
                 model, accuracy, conf_matrix = train_random_forest(preprocessed_data_path)
                 
-                # 🔥 지연 로딩: 새로운 Conservative RL 시스템 로딩
+                #  지연 로딩: 새로운 Conservative RL 시스템 로딩
                 print("Conservative RL 시스템 로딩 중...")
                 rl_modules = lazy_importer.get_module('conservative_rl')
                 ConservativeRLAgent = rl_modules['ConservativeRLAgent']
@@ -773,12 +790,10 @@ def main():
                 print("\n데이터 파일을 찾을 수 없습니다.")
             return
             
-        # 여기서부터 로컬 환경 코드
-        
-        # 시작 로그
+        # ========== 로컬 환경 전용 코드 ==========
         logger.info("로컬 환경에서 IPS 시스템 실행 시작")
         
-        # 관리자 권한 확인 및 필요시 재실행 (Windows 환경에서만)
+        # ========== 관리자 권한 확인 (Windows) ==========
         if os.name == 'nt' and not args.debug:  # 디버그 모드에서는 관리자 권한 체크 생략
             logger.info("윈도우 환경 감지: 관리자 권한 확인 중...")
             if not is_admin():
@@ -790,19 +805,17 @@ def main():
             logger.info("디버그 모드: 관리자 권한 체크 우회")
             logger.info("디버그 모드에서 관리자 권한 체크 우회됨")
         
-        # 화면 초기화
+        # ========== 패킷 캡처 시스템 초기화 ==========
         clear_screen()
-        
-        # 패킷 캡처 코어 초기화
         logger.info("패킷 캡처 코어 초기화 중...")
+        
         if use_optimized_capture:
-            # 최적화된 멀티프로세싱 캡처 사용
             packet_core = OptimizedPacketCapture()
             logger.info(f"멀티프로세싱 패킷 캡처 활성화 (워커: {packet_core.num_workers}개)")
         else:
             packet_core = PacketCaptureCore()
         
-        # 방어 메커니즘 초기화 (선택한 모드 적용)
+        # ========== 방어 메커니즘 초기화 ==========
         logger.info(f"{args.mode} 모드로 방어 메커니즘 초기화 중...")
         defense_manager = create_defense_manager('defense_config.json', mode=args.mode)
         
@@ -812,7 +825,8 @@ def main():
         else:
             logger.error("방어 메커니즘 등록 실패")
         
-        # Windows 환경에서만 Npcap 설치 확인
+        # ========== 네트워크 인터페이스 설정 ==========
+        # Windows에서 Npcap 확인
         if os.name == 'nt':
             if not packet_core.check_npcap():
                 print("Npcap이 설치되어 있지 않습니다. 패킷 캡처 기능을 사용할 수 없습니다.")
@@ -855,14 +869,14 @@ def main():
         
         logger.info(f"선택된 인터페이스: {selected_interface}")
         
-        # 백그라운드에서 패킷 캡처 시작
+        # ========== 패킷 캡처 시작 ==========
         print_colored(f"\n🔗 {selected_interface}에서 패킷 캡처를 시작합니다...", Fore.CYAN)
         if packet_core.start_capture(selected_interface, max_packets=args.max_packets):
             print_colored("✅ 패킷 캡처가 백그라운드에서 시작되었습니다.", Fore.GREEN)
             print_colored("🎛️  실시간 대시보드 모드로 전환합니다.", Fore.YELLOW)
             print()
             
-            # 강화된 실시간 대시보드 표시 스레드
+            # ========== 실시간 대시보드 스레드 ==========
             def display_realtime_stats():
                 global threat_stats, defense_stats, ml_stats
                 last_packet_count = 0
@@ -1219,20 +1233,7 @@ def main():
                 chunk_size = 50  # 메모리 절약을 위해 200에서 50으로 감소
                 max_buffer_size = 500  # 최대 버퍼 크기도 감소
                 
-                # 필요한 컬럼만 선택하는 함수
-                def select_necessary_columns(df):
-                    necessary_columns = ['source', 'destination', 'protocol', 'length', 'ttl', 'flags']
-                    return df[necessary_columns] if all(col in df.columns for col in necessary_columns) else df
-                
-                # 데이터 타입 최적화 함수
-                def optimize_dtypes(df):
-                    if 'length' in df.columns:
-                        df['length'] = df['length'].astype('int32')
-                    if 'ttl' in df.columns:
-                        df['ttl'] = df['ttl'].astype('uint8')
-                    return df
-                
-                # 패킷 변환 함수 - 문자열이나 다른 타입을 딕셔너리로 변환
+                # 패킷 변환 함수 - 문자열이나 다른 타입을 딕셔너리로 변환 (인라인)
                 def convert_packet_to_dict(packet):
                     if isinstance(packet, dict):
                         return packet
@@ -1335,18 +1336,21 @@ def main():
                                         'flags': array_data[:process_size, 5]
                                     })
                             
-                                # 데이터 타입 최적화
-                                df_chunk = optimize_dtypes(df_chunk)
-                                
-                                # CSV 파일로 저장 (append 모드)
-                                file_exists = os.path.isfile(filename)
-                                df_chunk.to_csv(filename, mode='a', header=not file_exists, index=False)
+                                    # 데이터 타입 최적화 (인라인)
+                                    if 'length' in df_chunk.columns:
+                                        df_chunk['length'] = df_chunk['length'].astype('int32')
+                                    if 'ttl' in df_chunk.columns:
+                                        df_chunk['ttl'] = df_chunk['ttl'].astype('uint8')
+                            
+                                    # CSV 파일로 저장 (append 모드)
+                                    file_exists = os.path.isfile(filename)
+                                    df_chunk.to_csv(filename, mode='a', header=not file_exists, index=False)
                                     
-                                # ML 예측 수행 (경량화)
-                                ml_stats['predictions'] += process_size
-                                
-                                # 로그에만 기록 (화면 출력 없음)
-                                logger.info(f"패킷 {process_size}개가 {filename}에 저장됨")
+                                    # ML 예측 수행 (경량화)
+                                    ml_stats['predictions'] += process_size
+                                    
+                                    # 로그에만 기록 (화면 출력 없음)
+                                    logger.info(f"패킷 {process_size}개가 {filename}에 저장됨")
                                 
                             except Exception as save_error:
                                 logger.error(f"패킷 저장 중 오류: {save_error}")
@@ -1559,17 +1563,17 @@ def main():
                     
                     # 시스템 상태
                     status_info = [
-                        f"⚡ 운영 모드: {args.mode.upper()}",
-                        f"📊 캡처된 패킷: {packet_core.get_packet_count():,}개",
-                        f"🔄 캡처 상태: {'실행 중' if packet_core.is_running else '중지됨'}",
-                        f"⏰ 실행 시간: {datetime.now().strftime('%H:%M:%S')}"
+                        f" 운영 모드: {args.mode.upper()}",
+                        f" 캡처된 패킷: {packet_core.get_packet_count():,}개",
+                        f" 캡처 상태: {'실행 중' if packet_core.is_running else '중지됨'}",
+                        f" 실행 시간: {datetime.now().strftime('%H:%M:%S')}"
                     ]
                     
                     if 'defense_manager' in locals():
                         defense_status = defense_manager.get_status()
                         status_info.extend([
-                            f"🛡️ 방어 메커니즘: {'활성화' if defense_status['is_active'] else '비활성화'}",
-                            f"🚫 차단된 IP: {len(defense_status.get('blocked_ips', []))}개"
+                            f" 방어 메커니즘: {'활성화' if defense_status['is_active'] else '비활성화'}",
+                            f" 차단된 IP: {len(defense_status.get('blocked_ips', []))}개"
                         ])
                     
                     print_status_box("시스템 상태", status_info, Fore.GREEN)
@@ -1608,11 +1612,11 @@ def main():
                             if defense_manager.switch_mode(new_mode):
                                 print_colored(f"방어 메커니즘이 {new_mode} 모드로 전환되었습니다", Fore.GREEN)
                             
-                            # 강화학습 환경/에이전트 모드 전환 (재학습 중이라면)
-                            if 'env' in locals() and 'agent' in locals():
-                                env.set_mode(new_mode)
-                                agent.switch_mode(new_mode)
-                                print_colored(f"강화학습 모델이 {new_mode} 모드로 전환되었습니다", Fore.GREEN)
+                                # 강화학습 환경/에이전트 모드 전환 (재학습 중이라면)
+                                if 'env' in locals() and 'agent' in locals():
+                                    env.set_mode(new_mode)
+                                    agent.switch_mode(new_mode)
+                                    print_colored(f"강화학습 모델이 {new_mode} 모드로 전환되었습니다", Fore.GREEN)
                                 
                                 # 전역 모드 설정 업데이트
                                 args.mode = new_mode
@@ -1659,27 +1663,27 @@ def main():
                             model_stats = lazy_model_loader.get_stats()
                             
                             ml_info = [
-                                "🤖 강화학습 에이전트: 지연 로딩",
-                                "🌲 랜덤 포레스트: 지연 로딩",
-                                f"💾 Experience Buffer: 사용 중",
-                                f"⚙️ 운영 모드: {args.mode.upper()}",
+                                " 강화학습 에이전트: 지연 로딩",
+                                " 랜덤 포레스트: 지연 로딩",
+                                f" Experience Buffer: 사용 중",
+                                f" 운영 모드: {args.mode.upper()}",
                                 "",
-                                f"📊 모델 정확도: {accuracy_display}",
-                                f"🔢 총 예측 수행: {ml_stats['predictions']:,}회",
-                                f"⚡ 초당 예측: {predictions_per_sec:.1f}회/s",
-                                f"🔄 모델 업데이트: {ml_stats['model_updates']:,}회",
+                                f" 모델 정확도: {accuracy_display}",
+                                f" 총 예측 수행: {ml_stats['predictions']:,}회",
+                                f" 초당 예측: {predictions_per_sec:.1f}회/s",
+                                f" 모델 업데이트: {ml_stats['model_updates']:,}회",
                                 "",
-                                "🔥 지연 로딩 상태:",
+                                " 지연 로딩 상태:",
                                 f"  - 등록된 모듈: {lazy_stats['total_modules']}개",
                                 f"  - 로딩된 모듈: {lazy_stats['loaded_modules']}개",
                                 f"  - 등록된 모델: {model_stats['total_models']}개",
                                 f"  - 로딩된 모델: {model_stats['loaded_models']}개",
                                 "",
-                                "📦 패킷 객체 풀링:",
+                                " 패킷 객체 풀링:",
                                 f"  - 풀 크기: {packet_pool_stats['pool_size']}개",
                                 f"  - 재사용률: {packet_pool_stats['reuse_rate']:.1f}%",
                                 "",
-                                "🔢 DataFrame 풀링:",
+                                " DataFrame 풀링:",
                                 f"  - 배열 재사용률: {dataframe_pool_stats['reuse_rate']:.1f}%",
                                 f"  - 생성된 배열: {dataframe_pool_stats['total_created']}개",
                                 f"  - 재사용 횟수: {dataframe_pool_stats['total_reused']}회"
