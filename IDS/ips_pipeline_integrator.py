@@ -30,6 +30,19 @@ from modules.defense_mechanism import DefenseManager, create_defense_manager
 from modules.experience_replay_buffer import ExperienceReplayBuffer, IDSExperienceReplayBuffer
 import modules.utils as utils
 
+# 새로운 통합 모듈들
+try:
+    from modules.rl_state_extractor import get_state_extractor
+    from modules.realtime_reward_calculator import get_reward_calculator
+    from modules.online_rl_trainer import get_online_trainer, get_rl_integrator
+    from modules.rl_defense_wrapper import create_rl_defense_system
+    from modules.vulnerability_auto_scanner import get_auto_scanner
+    from modules.vulnerability_priority_analyzer import get_priority_analyzer
+    NEW_MODULES_AVAILABLE = True
+except ImportError as e:
+    logger.warning(f"새로운 통합 모듈 로드 실패: {e}")
+    NEW_MODULES_AVAILABLE = False
+
 # 로깅 설정
 logger = logging.getLogger('IPSPipeline')
 
@@ -96,6 +109,10 @@ class IPSPipelineIntegrator:
         # 실시간 로그 버퍼 (OPE용)
         self.defense_logs = []
         self.max_log_size = 10000
+        
+        # 새로운 통합 시스템 초기화
+        if NEW_MODULES_AVAILABLE:
+            self._initialize_integrated_systems()
         
         logger.info("IPS 파이프라인 통합 시스템 초기화 완료")
     
@@ -619,6 +636,100 @@ class IPSPipelineIntegrator:
             json.dump(state, f, indent=2)
         
         logger.info(f"파이프라인 상태 저장: {filename}")
+    
+    def _initialize_integrated_systems(self):
+        """새로운 통합 시스템 초기화"""
+        try:
+            logger.info("통합 시스템 초기화 시작...")
+            
+            # 상태 추출기
+            self.state_extractor = get_state_extractor()
+            logger.info("✓ RL 상태 추출기 로드됨")
+            
+            # 보상 계산기
+            self.reward_calculator = get_reward_calculator()
+            logger.info("✓ 실시간 보상 계산기 로드됨")
+            
+            # 온라인 RL 학습기
+            if hasattr(self, 'rl_agent') and self.rl_agent is not None:
+                self.online_trainer = get_online_trainer(
+                    self.rl_agent,
+                    learning_interval=10,
+                    min_experiences=32,
+                    batch_size=32
+                )
+                logger.info("✓ 온라인 RL 학습기 로드됨")
+            
+                # RL 통합기
+                self.rl_integrator = get_rl_integrator(
+                    self.rl_agent,
+                    self.state_extractor,
+                    self.reward_calculator,
+                    self.online_trainer
+                )
+                logger.info("✓ 실시간 RL 통합기 로드됨")
+            
+            # 취약점 스캐너 (선택사항)
+            try:
+                self.vuln_scanner = get_auto_scanner(network_range="192.168.0.0/24")
+                logger.info("✓ 자동 취약점 스캐너 로드됨")
+            except Exception as e:
+                logger.warning(f"취약점 스캐너 로드 실패: {e}")
+                self.vuln_scanner = None
+            
+            # 우선순위 분석기
+            try:
+                self.priority_analyzer = get_priority_analyzer()
+                logger.info("✓ AI 우선순위 분석기 로드됨")
+            except Exception as e:
+                logger.warning(f"우선순위 분석기 로드 실패: {e}")
+                self.priority_analyzer = None
+            
+            # 통합 플래그
+            self.integrated_mode = True
+            
+            logger.info("✅ 통합 시스템 초기화 완료!")
+            
+        except Exception as e:
+            logger.error(f"통합 시스템 초기화 실패: {e}")
+            self.integrated_mode = False
+    
+    def start_integrated_services(self):
+        """통합 서비스 시작 (백그라운드 스레드)"""
+        if not hasattr(self, 'integrated_mode') or not self.integrated_mode:
+            logger.warning("통합 모드가 비활성화되어 있습니다")
+            return False
+        
+        try:
+            # 온라인 학습 시작
+            if hasattr(self, 'online_trainer') and self.online_trainer:
+                self.online_trainer.start()
+                logger.info("온라인 RL 학습 스레드 시작됨")
+            
+            # 취약점 스캐너 시작
+            if hasattr(self, 'vuln_scanner') and self.vuln_scanner:
+                self.vuln_scanner.start()
+                logger.info("자동 취약점 스캐너 시작됨")
+            
+            return True
+            
+        except Exception as e:
+            logger.error(f"통합 서비스 시작 실패: {e}")
+            return False
+    
+    def stop_integrated_services(self):
+        """통합 서비스 중지"""
+        try:
+            if hasattr(self, 'online_trainer') and self.online_trainer:
+                self.online_trainer.stop()
+                logger.info("온라인 RL 학습 스레드 중지됨")
+            
+            if hasattr(self, 'vuln_scanner') and self.vuln_scanner:
+                self.vuln_scanner.stop()
+                logger.info("자동 취약점 스캐너 중지됨")
+            
+        except Exception as e:
+            logger.error(f"통합 서비스 중지 오류: {e}")
 
 def test_ips_pipeline():
     """IPS 파이프라인 통합 테스트"""

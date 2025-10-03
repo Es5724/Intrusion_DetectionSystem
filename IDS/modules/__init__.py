@@ -113,25 +113,73 @@ try:
     from .ope_evaluator import OPEEvaluator
 except ImportError:
     print("Conservative RL 모듈을 불러올 수 없습니다.")
+
 # 모델 최적화
 try:
     from .model_optimization import ModelOptimizer
 except ImportError:
     print("model_optimization 모듈을 불러올 수 없습니다.")
 
+# 새로운 통합 모듈들 (반응형 AI 시스템)
+try:
+    from .rl_state_extractor import RLStateExtractor, get_state_extractor
+    from .realtime_reward_calculator import RealtimeRewardCalculator, get_reward_calculator
+    from .online_rl_trainer import OnlineRLTrainer, RealTimeRLIntegrator, get_online_trainer, get_rl_integrator
+    from .rl_defense_wrapper import RLDefenseWrapper, create_rl_defense_system
+    from .vulnerability_auto_scanner import VulnerabilityAutoScanner, get_auto_scanner
+    from .vulnerability_priority_analyzer import VulnerabilityPriorityAnalyzer, get_priority_analyzer, CVEDatabase
+    INTEGRATED_MODULES_AVAILABLE = True
+except ImportError as e:
+    print(f"통합 모듈을 불러올 수 없습니다: {e}")
+    INTEGRATED_MODULES_AVAILABLE = False
+
 __all__ = [
+    # 패킷 캡처
     'PacketCapture', 'PacketCaptureCore', 'preprocess_packet_data',
     'OptimizedPacketCapture',
+    
+    # 머신러닝
     'train_random_forest', 'add_rf_predictions',
+    
+    # 강화학습 (기존)
     'NetworkEnv', 'DQNAgent', 'train_rl_agent', 'plot_training_results', 
     'save_model', 'load_model',
+    
+    # Conservative RL 시스템
+    'ConservativeRLAgent', 'DefensePolicyEnv', 'OPEEvaluator',
+    
+    # Experience Replay
     'ExperienceReplayBuffer', 'PrioritizedExperienceReplayBuffer', 'IDSExperienceReplayBuffer',
+    
+    # 유틸리티
     'is_colab', 'is_admin', 'run_as_admin', 'clear_screen', 'wait_for_enter', 'syn_scan',
+    
+    # 방어 메커니즘
     'DefenseManager', 'create_defense_manager', 'register_to_packet_capture',
+    
+    # 위협 알림
     'ThreatAlertSystem',
+    
+    # 포트 스캔 및 취약점
     'PortScanDetector', 'VulnerabilityScanner', 'SecurityHardening',
-    'ModelOptimizer', 'ConservativeRLAgent', 'DefensePolicyEnv', 'OPEEvaluator'
-] 
+    
+    # 모델 최적화
+    'ModelOptimizer',
+]
+
+# 새로운 통합 모듈 추가 (조건부)
+if INTEGRATED_MODULES_AVAILABLE:
+    __all__.extend([
+        # RL 통합 시스템
+        'RLStateExtractor', 'get_state_extractor',
+        'RealtimeRewardCalculator', 'get_reward_calculator',
+        'OnlineRLTrainer', 'RealTimeRLIntegrator', 'get_online_trainer', 'get_rl_integrator',
+        'RLDefenseWrapper', 'create_rl_defense_system',
+        
+        # 취약점 자동진단
+        'VulnerabilityAutoScanner', 'get_auto_scanner',
+        'VulnerabilityPriorityAnalyzer', 'get_priority_analyzer', 'CVEDatabase'
+    ]) 
 
 # 수리카타 지원이 있는 경우에만 export
 if SURICATA_SUPPORT:

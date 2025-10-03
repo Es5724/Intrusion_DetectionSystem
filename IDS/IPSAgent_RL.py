@@ -213,7 +213,31 @@ try:
     lazy_model_loader.register_model('random_forest', 'kisti_random_forest_model.pkl', _load_random_forest)
     lazy_model_loader.register_model('conservative_rl', 'defense_policy_agent.pth', _load_conservative_rl_model)
     
-    logger.info("지연 로딩 시스템 초기화 완료 - 메모리 절약 예상: 125-195MB")
+    #  새로운 통합 모듈 지연 로딩 등록 (20-30MB 추가 절약)
+    def _import_integrated_modules():
+        try:
+            from rl_state_extractor import get_state_extractor
+            from realtime_reward_calculator import get_reward_calculator
+            from online_rl_trainer import get_online_trainer, get_rl_integrator
+            from rl_defense_wrapper import create_rl_defense_system
+            from vulnerability_auto_scanner import get_auto_scanner
+            from vulnerability_priority_analyzer import get_priority_analyzer
+            return {
+                'get_state_extractor': get_state_extractor,
+                'get_reward_calculator': get_reward_calculator,
+                'get_online_trainer': get_online_trainer,
+                'get_rl_integrator': get_rl_integrator,
+                'create_rl_defense_system': create_rl_defense_system,
+                'get_auto_scanner': get_auto_scanner,
+                'get_priority_analyzer': get_priority_analyzer
+            }
+        except ImportError as e:
+            logger.warning(f"통합 모듈 임포트 실패: {e}")
+            return {}
+    
+    lazy_importer.register_module('integrated_modules', _import_integrated_modules)
+    
+    logger.info("지연 로딩 시스템 초기화 완료 - 메모리 절약 예상: 145-225MB")
     
     # scapy의 전역 verbose 설정 비활성화
     try:
@@ -541,6 +565,26 @@ def cleanup_memory_completely():
         print(" 메모리 완전 정리 시작...")
         initial_memory = psutil.Process().memory_info().rss / (1024 * 1024)
         
+        # 통합 서비스 정리 (새로운 모듈들)
+        global online_trainer, vuln_scanner
+        if 'online_trainer' in globals() and online_trainer is not None:
+            try:
+                print(" 온라인 RL 학습 스레드 정리 중...")
+                online_trainer.stop()
+                online_trainer = None
+                print(" [OK] 온라인 RL 학습 스레드 정리 완료")
+            except Exception as e:
+                logger.error(f"온라인 학습 스레드 정리 실패: {e}")
+        
+        if 'vuln_scanner' in globals() and vuln_scanner is not None:
+            try:
+                print(" 자동 취약점 스캐너 정리 중...")
+                vuln_scanner.stop()
+                vuln_scanner = None
+                print(" [OK] 자동 취약점 스캐너 정리 완료")
+            except Exception as e:
+                logger.error(f"취약점 스캐너 정리 실패: {e}")
+        
         # 하이브리드 로그 매니저 정리
         global hybrid_log_manager, web_api_server
         if 'hybrid_log_manager' in globals() and hybrid_log_manager is not None:
@@ -814,6 +858,28 @@ def main():
             logger.info(f"멀티프로세싱 패킷 캡처 활성화 (워커: {packet_core.num_workers}개)")
         else:
             packet_core = PacketCaptureCore()
+        
+        # ========== 반응형 AI 통합 시스템 초기화 ==========
+        integrated_modules = None
+        state_extractor = None
+        reward_calculator = None
+        online_trainer = None
+        rl_integrator = None
+        vuln_scanner = None
+        
+        try:
+            logger.info("반응형 AI 통합 모듈 로딩 중...")
+            integrated_modules = lazy_importer.get_module('integrated_modules')
+            
+            if integrated_modules:
+                # 상태 추출기 및 보상 계산기 초기화
+                state_extractor = integrated_modules['get_state_extractor']()
+                reward_calculator = integrated_modules['get_reward_calculator']()
+                logger.info("✓ RL 상태 추출기 및 보상 계산기 로드됨")
+                
+                print_colored("🤖 반응형 AI 시스템 활성화됨", Fore.GREEN)
+        except Exception as e:
+            logger.warning(f"통합 모듈 로딩 실패 (기본 모드로 계속): {e}")
         
         # ========== 방어 메커니즘 초기화 ==========
         logger.info(f"{args.mode} 모드로 방어 메커니즘 초기화 중...")
@@ -1539,6 +1605,65 @@ def main():
             train_thread = threading.Thread(target=monitor_and_train)
             train_thread.daemon = True
             train_thread.start()
+            
+            # ========== 6번째 스레드: 통합 서비스 시작 (반응형 AI) ==========
+            if integrated_modules and state_extractor and reward_calculator:
+                try:
+                    # Conservative RL 에이전트 및 환경 초기화 (필요시)
+                    rl_modules = lazy_importer.get_module('conservative_rl')
+                    ConservativeRLAgent = rl_modules['ConservativeRLAgent']
+                    DefensePolicyEnv = rl_modules['DefensePolicyEnv']
+                    
+                    env = DefensePolicyEnv()
+                    agent = ConservativeRLAgent(
+                        state_size=10,
+                        action_size=6,
+                        mode="standard",
+                        use_prioritized_replay=True,
+                        buffer_capacity=10000
+                    )
+                    
+                    # 기존 모델 로드 시도
+                    if os.path.exists('defense_policy_agent.pth'):
+                        agent.load_model('defense_policy_agent.pth')
+                        logger.info("기존 Conservative RL 모델 로드 완료")
+                    
+                    # 온라인 학습기 초기화
+                    online_trainer = integrated_modules['get_online_trainer'](
+                        agent,
+                        learning_interval=10,
+                        min_experiences=32,
+                        batch_size=32
+                    )
+                    
+                    # RL 통합기 초기화
+                    rl_integrator = integrated_modules['get_rl_integrator'](
+                        agent,
+                        state_extractor,
+                        reward_calculator,
+                        online_trainer
+                    )
+                    
+                    # 온라인 학습 시작
+                    online_trainer.start()
+                    print_colored("🧠 온라인 RL 학습 스레드 시작됨 (10초 주기)", Fore.MAGENTA)
+                    logger.info("온라인 RL 학습 스레드 시작됨")
+                    
+                    # 자동 취약점 스캐너 시작 (선택사항)
+                    try:
+                        vuln_scanner = integrated_modules['get_auto_scanner'](
+                            network_range="192.168.0.0/24"
+                        )
+                        vuln_scanner.start()
+                        print_colored("🔍 자동 취약점 스캐너 시작됨 (1시간 주기)", Fore.CYAN)
+                        logger.info("자동 취약점 스캐너 시작됨")
+                    except Exception as e:
+                        logger.warning(f"자동 취약점 스캐너 시작 실패: {e}")
+                    
+                except Exception as e:
+                    logger.error(f"통합 서비스 시작 실패: {e}")
+            else:
+                logger.info("통합 모듈 비활성화 - 기본 모드로 실행")
             
             # CLI 전용 모드 - GUI 컴포넌트 제거됨
             logger.info("CLI 전용 모드로 모든 백그라운드 스레드 준비 완료")
