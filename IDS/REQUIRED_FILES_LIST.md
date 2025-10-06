@@ -1,11 +1,11 @@
-# 📁 IDS 시스템 배포를 위한 필수 파일 목록
+#  IDS 시스템 배포를 위한 필수 파일 목록
 
-## 🚀 **install_and_run_fixed.bat 실행을 위한 필수 파일**
+##  **install_and_run_fixed.bat 실행을 위한 필수 파일**
 
-### ✅ **핵심 필수 파일 (반드시 같은 폴더에 있어야 함)**
+###  **핵심 필수 파일 (반드시 같은 폴더에 있어야 함)**
 
 ```
-📦 IDS_System_Folder/
+ IDS_System_Folder/
 ├── 📄 install_and_run_fixed.bat         [메인 설치 스크립트]
 ├── 📄 requirements_safe.txt              [패키지 목록 - 우선순위]
 ├── 📄 requirements_exe.txt               [패키지 목록 - 대안]
@@ -28,7 +28,7 @@
 
 ---
 
-## 🔍 **파일별 역할 설명**
+##  **파일별 역할 설명**
 
 ### **1. 설치 스크립트**
 - `install_and_run_fixed.bat` - 메인 설치 및 빌드 스크립트
@@ -55,7 +55,7 @@
 
 ---
 
-## ⚡ **최소 배포 패키지**
+##  **최소 배포 패키지**
 
 ### **절대 필수 (7개 파일)**
 ```
@@ -70,9 +70,9 @@
 
 ### **권장 추가 파일**
 ```
-📋 TROUBLESHOOTING_GUIDE.md    - 문제 해결 가이드
-📋 requirements_exe.txt         - 대안 패키지 목록
-📋 README_FIRST.txt            - 사용법 안내
+ TROUBLESHOOTING_GUIDE.md    - 문제 해결 가이드
+ requirements_exe.txt         - 대안 패키지 목록
+ README_FIRST.txt            - 사용법 안내
 ```
 
 ---
@@ -154,4 +154,4 @@ create_package_v2.bat
 
 ---
 
-**✨ 요약: install_and_run_fixed.bat + requirements_safe.txt + IDS_Training_Data_Generator.py + scripts/ + modules/ = 최소 실행 가능!** 
+** 요약: install_and_run_fixed.bat + requirements_safe.txt + IDS_Training_Data_Generator.py + scripts/ + modules/ = 최소 실행 가능!** 

@@ -1,0 +1,21 @@
+
+%YAML 1.1
+---
+# 기본 수리카타 설정
+default-log-dir: .
+outputs:
+  - eve-log:
+      enabled: yes
+      filetype: regular
+      filename: eve.json
+      types:
+        - alert
+        - http
+        - dns
+        - tls
+        - flow
+
+# 기본 규칙 설정
+default-rule-path: rules
+rule-files:
+  - suricata.rules

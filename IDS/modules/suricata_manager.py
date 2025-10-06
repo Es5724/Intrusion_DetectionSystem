@@ -100,6 +100,10 @@ class SuricataManager:
         logger.warning("수리카타 실행 파일을 찾을 수 없습니다. 수동으로 경로를 지정해주세요.")
         return "suricata"  # 기본값, PATH에 있다고 가정
     
+    def is_available(self):
+        """수리카타 사용 가능 여부 확인 (에러 없이)"""
+        return self._check_suricata_installed()
+    
     def initialize(self):
         """수리카타 초기화 및 설정 확인"""
         if not self._check_suricata_installed():
@@ -119,9 +123,19 @@ class SuricataManager:
     def _check_suricata_installed(self):
         """수리카타 설치 여부 확인"""
         try:
+            # Windows에서는 실행 파일 존재만 확인
+            if os.name == 'nt' and os.path.exists(self.suricata_path):
+                logger.info(f"수리카타 실행 파일 발견: {self.suricata_path}")
+                return True
+            
+            # Linux/Unix에서는 --version 실행 테스트
             result = subprocess.run([self.suricata_path, "--version"], 
-                                  capture_output=True, text=True, check=False)
+                                  capture_output=True, text=True, 
+                                  check=False, timeout=5)
             return result.returncode == 0
+        except subprocess.TimeoutExpired:
+            logger.warning("수리카타 버전 확인 타임아웃 (파일은 존재)")
+            return os.path.exists(self.suricata_path)
         except Exception as e:
             logger.error(f"수리카타 확인 중 오류: {e}")
             return False

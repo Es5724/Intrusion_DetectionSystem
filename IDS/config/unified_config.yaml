@@ -1,0 +1,321 @@
+# ====================================================================
+# IPS 시스템 통합 설정 파일
+# ====================================================================
+# 이 파일은 defense_config.json과 security_alerts.json을 통합한
+# 단일 설정 파일입니다.
+#
+# 수정 후 시스템 재시작이 필요합니다.
+# ====================================================================
+
+# ====================================================================
+# 시스템 일반 설정
+# ====================================================================
+system:
+  name: "반응형 AI 에이전트를 이용한 취약점 자동진단 시스템"
+  version: "2.0.0"
+  mode: "lightweight"  # lightweight 또는 performance
+  max_packets: 0  # 0 = 무제한
+  debug_mode: false
+  
+  # 로그 설정
+  logging:
+    level: "INFO"  # DEBUG, INFO, WARNING, ERROR, CRITICAL
+    file: "logs/ips_system.log"
+    max_size_mb: 100
+    backup_count: 5
+    console_output: false
+
+# ====================================================================
+# 머신러닝 모델 설정
+# ====================================================================
+machine_learning:
+  # 랜덤 포레스트 모델
+  random_forest:
+    model_path: "kisti_random_forest_model.pkl"
+    retrain_interval_hours: 24
+    min_samples_for_retrain: 1000
+    feature_importance_threshold: 0.01
+  
+  # Conservative RL 에이전트
+  reinforcement_learning:
+    enabled: true
+    model_path: "defense_policy_agent.pth"
+    state_size: 10
+    action_size: 6
+    mode: "standard"  # standard, conservative, aggressive
+    
+    # 학습 설정
+    training:
+      online_learning: true
+      learning_interval_seconds: 10
+      min_experiences: 32
+      batch_size: 32
+      buffer_capacity: 10000
+      use_prioritized_replay: true
+    
+    # 보상 설정
+    rewards:
+      true_positive: 10.0
+      true_negative: 1.0
+      false_positive: -15.0
+      false_negative: -20.0
+      deep_inspection: -0.5
+    
+    # 페널티 설정
+    penalties:
+      system_impact: 5.0
+      latency: 2.0
+
+# ====================================================================
+# 방어 메커니즘 설정
+# ====================================================================
+defense:
+  # 자동 차단 설정
+  auto_block:
+    enabled: true
+    duration_seconds: 1800  # 30분
+    permanent_block_threshold: 5  # 5회 이상 차단 시 영구 차단
+  
+  # 위협 수준 임계값
+  threat_thresholds:
+    high: 0.9    # 90% 이상: 즉시 차단
+    medium: 0.8  # 80% 이상: 모니터링 강화
+    low: 0.7     # 70% 이상: 로그 기록
+  
+  # 방어 액션 설정
+  actions:
+    allow:
+      enabled: true
+      log: false
+    
+    block_temporary:
+      enabled: true
+      duration_seconds: 300  # 5분
+      log: true
+      alert: false
+    
+    block_permanent:
+      enabled: true
+      log: true
+      alert: true
+      require_manual_unblock: true
+    
+    rate_limit:
+      enabled: true
+      max_requests_per_minute: 60
+      log: true
+    
+    deep_inspection:
+      enabled: true
+      timeout_seconds: 30
+      log: true
+    
+    isolate_session:
+      enabled: true
+      duration_seconds: 600  # 10분
+      log: true
+      alert: true
+  
+  # IP 화이트리스트 (절대 차단하지 않음)
+  whitelist:
+    - "127.0.0.1"
+    - "::1"
+    - "192.168.0.1"  # 게이트웨이
+  
+  # IP 블랙리스트 (항상 차단)
+  blacklist:
+    - "0.0.0.0"
+    # 추가 블랙리스트 IP를 여기에 추가
+
+# ====================================================================
+# 위협 알림 설정
+# ====================================================================
+threat_alert:
+  # 알림 활성화
+  popup_enabled: false
+  dashboard_enabled: true
+  email_enabled: false
+  webhook_enabled: false
+  
+  # 알림 임계값
+  thresholds:
+    high_threat_count: 1       # 즉시 알림
+    medium_threat_count: 5     # 5분 내 5회 이상
+    time_window_minutes: 5
+  
+  # 이메일 설정
+  email:
+    smtp_server: "smtp.gmail.com"
+    smtp_port: 587
+    use_tls: true
+    username: "your_email@gmail.com"
+    password: "your_app_password"
+    recipient: "admin@example.com"
+    subject_prefix: "[IPS 알림]"
+  
+  # Webhook 설정 (Slack, Discord 등)
+  webhook:
+    url: ""
+    method: "POST"
+    headers:
+      Content-Type: "application/json"
+    timeout_seconds: 10
+
+# ====================================================================
+# 패킷 캡처 및 모니터링 설정
+# ====================================================================
+monitoring:
+  # 패킷 캡처
+  packet_capture:
+    interface: null  # null = 자동 선택
+    promiscuous_mode: false
+    snap_length: 65535
+    timeout_ms: 1000
+  
+  # 로깅
+  logging:
+    log_all_packets: false  # 모든 패킷 로그 (디버그용, 성능 영향)
+    log_threats_only: true
+    save_interval_seconds: 300  # 5분
+    max_packet_buffer: 1000
+  
+  # 성능 모니터링
+  performance:
+    enabled: true
+    cpu_threshold_percent: 80
+    memory_threshold_percent: 80
+    disk_threshold_percent: 90
+    alert_on_threshold: true
+
+# ====================================================================
+# 취약점 스캐닝 설정
+# ====================================================================
+vulnerability_scanning:
+  # 자동 스캔
+  auto_scan:
+    enabled: true
+    full_scan_interval_hours: 1
+    quick_scan_interval_minutes: 10
+    network_range: "192.168.0.0/24"
+  
+  # 스캔 설정
+  scan:
+    timeout_seconds: 300
+    max_concurrent_scans: 5
+    port_scan_enabled: true
+    service_detection_enabled: true
+    os_detection_enabled: false
+  
+  # 우선순위 분석
+  priority_analysis:
+    enabled: true
+    rf_weight: 0.35
+    cve_weight: 0.30
+    exploit_weight: 0.15
+    frequency_weight: 0.10
+    asset_weight: 0.10
+  
+  # CVE 데이터베이스
+  cve_database:
+    update_interval_hours: 24
+    api_url: "https://cve.circl.lu/api/"
+    cache_enabled: true
+    cache_duration_hours: 168  # 1주일
+
+# ====================================================================
+# 데이터 저장 설정
+# ====================================================================
+storage:
+  # 데이터 디렉토리
+  data_dir: "data"
+  logs_dir: "logs"
+  reports_dir: "reports"
+  models_dir: "models"
+  
+  # 데이터 보존 기간
+  retention:
+    packet_data_days: 7
+    log_data_days: 30
+    alert_data_days: 90
+    report_data_days: 365
+  
+  # 자동 정리
+  auto_cleanup:
+    enabled: true
+    schedule_hour: 2  # 새벽 2시
+    compress_old_files: true
+
+# ====================================================================
+# 대시보드 및 API 설정
+# ====================================================================
+dashboard:
+  # 실시간 대시보드
+  realtime:
+    enabled: true
+    refresh_interval_seconds: 1
+    max_displayed_packets: 100
+    color_enabled: true
+  
+  # 웹 API 서버
+  web_api:
+    enabled: false
+    host: "0.0.0.0"
+    port: 5000
+    debug: false
+    cors_enabled: true
+    api_key_required: false
+    api_key: "your_api_key_here"
+
+# ====================================================================
+# 실험 및 평가 설정 (OPE)
+# ====================================================================
+evaluation:
+  # Off-Policy Evaluation
+  ope:
+    enabled: false
+    methods:
+      - "importance_sampling"
+      - "weighted_importance_sampling"
+      - "doubly_robust"
+    min_episodes: 100
+    report_interval_hours: 24
+
+# ====================================================================
+# 보안 이벤트 히스토리 (기존 security_alerts.json 내용)
+# ====================================================================
+security_events:
+  # 최근 보안 이벤트 (자동 업데이트됨)
+  recent_alerts: []
+  
+  # 차단된 IP 히스토리
+  blocked_ips: []
+  
+  # 이벤트 저장 설정
+  storage:
+    max_events: 1000
+    auto_archive: true
+    archive_threshold: 500
+
+# ====================================================================
+# 고급 설정 (전문가용)
+# ====================================================================
+advanced:
+  # 멀티스레딩
+  threading:
+    max_workers: 4
+    queue_size: 1000
+    graceful_shutdown_timeout: 10
+  
+  # 메모리 최적화
+  memory:
+    gc_enabled: true
+    gc_interval_seconds: 60
+    object_pooling: true
+    lazy_loading: true
+  
+  # 실험적 기능
+  experimental:
+    adaptive_processing: true
+    dynamic_batch_size: false
+    gpu_acceleration: false
+

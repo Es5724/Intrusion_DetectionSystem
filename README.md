@@ -29,7 +29,7 @@
 
 ## 프로젝트 개요
 
-**반응형 AI 에이전트**가 실시간으로 네트워크 위협을 탐지하고, 지능적으로 대응하며, 자동으로 취약점을 진단하는 차세대 보안 시스템입니다.
+**반응형 AI 에이전트**가 실시간으로 네트워크 위협을 탐지하고, 지능적으로 대응하며, 자동으로 취약점을 진단하는  보안 시스템입니다.
 
 Random Forest 기반 **실시간 위협 탐지**와 Conservative RL 기반 **지능형 자동 대응**, 그리고 주기적 **취약점 자동 스캐닝**을 통해 네트워크를 포괄적으로 보호합니다.
 
@@ -270,7 +270,7 @@ python IPSAgent_RL.py --debug               # 디버그 모드 실행
 | **하드웨어** | 실제 터미널 | 실제 터미널 |
 | **네트워크 장비** | 허브, 라우터, 게이트웨이 | |
 | **운영체제** | Real Host(Windows), VM(Kali, Ubuntu, CentOS) | Real Host(Windows), VM(Kali, Ubuntu, CentOS) |
-| **소프트웨어** | **TrafficGeneratorApp.py** (SYN 플러드, UDP 플러드, ARP 스푸핑, ICMP 리다이렉트, HTTP Slowloris), Kali Linux| **IDSAgent_RL.py** (실시간 패킷 캡처, 머신러닝 탐지, 강화학습 방어, 자동 차단 시스템) |
+| **소프트웨어** | **TrafficGeneratorApp.py** (SYN 플러드, UDP 플러드, ARP 스푸핑, ICMP 리다이렉트, HTTP Slowloris), Kali Linux| **IPSAgent_RL.py** (실시간 패킷 캡처, 머신러닝 탐지, 강화학습 방어, 자동 차단 시스템) |
 
 ### 실제 테스트 시나리오
 
@@ -281,7 +281,7 @@ python IDS/scripts/components/TrafficGeneratorApp.py
 # 또는 데이터 준비 앱에서 "트래픽 생성" 선택
 
 # TARGET (방어자 VM)  
-python IDS/IDSAgent_RL.py
+python IDS/IPSAgent_RL.py
 # 또는 데이터 준비 앱에서 "패킷 캡처" 선택
 ```
 
@@ -303,55 +303,89 @@ python IDS/IDSAgent_RL.py
 ```
 Intrusion_DetectionSystem/
 ├── README.md                        # 프로젝트 설명서
-├── requirements.txt                 # Python 의존성 목록
-├── random_forest_model.pkl         # 사전 훈련된 ML 모델
-├── security_alerts.json            # 보안 알림 설정
-├── blocked_ips_history.json        # 차단된 IP 이력
-├── setup_and_run.bat              # Windows 설치 및 실행 스크립트
-├── PROJECT_STATUS_AND_VISUALIZATION_GUIDE.md # 프로젝트 진행도 가이드
-├── desktop.ini                    # 윈도우 폴더 설정
+├── requirements.txt                 # Python 의존성 목록 (PyYAML, pytest 포함)
+├── setup_and_run.bat               # Windows 설치 및 실행 스크립트
+├── SURICATA_INSTALLATION_GUIDE.md  # Suricata 설치 가이드
 │
-├── IDS/                           # 핵심 IPS 시스템
-│   ├── IPSAgent_RL.py             # 메인 IPS 에이전트 (CLI 모드) 
-│   ├── IDSAgent_RL.py             # 기존 IDS 에이전트 (호환성)
-│   ├── IPS_Training_Data_Generator.py  # 데이터 준비 인터페이스 (GUI)
-│   ├── ips_pipeline_integrator.py # RF-RL 통합 파이프라인
-│   ├── ips_random_forest_model.pkl # CIC-IDS-2017 기반 RF 모델
-│   ├── kisti_random_forest_model.pkl # KISTI-IDS-2022 기반 RF 모델 
-│   ├── ips_rf_trainer.py          # RF 모델 훈련기
-│   ├── run_AI_agent.bat          # Windows 실행 스크립트
-│   ├── REQUIRED_FILES_LIST.md    # 필수 파일 목록
-│   ├── defense_config.json       # 방어 설정 파일
-│   ├── suricata.log              # 수리카타 로그
-│   ├── test_model_integration.py # 모델 통합 테스트
+├── docs/                           # 시스템 문서
+│   ├── IDS_웹시스템_설계서.md       # 웹 시스템 설계 문서
+│   ├── implementation_strategy.md  # 구현 전략
+│   ├── memory_optimization.md      # 메모리 최적화 가이드
+│   └── 네트워크_시뮬레이션_설계서.md # 네트워크 시뮬레이션 설계
+│
+├── IDS/                            # 핵심 IPS 시스템
+│   ├── IPSAgent_RL.py              #  메인 IPS 에이전트 (1925줄)
+│   ├── ips_pipeline_integrator.py  # RF-RL 통합 파이프라인
+│   ├── IPS_Training_Data_Generator.py # GUI 데이터 준비 인터페이스
 │   │
-│   ├── KISTI 데이터 처리 시스템/    # 새로운 KISTI 데이터셋 지원 
-│   │   ├── kisti_data_processor.py    # KISTI 데이터 전처리기
-│   │   ├── kisti_data_visualizer.py  # KISTI 데이터 시각화
-│   │   ├── kisti_debug_labels.py     # KISTI 라벨 디버깅
-│   │   ├── kisti_full_analysis.py    # KISTI 전체 분석
-│   │   ├── kisti_quick_sampler.py    # KISTI 빠른 샘플링
-│   │   └── kisti_smart_sampler.py    # KISTI 지능형 샘플링
+│   ├── 머신러닝 모델 파일/
+│   │   ├── kisti_random_forest_model.pkl #  KISTI-IDS-2022 RF 모델 (F1=0.95)
+│   │   ├── ips_random_forest_model.pkl   # CIC-IDS-2017 RF 모델 (참고용)
+│   │   ├── defense_policy_agent.pth      # Conservative RL 에이전트 모델
+│   │   └── ips_rf_trainer.py             # RF 모델 훈련 스크립트
 │   │
-│   ├── modules/                   # 핵심 기능 모듈 (18개 모듈)
-│   │   ├── __init__.py
-│   │   ├── defense_policy_env.py  # RL 대응 정책 환경
-│   │   ├── conservative_rl_agent.py # 통합 보수적 RL 에이전트
-│   │   ├── ope_evaluator.py       # 오프라인 정책 평가 시스템
-│   │   ├── packet_capture.py      # 기본 패킷 캡처 시스템
-│   │   ├── optimized_packet_capture.py        # 고성능 멀티프로세싱 캡처
-│   │   ├── optimized_packet_capture_simple.py # 간소화된 최적화 캡처 (현재 사용)
-│   │   ├── reinforcement_learning.py # 기존 강화학습 시스템 (호환)
-│   │   ├── ml_models.py           # 랜덤 포레스트 머신러닝 모델
-│   │   ├── defense_mechanism.py   # 실시간 방어 메커니즘
-│   │   ├── threat_alert_system.py # 위협 알림 시스템
-│   │   ├── suricata_manager.py    # 수리카타 엔진 통합 관리
-│   │   ├── experience_replay_buffer.py # 우선순위 경험 재생 버퍼
-│   │   ├── model_optimization.py  # 모델 최적화 도구
-│   │   ├── memory_optimization.py # 메모리 최적화 (객체 풀링) 
-│   │   ├── lazy_loading.py        # 지연 로딩 시스템 
-│   │   ├── port_scan_detector.py  # 포트 스캔 탐지기
-│   │   └── utils.py               # 유틸리티 함수
+│   ├── 설정 파일/
+│   │   ├── defense_config.json          # 방어 메커니즘 설정 (레거시)
+│   │   ├── security_alerts.json         # 보안 알림 설정 (레거시)
+│   │   ├── blocked_ips_history.json     # 차단된 IP 히스토리
+│   │   └── config/
+│   │       └── unified_config.yaml      #  통합 설정 파일 (P1 개선)
+│   │
+│   ├── KISTI 데이터 처리 시스템/
+│   │   ├── kisti_data_processor.py      # KISTI 데이터 전처리기
+│   │   ├── kisti_data_visualizer.py    # KISTI 데이터 시각화
+│   │   └── kisti_quick_sampler.py      # KISTI 빠른 샘플링
+│   │
+│   ├── modules/                        # 🔧 핵심 기능 모듈 (25개)
+│   │   ├── __init__.py                  # 모듈 통합 및 export 관리
+│   │   │
+│   │   ├── 핵심 모듈 (필수)/
+│   │   │   ├── defense_mechanism.py     # 실시간 방어 메커니즘
+│   │   │   ├── ml_models.py            # Random Forest 모델 관리
+│   │   │   ├── packet_capture.py       # 패킷 캡처 코어
+│   │   │   ├── optimized_packet_capture_simple.py # 최적화 패킷 캡처
+│   │   │   ├── port_scan_detector.py   # 포트 스캔 및 취약점 탐지
+│   │   │   └── utils.py                # 유틸리티 함수
+│   │   │
+│   │   ├── Conservative RL 시스템 (반응형 AI 핵심)/
+│   │   │   ├── conservative_rl_agent.py # Conservative Q-Learning 에이전트
+│   │   │   ├── defense_policy_env.py   # RL 환경 (6가지 액션)
+│   │   │   ├── ope_evaluator.py        # Off-Policy Evaluation
+│   │   │   └── experience_replay_buffer.py # 우선순위 경험 버퍼
+│   │   │
+│   │   ├── 반응형 AI 통합 모듈 (자동 취약점 진단)/
+│   │   │   ├── rl_state_extractor.py        # RL 상태 추출기 (10차원)
+│   │   │   ├── realtime_reward_calculator.py # 실시간 보상 계산기
+│   │   │   ├── online_rl_trainer.py         # 온라인 RL 학습 스레드
+│   │   │   ├── rl_defense_wrapper.py        # RL 방어 래퍼
+│   │   │   ├── vulnerability_auto_scanner.py # 자동 취약점 스캐너
+│   │   │   └── vulnerability_priority_analyzer.py # AI 우선순위 분석
+│   │   │
+│   │   ├── 시스템 관리 모듈 (P0 개선)/
+│   │   │   ├── system_state.py         # 전역 상태 관리 (싱글톤)
+│   │   │   ├── thread_manager.py       # 스레드 생명주기 관리
+│   │   │   ├── ips_agent.py           # IPS 에이전트 클래스
+│   │   │   └── config_loader.py       # YAML 설정 로더 (P1)
+│   │   │
+│   │   ├── 최적화 및 성능/
+│   │   │   ├── lazy_loading.py         # 지연 로딩 시스템
+│   │   │   ├── memory_optimization.py  # 메모리 최적화
+│   │   │   └── model_optimization.py   # 모델 최적화
+│   │   │
+│   │   └── 선택적 모듈/
+│   │       ├── suricata_manager.py     # Suricata 엔진 통합
+│   │       ├── reinforcement_learning.py # 레거시 RL (호환용)
+│   │       └── threat_alert_system.py  # 레거시 알림 (통합됨)
+│   │
+│   ├── 테스트 및 벤치마크/
+│   │   ├── test_system_management.py  # P0/P1 시스템 통합 테스트
+│   │   ├── test_reactive_ai_system.py # 반응형 AI 통합 테스트
+│   │   ├── test_model_integration.py  # 모델 통합 테스트
+│   │   ├── benchmark_rl_performance.py # RL 성능 벤치마크
+│   │   ├── test_experience_replay.py  # 경험 리플레이 버퍼 테스트
+│   │   └── tests/                     # pytest 단위 테스트
+│   │       ├── __init__.py
+│   │       └── test_system_state.py   # SystemState 단위 테스트
 │   │
 │   ├── scripts/
 │   │   └── components/            # 스크립트 컴포넌트 (3개 파일)
@@ -407,11 +441,11 @@ Intrusion_DetectionSystem/
 
 | 파일명 | 역할 | 모드 | 설명 |
 |--------|------|------|------|
-| **IPSAgent_RL.py** | 메인 IPS 시스템 | CLI | 실시간 침입 방지 및 방어 (실제 운영용)  |
-| **IDSAgent_RL.py** | 기존 IDS 시스템 | CLI | 호환성 유지용 (단계적 전환) |
+| **IPSAgent_RL.py** | 메인 IPS 시스템 | CLI | 실시간 침입 방지 및 방어 (실제 운영용) - 1925줄  |
+| **modules/ips_agent.py** | IPS 에이전트 클래스 | API | IPSAgent 클래스 - main() 함수 리팩토링 (P0 개선) |
 | **IPS_Training_Data_Generator.py** | 데이터 준비 통합 GUI | GUI | 패킷 캡처, 트래픽 생성, 데이터 전처리 통합 인터페이스 (개발/테스트용) |
 | **ips_pipeline_integrator.py** | RF-RL 통합 파이프라인 | API | 위협 탐지부터 대응까지 전체 파이프라인 관리 |
-| **kisti_random_forest_model.pkl** | KISTI RF 모델 | Model | KISTI-IDS-2022 기반 현실적 성능 모델 
+| **kisti_random_forest_model.pkl** | KISTI RF 모델 | Model | KISTI-IDS-2022 기반 현실적 성능 모델 (F1=0.95) 
 
 ### 패킷 캡처 시스템 구조
 
@@ -429,18 +463,20 @@ Intrusion_DetectionSystem/
 
 ### IDS 에이전트 핵심 구조
 
-**IDSAgent_RL.py**는 모든 모듈을 통합한 메인 실행 파일로 다음과 같은 구조를 가집니다:
+**IPSAgent_RL.py**는 모든 모듈을 통합한 메인 실행 파일로 다음과 같은 구조를 가집니다:
 
-- **멀티스레드 아키텍처**: 5개의 백그라운드 스레드 동시 실행
+- **멀티스레드 아키텍처**: 6개의 백그라운드 스레드 동시 실행
   - 실시간 대시보드 표시 스레드
   - 패킷 처리 및 저장 스레드  
   - 시스템 모니터링 스레드
   - 머신러닝 모델 학습 스레드
   - 사용자 입력 처리 스레드
+  - **반응형 AI 통합 서비스** (온라인 RL 학습 + 취약점 스캔) 
 
 - **운영 모드**: Lightweight(경량) / Performance(고성능) 동적 전환
-- **실시간 위협 분석**: 방어 모듈 기반 패킷 위협 수준 분석
-- **자동 대응 시스템**: IP 차단, 모니터링, 알림 등 단계별 대응
+- **실시간 위협 분석**: RF 모델 + RL 에이전트 통합 분석
+- **자동 대응 시스템**: 6단계 지능형 대응 (허용~격리)
+- **시스템 관리**: SystemState + ThreadManager를 통한 중앙 관리 
 
 ## 사용된 라이브러리
 
@@ -513,9 +549,9 @@ flowchart TD
 1. **실시간 대시보드**: 3초마다 화면 업데이트
 2. **패킷 처리 및 저장**: 50-2000개 적응형 처리
 3. **시스템 모니터링**: 10분마다 상세 로깅
-4. **오프라인 RL 학습**: 1시간 간격 모델 재학습
-5. **온라인 RL 학습**: 10초마다 실시간 경험 학습  NEW
-6. **사용자 입력 처리**: 실시간 명령어 대기
+4. **머신러닝 모델 학습**: 데이터 축적 시 RF 모델 재학습
+5. **사용자 입력 처리**: 실시간 명령어 대기
+6. **반응형 AI 통합 서비스**: 온라인 RL 학습 (10초 주기) + 자동 취약점 스캔 (1시간 주기)  NEW
 
 #### **3단계: RF 위협 탐지 (특징 추출기 역할)**
 - 실시간 패킷 → 위협 확률 계산 (0.0~1.0)
@@ -542,7 +578,7 @@ action = rl_agent.act(state)  # RL이 최종 결정
 - 버퍼 32개 이상 → 즉시 학습
 - 정책 지속 개선 (실시간 적응)
 
-#### **6단계: 자동 취약점 진단 ⭐ NEW**
+#### **6단계: 자동 취약점 진단  NEW**
 - 1시간마다: 전체 네트워크 스캔
 - 10분마다: 의심 호스트 재스캔
 - AI 우선순위 분석 → 보고서 자동 생성
@@ -552,30 +588,208 @@ action = rl_agent.act(state)  # RL이 최종 결정
 본 시스템은 RF 위협 탐지와 Conservative RL 대응 정책을 분리한 2단계 파이프라인 구조를 사용합니다:
 
 ```mermaid
-flowchart TD
-    A("패킷 데이터") --> B("RF 위협 탐지")
-    B --> C("위협 정보 생성")
-    C --> D("RL 상태 변환")
-    D --> E("Conservative RL 에이전트")
-    E --> F("최적 대응 액션 선택")
-    F --> G("방어 조치 실행")
-    G --> H("OPE 성능 평가")
-    H -.-> E
+graph TB
+    subgraph "🌐 네트워크 계층"
+        A[네트워크 패킷]
+    end
     
-    classDef primary fill:#f96,color:#fff,stroke:#333,stroke-width:2px;
-    classDef secondary fill:#f2f2f2,color:#000,stroke:#333,stroke-width:1px;
+    subgraph "📦 패킷 캡처 계층"
+        B[OptimizedPacketCapture<br/>멀티프로세싱]
+        C[PacketCaptureCore<br/>큐 관리 Queue]
+    end
     
-    class B,E primary;
-    class A,C,D,F,G,H secondary;
+    subgraph "🔍 위협 분석 계층"
+        D1[Random Forest<br/>KISTI-IDS-2022<br/>F1=0.95]
+        D2[Suricata Engine<br/>Performance 모드 전용<br/>규칙 기반 탐지]
+        D3{위협 확률 산출<br/>RF + Suricata}
+    end
+    
+    subgraph "🤖 반응형 AI 계층"
+        E1[RLStateExtractor<br/>10차원 상태 벡터]
+        E2[Conservative RL Agent<br/>6가지 액션 선택]
+        E3[RealtimeRewardCalculator<br/>보상 계산]
+    end
+    
+    subgraph "🛡️ 방어 실행 계층"
+        F1[RLDefenseWrapper<br/>액션 실행]
+        F2[DefenseManager<br/>트래픽 차단 알림]
+        F3[AutoDefenseActions<br/>자동 방어]
+    end
+    
+    subgraph "📊 학습 평가 계층"
+        G1[OnlineRLTrainer<br/>실시간 학습]
+        G2[OPEEvaluator<br/>정책 평가]
+        G3[ExperienceReplayBuffer<br/>경험 저장]
+    end
+    
+    subgraph "🔐 보안 강화 계층"
+        H1[VulnerabilityAutoScanner<br/>주기적 스캔]
+        H2[VulnerabilityPriorityAnalyzer<br/>AI 우선순위 분석]
+        H3[PortScanDetector<br/>포트 스캔 탐지]
+    end
+    
+    A --> B
+    B --> C
+    C --> D1
+    C -.->|Performance<br/>모드만| D2
+    D1 --> D3
+    D2 -.-> D3
+    D3 --> E1
+    E1 --> E2
+    E2 --> F1
+    F1 --> F2
+    F1 --> F3
+    F2 --> E3
+    F3 --> E3
+    E3 --> G3
+    G3 --> G1
+    G1 -.->|정책 업데이트| E2
+    G2 -.->|평가 피드백| E2
+    
+    C -.-> H3
+    H1 --> H2
+    H2 --> F2
+    
+    style D2 stroke-dasharray: 5 5
+    style D2 fill:#ffe6cc
+    
+    classDef primary fill:#4a90e2,color:#fff,stroke:#2e5c8a,stroke-width:3px
+    classDef secondary fill:#50c878,color:#fff,stroke:#2e7d4e,stroke-width:2px
+    classDef tertiary fill:#e8f4f8,color:#000,stroke:#4a90e2,stroke-width:1px
+    classDef optional fill:#ffe6cc,color:#000,stroke:#cc9966,stroke-width:2px
+    
+    class D1,E2 primary
+    class F2,G1 secondary
+    class B,C,E1,E3,F1,F3,G2,G3,H1,H2,H3 tertiary
+    class D2 optional
+```
+
+### 모드별 데이터 처리 흐름
+
+#### Lightweight 모드 (기본 모드)
+```mermaid
+graph LR
+    A[패킷 캡처] --> B[RF 위협 탐지<br/>KISTI-IDS-2022]
+    B --> C[위협 확률 산출]
+    C --> D[RL 상태 추출]
+    D --> E[RL 액션 선택]
+    E --> F[방어 실행]
+    F --> G[보상 계산]
+    G --> H[경험 저장]
+    
+    style B fill:#4a90e2,color:#fff,stroke:#2e5c8a,stroke-width:3px
+    style E fill:#4a90e2,color:#fff,stroke:#2e5c8a,stroke-width:3px
+    style F fill:#50c878,color:#fff,stroke:#2e7d4e,stroke-width:2px
+```
+
+#### Performance 모드 (고성능 통합)
+```mermaid
+graph LR
+    A[패킷 캡처] --> B[RF 위협 탐지<br/>KISTI-IDS-2022]
+    A -.->|병렬 처리| C[Suricata 규칙 탐지<br/>Performance 전용]
+    B --> D{통합 위협 분석}
+    C -.-> D
+    D --> E[RL 상태 추출<br/>RF + Suricata]
+    E --> F[RL 액션 선택]
+    F --> G[방어 실행]
+    G --> H[보상 계산]
+    H --> I[경험 저장]
+    
+    style B fill:#4a90e2,color:#fff,stroke:#2e5c8a,stroke-width:3px
+    style C fill:#ffe6cc,color:#000,stroke:#cc9966,stroke-width:2px,stroke-dasharray: 5 5
+    style F fill:#4a90e2,color:#fff,stroke:#2e5c8a,stroke-width:3px
+    style G fill:#50c878,color:#fff,stroke:#2e7d4e,stroke-width:2px
+```
+
+### 클래스 간 관계 및 상호작용
+
+```mermaid
+classDiagram
+    class OptimizedPacketCapture {
+        +start_capture()
+        +stop_capture()
+        +get_packet_queue()
+    }
+    
+    class DefenseManager {
+        -mode: str
+        -suricata_enabled: bool
+        -suricata_manager: SuricataManager
+        +handle_packet()
+        +analyze_packet()
+        +switch_mode()
+    }
+    
+    class SuricataManager {
+        +initialize()
+        +is_available()
+        +start_monitoring()
+        +get_alerts()
+        <<Performance 모드 전용>>
+    }
+    
+    class AutoDefenseActions {
+        -rf_model: RandomForest
+        -suricata: SuricataManager
+        +analyze_packet()
+        +execute_defense()
+    }
+    
+    class ConservativeRLAgent {
+        +select_action()
+        +train()
+        +remember()
+    }
+    
+    class RLStateExtractor {
+        +extract_state_from_packet()
+    }
+    
+    class OnlineRLTrainer {
+        +start()
+        +add_experience()
+        -_training_worker()
+    }
+    
+    class VulnerabilityAutoScanner {
+        +start()
+        +periodic_network_scan()
+        +scan_suspicious_hosts()
+    }
+    
+    OptimizedPacketCapture --> DefenseManager : 패킷 전달
+    DefenseManager --> AutoDefenseActions : 위협 분석 요청
+    DefenseManager --> SuricataManager : Performance 모드 시
+    AutoDefenseActions --> SuricataManager : 추가 검증
+    AutoDefenseActions --> RLStateExtractor : 상태 추출
+    RLStateExtractor --> ConservativeRLAgent : 상태 전달
+    ConservativeRLAgent --> DefenseManager : 액션 결정
+    DefenseManager --> OnlineRLTrainer : 경험 전달
+    OnlineRLTrainer --> ConservativeRLAgent : 모델 업데이트
+    VulnerabilityAutoScanner --> DefenseManager : 취약점 보고
 ```
 
 ### 2단계 파이프라인의 동작 원리
 
-1. **1단계: RF 위협 탐지**: KISTI-IDS-2022 기반 Random Forest로 위협 탐지 및 분류 (F1=0.95, 현실적 성능) 
-2. **상태 변환**: RF 탐지 결과를 RL 상태 공간으로 변환 (10차원 벡터: RF 결과 + 시스템 상태)
-3. **2단계: RL 대응 정책**: Conservative Q-Learning으로 최적 대응 액션 선택 (6개 수준)
-4. **방어 실행**: 선택된 액션을 실제 방어 시스템에서 실행
-5. **성능 평가**: OPE 시스템으로 정책 효과성 지속 평가 및 개선
+#### 1단계: 위협 탐지 (Detection)
+- **Lightweight 모드**: 
+  - Random Forest (KISTI-IDS-2022) 단독 사용
+  - F1=0.95, 빠른 처리 속도
+  - 메모리 효율적 (~350MB)
+
+- **Performance 모드**:
+  - Random Forest + Suricata 엔진 병렬 처리
+  - RF: 통계 기반 위협 확률 산출
+  - Suricata: 규칙 기반 시그니처 탐지
+  - 통합 분석으로 정확도 향상
+  - 메모리 사용량 증가 (~400-450MB)
+
+#### 2단계: 대응 정책 결정 (Response)
+- **상태 추출**: RF 결과 + (Suricata 결과) → 10차원 상태 벡터
+- **RL 액션 선택**: Conservative Q-Learning으로 최적 대응 액션 선택 (6개 수준)
+- **방어 실행**: 선택된 액션을 실제 방어 시스템에서 실행
+- **학습 피드백**: 실시간 보상 계산 및 경험 저장
+- **정책 개선**: OPE 평가 및 온라인 학습으로 지속적 개선
 
 ### 시스템 장점
 
@@ -584,10 +798,15 @@ flowchart TD
 - **검증된 데이터**: KISTI-IDS-2022 현실적 데이터셋 기반 고품질 탐지 모델 
 - **객관적 평가**: Importance Sampling, Doubly Robust 등 다양한 OPE 방법
 - **확장성**: 모듈식 설계로 새로운 탐지 기법 및 대응 정책 쉽게 추가
+- **유연한 모드 전환**: Lightweight ↔ Performance 실시간 전환 가능
+- **통합 위협 탐지** (Performance 모드):
+  - RF (통계 기반) + Suricata (규칙 기반) 이중 검증
+  - 알려진 공격 패턴(Suricata) + 알려지지 않은 변종(RF) 동시 탐지
+  - 거짓 양성 감소 및 탐지율 향상
 
 ### 위협 분석 프로세스
 
-IDSAgent_RL.py의 `analyze_threat_level` 함수는 다음과 같이 작동합니다:
+시스템의 `analyze_threat_level` 함수는 다음과 같이 작동합니다:
 
 1. **우선순위 1**: 방어 메커니즘 관리자의 ML 기반 분석
    - AutoDefenseActions의 analyze_packet 메서드 활용
@@ -615,7 +834,7 @@ IDSAgent_RL.py의 `analyze_threat_level` 함수는 다음과 같이 작동합니
 #### 2. 최적화된 패킷 캡처 (optimized_packet_capture.py)
 - **역할**: 멀티프로세싱 기반 고성능 패킷 처리
 - **특징**: 워커 프로세스를 통한 병렬 처리, 메모리 효율성 향상
-- **우선순위**: IDSAgent_RL.py에서 최우선으로 사용
+- **우선순위**: IPSAgent_RL.py에서 최우선으로 사용
 
 #### 3. KISTI RF 위협 탐지 시스템 (ml_models.py + kisti_random_forest_model.pkl) 
 - **모델**: KISTI-IDS-2022 기반 RandomForest Classifier (현실적 성능)
@@ -645,10 +864,20 @@ IDSAgent_RL.py의 `analyze_threat_level` 함수는 다음과 같이 작동합니
 #### 6. 방어 메커니즘 (defense_mechanism.py)
 - **역할**: 실시간 위협 대응 및 자동 차단
 - **기능**: IP 차단, 트래픽 제어, 자동 방어
-- **통합**: 수리카타, 포트스캔 탐지, 위협 알림 시스템
+- **통합**: Suricata, 포트스캔 탐지, 위협 알림 시스템
 - **모드 지원**: Lightweight/Performance 모드별 최적화
 
-#### 6. 위협 알림 시스템 (threat_alert_system.py)
+#### 7. Suricata 통합 엔진 (suricata_manager.py)
+- **역할**: 규칙 기반 IDS 엔진 통합 (Performance 모드 전용)
+- **기능**: 
+  - 알려진 공격 시그니처 탐지
+  - 실시간 알림 이벤트 모니터링
+  - 규칙 기반 심층 패킷 분석
+  - Eve.json 로그 파싱 및 분석
+- **장점**: RF와 상호 보완적 탐지 (통계 + 규칙)
+- **설정**: 자동 설정 파일 및 규칙 파일 생성
+
+#### 8. 위협 알림 시스템 (threat_alert_system.py)
 - **역할**: 위협 감지 시 관리자 알림
 - **기능**: 팝업 알림, 대시보드, 위험도별 알림 전략
 - **통합**: 실시간 대시보드와 연동
@@ -696,141 +925,477 @@ ConservativeRLAgent 클래스는 보수적 강화학습을 통해 안전한 대�
 
 ## 모듈 간 통합 및 데이터 흐름
 
-### 시스템 데이터 플로우
+### 🔄 시스템 데이터 플로우
 
-본 시스템의 데이터 처리 흐름은 다음과 같습니다:
+본 시스템의 데이터 처리 흐름과 클래스 간 관계:
 
 ```mermaid
 graph TB
-    %% 입력
-    Network[네트워크<br/>패킷 입력]
-    User[사용자<br/>명령어]
+    %% ========== 입력 계층 ==========
+    Network[ 네트워크 패킷<br/>실시간 트래픽]
+    User[ 사용자<br/>CLI 명령 입력]
+    Config[ 통합 설정<br/>unified_config.yaml]
     
-    %% 메인 프로그램
-    MainAgent[IPSAgent_RL.py<br/>메인 컨트롤러]
+    %% ========== 메인 컨트롤러 ==========
+    MainAgent[ IPSAgent_RL.py<br/>메인 컨트롤러<br/>멀티스레드 오케스트레이션]
     
-    %% 핵심 처리 모듈
-    PacketCapture[패킷 캡처]
-    Defense[방어 시스템]
-    ML[머신러닝<br/>KISTI RF + Conservative RL]
-    
-    %% 데이터 저장
-    Queue[실시간 큐]
-    DataFiles[저장된 데이터]
-    
-    %% 출력
-    Dashboard[실시간 대시보드]
-    Alerts[위협 알림]
-    Logs[로그 파일]
-    
-    %% 주요 데이터 흐름
-    Network -->|실시간 패킷| PacketCapture
-    PacketCapture -->|패킷 데이터| Queue
-    Queue -->|분석 요청| MainAgent
-    
-    %% 메인 에이전트의 역할
-    MainAgent -->|패킷 분석| Defense
-    MainAgent -->|학습 데이터| ML
-    MainAgent -->|통계 생성| Dashboard
-    
-    %% 분석 결과 흐름
-    Defense -->|위협 수준| MainAgent
-    ML -->|예측 결과| MainAgent
-    MainAgent -->|위협 탐지| Alerts
-    
-    %% 데이터 저장 및 학습
-    MainAgent -->|패킷 저장| DataFiles
-    DataFiles -->|재학습| ML
-    ML -->|모델 업데이트| Defense
-    
-    %% 사용자 상호작용
-    User -->|명령어| MainAgent
-    MainAgent -->|상태 정보| Dashboard
-    Dashboard -->|화면 출력| User
-    
-    %% 로그 시스템
-    MainAgent -->|시스템 로그| Logs
-    Defense -->|방어 로그| Logs
-    
-    %% 백그라운드 처리
-    subgraph "백그라운드 처리"
-        BG[5개 백그라운드 스레드<br/>실시간 대시보드<br/>적응형 패킷 처리<br/>KISTI 모델 학습<br/>메모리 최적화]
+    %% ========== 시스템 관리 계층 P0 ==========
+    subgraph SystemMgmt[" 시스템 관리 계층 P0 개선"]
+        SystemState[SystemState<br/>전역 상태 싱글톤<br/>통계 관리]
+        ThreadMgr[ThreadManager<br/>6개 스레드 관리<br/>Graceful Shutdown]
+        ConfigLoader[ConfigLoader<br/>YAML 설정 로더<br/>동적 재로드]
     end
     
-    MainAgent -.->|멀티스레드| BG
-    BG -.->|결과 반영| MainAgent
+    %% ========== 패킷 처리 계층 ==========
+    subgraph PacketLayer[" 패킷 캡처 처리"]
+        OptCapture[OptimizedPacketCapture<br/>멀티프로세싱<br/>메모리 효율]
+        PacketCore[PacketCaptureCore<br/>큐 관리<br/>전처리 Queue]
+    end
     
+    %% ========== 위협 탐지 계층 ==========
+    subgraph DetectionLayer[" 위협 탐지 계층"]
+        direction TB
+        RF[Random Forest<br/>KISTI-IDS-2022<br/>F1=0.95 통계 기반]
+        Suricata[Suricata IDS<br/>Performance 모드 전용<br/>규칙 기반 탐지]
+        ThreatFusion{위협 정보 통합<br/>RF + Suricata<br/>이중 검증}
+    end
+    
+    %% ========== 반응형 AI 계층 ==========
+    subgraph AILayer[" 반응형 AI 계층"]
+        direction TB
+        StateExtract[RLStateExtractor<br/>상태 벡터 생성<br/>10차원]
+        ConservRL[Conservative RL Agent<br/>Q-Learning 정책<br/>6가지 액션]
+        PolicyEnv[DefensePolicyEnv<br/>RL 환경<br/>시뮬레이션]
+    end
+    
+    %% ========== 방어 실행 계층 ==========
+    subgraph DefenseLayer[" 방어 실행 계층"]
+        direction TB
+        RLWrapper[RLDefenseWrapper<br/>액션 래퍼<br/>실행 제어]
+        DefenseMgr[DefenseManager<br/>IP 차단 격리<br/>트래픽 제어]
+        AutoDefense[AutoDefenseActions<br/>자동 방어<br/>위협 대응]
+    end
+    
+    %% ========== 온라인 학습 계층 ==========
+    subgraph LearningLayer[" 온라인 학습 계층"]
+        direction TB
+        RewardCalc[RealtimeRewardCalculator<br/>보상 함수<br/>TP/FP/TN/FN]
+        ReplayBuffer[PrioritizedReplayBuffer<br/>경험 저장<br/>우선순위 샘플링]
+        OnlineTrainer[OnlineRLTrainer<br/>10초 주기 학습<br/>백그라운드 스레드]
+        OPEEval[OPEEvaluator<br/>정책 평가<br/>Importance Sampling]
+    end
+    
+    %% ========== 취약점 진단 계층 ==========
+    subgraph VulnLayer[" 취약점 진단 계층"]
+        direction TB
+        VulnScanner[VulnerabilityAutoScanner<br/>1시간 주기 스캔<br/>네트워크 진단]
+        PriorityAnalyzer[VulnerabilityPriorityAnalyzer<br/>AI 우선순위<br/>CVE 데이터베이스]
+        PortScan[PortScanDetector<br/>포트 스캔 탐지<br/>연결 패턴 분석]
+    end
+    
+    %% ========== 데이터 관리 계층 ==========
+    subgraph DataLayer[" 데이터 관리"]
+        DataFrame[DataFrame Pool<br/>패킷 버퍼<br/>객체 풀링]
+        CSV[CSV 로그<br/>패킷 데이터<br/>2분 주기 저장]
+        ModelFiles[모델 파일<br/>RF pkl RL pth<br/>자동 백업]
+    end
+    
+    %% ========== 출력 계층 ==========
+    Dashboard[ 실시간 대시보드<br/>3초 갱신<br/>위협 시각화]
+    Logs[ 통합 로그<br/>defense_actions.log<br/>ids_debug.log]
+    Alerts[ 위협 알림<br/>팝업 알림<br/>이메일 선택]
+    
+    %% ========================================
+    %% 데이터 흐름 정의
+    %% ========================================
+    
+    %% 1. 초기화 및 설정
+    Config --> ConfigLoader
+    ConfigLoader --> MainAgent
+    MainAgent --> SystemState
+    MainAgent --> ThreadMgr
+    
+    %% 2. 패킷 입력 및 전처리
+    Network --> OptCapture
+    OptCapture --> PacketCore
+    PacketCore --> DataFrame
+    
+    %% 3. 위협 탐지 흐름 Lightweight
+    DataFrame -->|특징 추출| RF
+    
+    %% 3-1. 위협 탐지 흐름 Performance 모드
+    DataFrame -.->|Performance<br/>모드만| Suricata
+    RF --> ThreatFusion
+    Suricata -.->|규칙 매칭<br/>결과| ThreatFusion
+    
+    %% 4. AI 상태 추출 및 액션 선택
+    ThreatFusion -->|위협 확률<br/>+ 메타데이터| StateExtract
+    StateExtract -->|10차원<br/>상태 벡터| ConservRL
+    ConservRL <-->|상태 전이<br/>보상| PolicyEnv
+    
+    %% 5. 방어 실행
+    ConservRL -->|액션 ID<br/>0~5| RLWrapper
+    RLWrapper --> DefenseMgr
+    RLWrapper --> AutoDefense
+    DefenseMgr -->|차단 실행| Network
+    
+    %% 6. 학습 피드백 루프
+    DefenseMgr -->|액션 결과<br/>시스템 영향| RewardCalc
+    AutoDefense -->|방어 성공<br/>실패 정보| RewardCalc
+    RewardCalc -->|보상값<br/>TP/FP/TN/FN| ReplayBuffer
+    ReplayBuffer -->|경험 샘플<br/>우선순위| OnlineTrainer
+    OnlineTrainer -->|모델 가중치<br/>업데이트| ConservRL
+    OnlineTrainer --> OPEEval
+    OPEEval -.->|정책 평가<br/>피드백| ConservRL
+    
+    %% 7. 취약점 스캔 통합
+    PortScan --> VulnScanner
+    VulnScanner -->|스캔 결과<br/>취약점 목록| PriorityAnalyzer
+    PriorityAnalyzer -->|RF 위협 확률<br/>통합 분석| ThreatFusion
+    PriorityAnalyzer --> DefenseMgr
+    
+    %% 8. 상태 통계 수집
+    RF -->|탐지 통계| SystemState
+    DefenseMgr -->|방어 통계| SystemState
+    OnlineTrainer -->|학습 통계| SystemState
+    Suricata -.->|알림 통계| SystemState
+    
+    %% 9. 데이터 저장
+    DataFrame -->|주기적 저장<br/>2분| CSV
+    ConservRL -->|모델 체크포인트| ModelFiles
+    RF -->|모델 재학습<br/>1시간| ModelFiles
+    
+    %% 10. 사용자 인터페이스
+    User -->|명령 입력<br/>m p q| MainAgent
+    SystemState -->|통합 상태| Dashboard
+    Dashboard -->|실시간 표시| User
+    DefenseMgr --> Alerts
+    Alerts -->|긴급 알림| User
+    
+    %% 11. 로깅 시스템
+    MainAgent --> Logs
+    DefenseMgr --> Logs
+    OnlineTrainer --> Logs
+    Suricata -.-> Logs
+    
+    %% ========================================
     %% 스타일 정의
-    classDef main fill:#ff6b6b,stroke:#d63031,stroke-width:3px,color:#fff
-    classDef process fill:#74b9ff,stroke:#0984e3,stroke-width:2px,color:#fff
-    classDef data fill:#a29bfe,stroke:#6c5ce7,stroke-width:2px,color:#fff
-    classDef output fill:#55a3ff,stroke:#2d3436,stroke-width:2px,color:#fff
-    classDef input fill:#fdcb6e,stroke:#e17055,stroke-width:2px,color:#000
-    classDef background fill:#00cec9,stroke:#00b894,stroke-width:2px,color:#fff
+    %% ========================================
+    classDef mainClass fill:#ff6b6b,stroke:#d63031,stroke-width:4px,color:#fff
+    classDef aiClass fill:#6c5ce7,stroke:#5f27cd,stroke-width:3px,color:#fff
+    classDef systemClass fill:#00b894,stroke:#00a383,stroke-width:2px,color:#fff
+    classDef dataClass fill:#74b9ff,stroke:#0984e3,stroke-width:2px,color:#fff
+    classDef ioClass fill:#fdcb6e,stroke:#e17055,stroke-width:2px,color:#000
+    classDef vulnClass fill:#fd79a8,stroke:#e84393,stroke-width:2px,color:#fff
+    classDef suricataClass fill:#ffe6cc,stroke:#cc9966,stroke-width:2px,color:#000,stroke-dasharray: 5 5
     
-    %% 클래스 적용
-    class MainAgent main
-    class PacketCapture,Defense,ML process
-    class Queue,DataFiles data
-    class Dashboard,Alerts,Logs output
-    class Network,User input
-    class BG background
+    class MainAgent mainClass
+    class RF,ConservRL,StateExtract,OnlineTrainer,OPEEval aiClass
+    class SystemState,ThreadMgr,ConfigLoader,DefenseMgr,AutoDefense systemClass
+    class DataFrame,CSV,ModelFiles,ReplayBuffer dataClass
+    class Network,User,Config,Dashboard,Logs,Alerts ioClass
+    class VulnScanner,PriorityAnalyzer,PortScan vulnClass
+    class Suricata,ThreatFusion suricataClass
+```
+
+###  데이터 플로우 설명
+
+#### 1️⃣ **패킷 입력 및 전처리 흐름**
+```
+네트워크 패킷 → OptimizedPacketCapture (멀티프로세싱)
+                ↓
+         PacketCaptureCore (큐 관리, 전처리)
+                ↓
+         DataFrame Pool (객체 풀링, 배치 처리)
+```
+
+#### 2️⃣ **위협 탐지 흐름 (모드별)**
+
+**Lightweight 모드:**
+```
+DataFrame → RF (KISTI) → 위협 확률 산출 → 다음 단계
+```
+
+**Performance 모드:**
+```
+DataFrame → RF (KISTI) ─┐
+              ↓         ↓
+         Suricata IDS   위협 정보 통합 (이중 검증)
+              └──────────┘
+                    ↓
+              통합 위협 확률 → 다음 단계
+```
+
+#### 3️⃣ **AI 결정 및 방어 실행 흐름**
+```
+위협 정보 → RLStateExtractor (10차원 상태 벡터)
+              ↓
+         ConservativeRLAgent (Q-Learning)
+              ↓
+         액션 선택 (0~5: 허용, 임시차단, 영구차단, 레이트제한, 추가검사, 격리)
+              ↓
+         RLDefenseWrapper → DefenseManager / AutoDefenseActions
+              ↓
+         네트워크 방어 실행 (IP 차단, 트래픽 제어)
+```
+
+#### 4️⃣ **학습 피드백 루프**
+```
+방어 실행 결과 → RealtimeRewardCalculator (TP/FP/TN/FN 보상)
+                    ↓
+              PrioritizedReplayBuffer (경험 저장, 우선순위)
+                    ↓
+              OnlineRLTrainer (10초 주기, 백그라운드)
+                    ↓
+              ConservativeRLAgent 모델 업데이트
+                    ↓
+              OPEEvaluator (정책 평가 및 검증)
+```
+
+#### 5️⃣ **취약점 진단 통합 흐름**
+```
+PortScanDetector → VulnerabilityAutoScanner (1시간 주기)
+                         ↓
+                  스캔 결과 수집
+                         ↓
+           VulnerabilityPriorityAnalyzer (AI 분석)
+                 ↓                ↓
+    RF 위협 확률 통합     CVE 점수 조회
+                 └────────┬────────┘
+                        ↓
+              우선순위 결정 및 권장사항
+                        ↓
+                  DefenseManager
+```
+
+#### 6️⃣ **상태 관리 및 모니터링 흐름**
+```
+모든 계층 통계 → SystemState (싱글톤)
+                    ↓
+     ThreatStatistics / DefenseStatistics / MLStatistics
+                    ↓
+          실시간 대시보드 (3초 갱신)
+                    ↓
+          사용자 표시 + 로그 기록
+```
+
+###  클래스 간 관계 및 의존성
+
+```
+IPSAgent_RL.py (메인 컨트롤러)
+│
+├──  시스템 관리 계층 (P0 개선)
+│   ├── SystemState (전역 상태 싱글톤)
+│   │   ├── ThreatStatistics (위협 통계)
+│   │   ├── DefenseStatistics (방어 통계)
+│   │   └── MLStatistics (ML 학습 통계)
+│   │
+│   ├── ThreadManager (스레드 라이프사이클 관리)
+│   │   ├── Thread 1: 실시간 대시보드 (3초 주기)
+│   │   ├── Thread 2: 패킷 처리 및 저장 (실시간)
+│   │   ├── Thread 3: 시스템 리소스 모니터링 (10분 주기)
+│   │   ├── Thread 4: ML 모델 재학습 (1시간 주기)
+│   │   ├── Thread 5: 사용자 입력 처리 (실시간)
+│   │   └── Thread 6: 반응형 AI 통합 서비스
+│   │       ├── OnlineRLTrainer (10초 주기)
+│   │       └── VulnerabilityAutoScanner (1시간 주기)
+│   │
+│   └── ConfigLoader (YAML 설정 관리)
+│
+├──  패킷 캡처 계층
+│   ├── OptimizedPacketCapture (멀티프로세싱)
+│   └── PacketCaptureCore (큐 관리, 전처리)
+│
+├──  위협 탐지 계층
+│   ├── RandomForest (KISTI-IDS-2022, F1=0.95)
+│   │   └── train_random_forest() (1시간 재학습)
+│   │
+│   ├── SuricataManager (Performance 모드 전용) 
+│   │   ├── initialize() (실행 파일 확인)
+│   │   ├── start_monitoring() (패킷 분석)
+│   │   ├── _monitor_alerts() (Eve.json 파싱)
+│   │   └── get_latest_alerts() (알림 큐)
+│   │
+│   └── 위협 정보 통합 (RF + Suricata)
+│       ├── Lightweight: RF 단독
+│       └── Performance: RF + Suricata 이중 검증
+│
+├──  반응형 AI 계층
+│   ├── RLStateExtractor (상태 벡터 생성)
+│   │   └── extract_state_from_packet() (10차원)
+│   │
+│   ├── ConservativeRLAgent (Q-Learning 정책)
+│   │   ├── select_action() (6가지 액션)
+│   │   ├── train() (모델 업데이트)
+│   │   └── remember() (경험 저장)
+│   │
+│   ├── DefensePolicyEnv (RL 환경)
+│   │   ├── step() (상태 전이)
+│   │   └── _calculate_reward() (보상 함수)
+│   │
+│   ├── PrioritizedReplayBuffer (경험 저장)
+│   │   ├── add() (우선순위 할당)
+│   │   └── sample() (배치 샘플링)
+│   │
+│   └── OPEEvaluator (정책 평가)
+│       ├── importance_sampling()
+│       ├── doubly_robust()
+│       └── compare_policies()
+│
+├──  방어 실행 계층
+│   ├── DefenseManager (통합 방어 관리)
+│   │   ├── handle_packet() (패킷 처리)
+│   │   ├── analyze_packet() (위협 분석)
+│   │   ├── switch_mode() (모드 전환)
+│   │   └── suricata_manager (Performance 시) 
+│   │
+│   ├── AutoDefenseActions (자동 방어)
+│   │   ├── analyze_packet() (RF 분석)
+│   │   ├── execute_defense() (방어 실행)
+│   │   └── suricata (추가 검증) 
+│   │
+│   └── RLDefenseWrapper (RL 액션 실행)
+│       ├── execute_rl_action() (액션 매핑)
+│       └── _execute_action() (실제 실행)
+│
+├──  온라인 학습 계층
+│   ├── RealtimeRewardCalculator (보상 계산)
+│   │   └── calculate_reward() (TP/FP/TN/FN)
+│   │
+│   └── OnlineRLTrainer (백그라운드 학습)
+│       ├── start() (학습 스레드 시작)
+│       ├── _training_worker() (10초 주기)
+│       └── add_experience() (경험 큐 추가)
+│
+└──  취약점 진단 계층
+    ├── VulnerabilityAutoScanner (주기적 스캔)
+    │   ├── periodic_network_scan() (1시간)
+    │   ├── scan_suspicious_hosts() (10분)
+    │   └── _scan_host_vulnerabilities()
+    │
+    ├── VulnerabilityPriorityAnalyzer (AI 우선순위)
+    │   ├── analyze_vulnerabilities() (RF 통합)
+    │   ├── _estimate_exploit_likelihood()
+    │   └── _generate_recommendations()
+    │
+    ├── PortScanDetector (포트 스캔 탐지)
+    │   ├── detect_port_scan()
+    │   └── _analyze_scan_pattern()
+    │
+    └── CVEDatabase (CVE 점수 조회)
+        └── get_cve_score()
+
+ Performance 모드 전용 컴포넌트
 ```
 
 ## 전체 시스템 아키텍처
 
-### 핵심 처리 흐름
+###  멀티스레드 아키텍처
 
-IDSAgent_RL.py는 다음과 같은 5개의 백그라운드 스레드를 통해 동시 처리를 수행합니다:
+IPSAgent_RL.py는 **ThreadManager**를 통해 6개의 백그라운드 스레드를 관리하며 동시 처리를 수행합니다:
 
-1. **실시간 대시보드 스레드** (`display_realtime_stats`)
-   - 3초마다 화면 업데이트
-   - 패킷 통계, 위협 분석, 방어 상태 표시
-   - 프로토콜별 분석 결과 실시간 출력
+#### **Thread 1: 실시간 대시보드** (`display_realtime_stats`)
+- **주기**: 3초마다 화면 업데이트
+- **기능**:
+  - SystemState에서 통합 통계 조회
+  - 패킷 통계, 위협 분석, 방어 상태 실시간 표시
+  - 프로토콜별 분석 결과 출력
+  - colorama를 활용한 컬러 CLI
 
-2. **패킷 처리 및 저장 스레드** (`process_and_save_packets`)
-   - 200개 청크 단위로 패킷 처리
-   - 전처리 및 랜덤 포레스트 예측 수행
-   - CSV 파일로 자동 저장
+#### **Thread 2: 패킷 처리 및 저장** (`process_and_save_packets`)
+- **주기**: 실시간 큐 처리
+- **기능**:
+  - OptimizedPacketCapture로부터 패킷 수신
+  - 200개 청크 단위 배치 처리
+  - RandomForest 위협 예측 수행
+  - CSV 파일 주기적 저장 (5분)
+  - 메모리 풀링을 통한 최적화
 
-3. **시스템 모니터링 스레드** (`monitor_capture_status`)
-   - 10분마다 상세 로그 기록
-   - 방어 메커니즘 상태 모니터링
-   - 차단된 IP 관리
+#### **Thread 3: 시스템 모니터링** (`monitor_capture_status`)
+- **주기**: 10분마다 상세 로그 기록
+- **기능**:
+  - DefenseManager 상태 모니터링
+  - 차단된 IP 관리 및 타임아웃 처리
+  - psutil을 통한 시스템 리소스 모니터링
+  - CPU, 메모리, 디스크 사용량 추적
 
-4. **머신러닝 학습 스레드** (`monitor_and_train`)
-   - 데이터 파일 변경 감지
-   - 1시간 간격으로 모델 재학습
-   - Experience Replay Buffer 관리
+#### **Thread 4: 머신러닝 학습** (`monitor_and_train`)
+- **주기**: 데이터 파일 변경 감지 (watchdog)
+- **기능**:
+  - 새로운 패킷 데이터 축적 감지
+  - KISTI RandomForest 모델 재학습
+  - 학습 결과 SystemState에 반영
+  - 모델 파일 자동 저장
+  - Experience Replay Buffer 관리
 
-5. **사용자 입력 처리 스레드** (`handle_user_input`)
-   - 실시간 명령어 처리
-   - 모드 전환, 상태 확인 등
-   - 백그라운드에서 조용히 대기
+#### **Thread 5: 사용자 입력 처리** (`handle_user_input`)
+- **주기**: 실시간 입력 대기
+- **기능**:
+  - CLI 명령어 실시간 처리
+  - `quit`: 시스템 graceful shutdown
+  - `stats`: 상세 통계 출력
+  - `block <IP>`: 수동 IP 차단
+  - `unblock <IP>`: IP 차단 해제
+  - `export`: 데이터 내보내기
 
-### 통합 아키텍처 특징
+#### **Thread 6: 반응형 AI 통합 서비스**  NEW
+- **주기**: 
+  - OnlineRLTrainer: 10초마다 학습
+  - VulnerabilityAutoScanner: 1시간마다 전체 스캔
+- **기능**:
+  - **온라인 RL 학습**: ConservativeRLAgent 실시간 학습
+  - **자동 취약점 스캔**: 네트워크 전체 스캔 및 보고서 생성
+  - **AI 우선순위 분석**: 발견된 취약점의 위험도 자동 평가
+  - **RL-RF 통합**: 위협 탐지 결과를 RL 학습에 활용
 
-- **모듈식 설계**: 각 모듈이 독립적으로 동작하며 인터페이스를 통해 연동
-- **멀티스레드 안전성**: Queue 기반 스레드 간 통신
-- **실시간 처리**: 패킷 단위 즉시 분석 및 대응
-- **메모리 효율성**: 청크 기반 처리 및 명시적 메모리 관리
-- **확장성**: 새로운 모듈 추가 및 기능 확장 용이
+---
+
+###  시스템 아키텍처 특징
+
+#### **1. 모듈식 설계 (P0/P1 개선 완료)**
+-  각 모듈이 독립적으로 동작하며 명확한 인터페이스 제공
+-  `SystemState`: 전역 상태 중앙 관리 (싱글톤)
+-  `ThreadManager`: 스레드 생명주기 통합 관리
+-  `IPSAgent`: 메인 로직 클래스화 (1925줄 → 모듈화)
+-  `ConfigLoader`: YAML 기반 통합 설정
+
+#### **2. 멀티스레드 안전성**
+-  Queue 기반 스레드 간 통신
+-  threading.RLock을 사용한 재진입 가능 락
+-  Graceful shutdown (타임아웃 10초)
+-  Race condition 방지 (테스트 검증 완료)
+
+#### **3. 실시간 처리 및 온라인 학습**
+- 패킷 단위 즉시 분석 및 대응 (0.438ms/패킷)
+- 10초 주기 온라인 RL 학습
+- 1시간 주기 자동 취약점 스캔
+- 실시간 보상 계산 및 경험 축적
+
+#### **4. 메모리 효율성**
+- Lazy Loading: 필요시에만 모듈 로드 (~150MB 절약)
+- Object Pooling: 패킷 객체 재사용
+- 청크 기반 처리: 200개 단위 배치
+- 명시적 메모리 관리: gc.collect() 주기적 호출
+
+#### **5. 확장성 및 유지보수성**
+- 새로운 모듈 추가 용이 (플러그인 방식)
+- 단위 테스트 기반 개발 (pytest)
+- 명확한 문서화 및 주석
+- 버전 관리 및 의존성 명시
 
 ## 메모리 최적화 전략
 
 효율적인 패킷 처리를 위한 메모리 최적화 기법:
 
 ###  **지연 로딩 (Lazy Loading)** 
-- **강화학습 모듈 지연 로딩**: 100-150MB 절약
-  - PyTorch, 강화학습 환경/에이전트는 실제 사용 시에만 로딩
-  - `lazy_importer.get_module('reinforcement_learning')` 방식 적용
-- **머신러닝 모델 지연 로딩**: 15-25MB 절약
-  - scikit-learn 모델들, 훈련 함수들 지연 로딩
-  - `lazy_model_loader.register_model()` 방식으로 모델 파일 관리
-- **시각화 모듈 지연 로딩**: 10-20MB 절약
-  - matplotlib, seaborn은 백엔드 설정 후 지연 로딩
-  - GUI 컴포넌트들도 실제 표시 시에만 생성
-- **총 메모리 절약량**: **125-195MB**
+- **구현 상태**: 코드 구현 완료
+  - `lazy_importer.get_module()` 방식으로 모듈 등록 시스템 구축
+  - Conservative RL, ML 학습, 시각화 모듈 지연 로딩 가능
+- **실제 효과**: 제한적
+  - 반응형 AI 시스템 사용 시 PyTorch(136MB)는 시작 시 필수 로드
+  - RF 모델 사용 시 scikit-learn(71MB)은 시작 시 필수 로드
+  - 시각화 모듈(matplotlib/seaborn)만 실제 지연 로딩 효과 있음
+- **참고**: 지연 로딩은 초기 로딩 시간 단축이 아닌, 모듈 사용 시점 제어를 위한 아키텍처
 
 ###  **객체 풀링 (Object Pooling)** 
 - **패킷 객체 풀링**: 패킷 딕셔너리 재사용으로 GC 부하 80% 감소
@@ -840,10 +1405,10 @@ IDSAgent_RL.py는 다음과 같은 5개의 백그라운드 스레드를 통해 �
 - **재사용률**: 평균 85%+ 달성
 
 ###  **청크 기반 처리**
-- **최적화된 청크 크기**: 200개 → **50개** 단위로 처리
-- **메모리 사용량**: ~50KB로 추가 75% 감소
-- **처리 빈도**: 2분 → **2분** 간격으로 더 빈번한 처리
-- **버퍼 크기 제한**: 1,000개 → **500개**로 최적화
+- **최적화된 청크 크기**: **50개** 단위로 고정 처리
+- **메모리 사용량**: 청크당 ~50KB로 메모리 효율적
+- **처리 빈도**: 청크 크기 도달 또는 2분 간격 중 빠른 시점
+- **버퍼 크기 제한**: 최대 **500개**로 제한하여 메모리 스파이크 방지
 
 ###  **데이터 타입 최적화**
 - int64 → int32 변환 (메모리 50% 절약)
@@ -869,63 +1434,88 @@ IDSAgent_RL.py는 다음과 같은 5개의 백그라운드 스레드를 통해 �
 
 ###  **메모리 최적화 현황**
 
-본 시스템은 다음과 같은 메모리 최적화 기법을 통해 임베디드 환경에서도 안정적으로 동작합니다:
+본 시스템은 다음과 같은 메모리 최적화 기법을 통해 안정적으로 동작합니다:
 
-#### **핵심 최적화 기법**
-- **지연 로딩 (Lazy Loading)**: 125-195MB 메모리 절약
-  - 강화학습 모듈: 100-150MB 절약 (실제 사용 시에만 로딩)
-  - 머신러닝 모듈: 15-25MB 절약 (훈련 시에만 로딩)
-  - 시각화 모듈: 10-20MB 절약 (차트 생성 시에만 로딩)
+#### **실제 메모리 사용량 (측정 기준)**
+```
+기본 라이브러리 로드 시:
+  Python 초기 상태:           ~18 MB
+  + scapy (패킷 캡처):        ~67 MB
+  + pandas/numpy (데이터):    ~40 MB
+  + scikit-learn (RF):        ~71 MB
+  + PyTorch (RL 에이전트):   ~136 MB
+  + KISTI RF 모델 로드:       ~69 MB
+  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  총 메모리 사용량:          ~400 MB
 
-- **객체 풀링 (Object Pooling)**: 메모리 재사용률 85%+ 달성
+메모리 최적화 효과:
+  - 객체 풀링 (재사용률 85%):  -30 MB
+  - 청크 처리 + 명시적 해제:   -10 MB
+  - 가비지 컬렉션 (적극적):    -10 MB
+  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  최적화 후 안정 사용량:      ~350 MB
+
+** 주의: 대용량 AI 라이브러리(PyTorch 136MB, scikit-learn 71MB)가 
+         전체 메모리의 약 54%를 차지합니다.
+```
+
+#### **핵심 최적화 기법 (적용 완료)**
+- **지연 로딩 (Lazy Loading)**: 코드 구현 완료
+  - 강화학습 모듈 지연 로딩 시스템 구축
+  - 머신러닝 학습 모듈 지연 로딩 시스템 구축
+  - 시각화 모듈 지연 로딩 시스템 구축
+  - **주의**: 반응형 AI 시스템 사용 시 PyTorch는 시작 시 필수 로드됨
+
+- **객체 풀링 (Object Pooling)**: 메모리 재사용률 85%+ 달성 ✅
   - 패킷 객체 재사용으로 GC 부하 80% 감소
   - DataFrame 배열 재사용으로 생성 비용 90% 절약
   - 통계 딕셔너리 풀링으로 메모리 단편화 방지
+  - **효과**: 메모리 누수 방지 및 안정적 운영
 
 #### **적응형 처리 시스템**
-- **청크 기반 처리**: 50-2000개 적응형 배치 처리
+- **청크 기반 처리**: 50-2000개 적응형 배치 처리 ✅
   - 큐 상태에 따른 동적 처리량 조절
   - 시스템 리소스 모니터링 기반 자동 최적화
   - 메모리 부족 시 자동 처리량 감소
+  - **효과**: 메모리 스파이크 방지
+
+- **가비지 컬렉션 전략**: 3단계 적극적 메모리 관리 ✅
+  - 1분마다: 패킷 처리 스레드에서 GC 실행
+  - 30초마다: 대시보드 스레드에서 GC 3회 실행
+  - 5분마다: 모니터링 스레드에서 GC 3회 실행
+  - **효과**: 메모리 누수 방지 및 안정적 운영
 
 #### **KISTI 데이터 최적화**
 - **샘플링 전략**: 2,543만개 → 50만개 (54초 처리)
 - **지능형 샘플링**: 클래스 균형 유지 (20:80 비율)
-- **메모리 효율 처리**: 5GB+ 데이터를 160MB 이하로 처리
-
-###  **시스템 요구사항 및 배포 환경**
-
-#### **최소 시스템 요구사항**
-| 환경 | CPU | RAM | 저장공간 | 네트워크 |
-|------|-----|-----|---------|----------|
-| **경량 모드** | 1GHz+ | 100MB+ | 500MB | 10Mbps+ |
-| **고성능 모드** | 2GHz+ | 150MB+ | 1GB | 100Mbps+ |
-| **KISTI 처리** | 2GHz+ | 160MB+ | 2GB | 100Mbps+ |
-
+- **메모리 효율 처리**: 5GB+ 데이터를 학습 가능한 크기로 압축
 
 #### **지원 플랫폼**
 - **데스크톱**: Windows 10+, Ubuntu 18.04+, macOS 10.15+
-- **임베디드**: 라즈베리파이 4B+, Jetson Nano, 산업용 PC
-- **클라우드**: AWS EC2, Azure VM, Google Cloud Compute
-- **컨테이너**: Docker 지원 (헤드리스 모드)
+- **서버**: 일반 서버 환경 (메모리 350MB+ 권장)
 
 ## 운영 모드
 
 시스템은 두 가지 운영 모드를 지원하며, 실행 중 동적 전환이 가능합니다:
 
 ### 1. 경량 모드 (Lightweight)
+- **탐지 엔진**: Random Forest (KISTI-IDS-2022) 단독
 - **특성 수**: 7개 기본 특성 사용
-- **리소스**: 낮은 CPU/메모리 사용 (~160-270MB)
-- **정확도**: 기본 수준의 탐지 성능
-- **대상**: 모든 환경에서 실행 가능
-- **탐지 방식**: 내장 휴리스틱 + 랜덤 포레스트
+- **리소스**: CPU 낮음, 메모리 ~350MB
+- **정확도**: F1=0.95 (단일 엔진)
+- **대상**: 일반 데스크톱 환경
+- **장점**: 빠른 처리 속도, 낮은 리소스 사용
 
 ### 2. 고성능 모드 (Performance)
+- **탐지 엔진**: Random Forest + Suricata IDS (이중 검증)
 - **특성 수**: 12개 확장 특성 사용
-- **리소스**: 보통 CPU/메모리 사용 (~180-370MB)
-- **정확도**: 향상된 탐지 정확도
-- **대상**: 일반적인 데스크톱/서버 환경
-- **탐지 방식**: 수리카타 통합 + 규칙 기반 심층 분석
+- **리소스**: CPU 높음, 메모리 ~400-450MB
+- **정확도**: 향상된 탐지율 (RF + 규칙 기반)
+- **대상**: 고사양 데스크톱/서버 환경
+- **장점**: 
+  - RF: 알려지지 않은 변종 공격 탐지
+  - Suricata: 알려진 공격 시그니처 탐지
+  - 이중 검증으로 거짓 양성 감소
 
 ### 모드 전환 방법
 
@@ -937,7 +1527,7 @@ IDSAgent_RL.py는 다음과 같은 5개의 백그라운드 스레드를 통해 �
 
 **명령줄에서 지정**:
 ```bash
-python IDSAgent_RL.py --mode performance
+python IPSAgent_RL.py --mode performance
 ```
 
 ### Conservative RL 기반 대응 전략
@@ -951,128 +1541,6 @@ python IDSAgent_RL.py --mode performance
 | **0.10-0.29** | 허용(0) | 정상 처리, 기본 로그 기록 | OPE 정상 보상 (+5) |
 | **0.10 미만** | 허용(0) | 즉시 허용, 로그 최소화 | OPE 효율 보상 (+3) |
 
-##  현재 구현 상태 (2025-10-02 기준)
 
-### ✅ 핵심 시스템 완성도
-
-| 기능 영역 | 완성도 | 상태 | 주요 내용 |
-|---------|--------|------|----------|
-| **반응형 AI 에이전트** | 🟡 90% | 거의 완료 | RL 실시간 통합 완료, 온라인 학습 구현 |
-| **취약점 자동진단** | 🟡 85% | 진행 중 | 자동 스캔 완료, AI 분석 구현 중 |
-| **KISTI RF 탐지** | 🟢 100% | 완료 | F1=0.95, 현실적 성능 달성 |
-| **Conservative RL** | 🟢 100% | 완료 | 6개 액션, OPE 평가 완성 |
-| **메모리 최적화** | 🟢 100% | 완료 | 125-195MB 절약, 85%+ 재사용률 |
-| **통합 파이프라인** | 🟢 95% | 완료 | RF→RL→방어 자동화 완성 |
-
-###  "반응형 AI 에이전트를 이용한 취약점 자동진단 시스템" 정합성
-
-#### ✅ 1. "반응형 AI 에이전트" (90% 완료)
-
-**구현 완료:**
-- ✅ **실시간 위협 대응**: RF 탐지 → RL 액션 선택 (즉각 대응)
-- ✅ **온라인 학습 기반**: 경험 버퍼 + 10초 주기 실시간 학습
-- ✅ **지능형 의사결정**: 6단계 액션 선택 (허용~격리)
-- ✅ **보상 기반 개선**: 대응 결과 피드백 → 정책 지속 개선
-
-**미완성 (10%):**
-- ⏳ **RL 상태 추출기**: 패킷 데이터 → 10차원 상태 자동 변환 (수동 구현 필요)
-- ⏳ **실시간 보상 계산**: 대응 효과 → 즉각 보상 피드백 (지연 발생)
-
-#### ✅ 2. "취약점 자동진단" (85% 완료)
-
-**구현 완료:**
-- ✅ **자동 스캐닝**: 1시간 주기 전체 네트워크 스캔
-- ✅ **의심 호스트 재스캔**: 10분 주기 집중 스캔
-- ✅ **취약점 스캐너**: 포트/서비스 발견 + 기본 분석
-
-**미완성 (15%):**
-- ⏳ **AI 우선순위 분석**: CVE 데이터베이스 + 위협 확률 통합 분석
-- ⏳ **자동 보고서 생성**: Markdown 형식 취약점 리포트 자동 작성
-- ⏳ **이력 기반 추적**: 과거 탐지 이력 기반 집중 스캔
-
-###  세부 구성 요소 상태
-
-#### ✅ 핵심 시스템 (100% 완료)
-- **IPSAgent_RL.py**: 메인 시스템 (6개 스레드 멀티태스킹)
-- **패킷 캡처**: 적응형 처리 (50-2000개/회)
-- **방어 메커니즘**: RL 통합 자동 대응 시스템
-- **메모리 최적화**: 객체 풀링 + 지연 로딩
-
-#### ✅ KISTI RF 탐지 시스템 (100% 완료)
-- **데이터셋**: KISTI-IDS-2022 (2,543만 → 50만 샘플)
-- **모델 성능**: F1=0.95, PR-AUC=0.9946, MCC=0.7326
-- **현실적 학습**: 클래스 분포 20:80, 데이터 누수 해결
-
-#### ✅ Conservative RL 시스템 (100% 완료)
-- **환경**: DefensePolicyEnv (6개 액션, 10차원 상태)
-- **에이전트**: ConservativeRLAgent (3가지 모드)
-- **평가**: OPE 시스템 (4가지 방법)
-
-#### ✅ 통합 파이프라인 (95% 완료)
-- **RF → RL 연동**: 위협 확률 → 상태 벡터 변환
-- **RL → 방어 연동**: 액션 선택 → 실제 방어 실행
-- **Fallback**: 각 단계 안전 장치
-
-##  향후 개발 계획
-
-###  최우선 과제 (1-2주)
-
-#### ✅ 반응형 AI 완성도 향상 (90% → 100%)
-- [ ] **RL 상태 추출기 완성**: 패킷 데이터 → 10차원 상태 벡터 자동 변환
-- [ ] **실시간 보상 계산**: 대응 결과 → 즉각적 보상 피드백 시스템
-- [ ] **온라인 학습 스레드 최적화**: 10초 주기 경량 학습 안정화
-
-#### ✅ 취약점 자동진단 완성도 향상 (85% → 100%)
-- [ ] **AI 우선순위 분석 고도화**: CVE 데이터베이스 + 위협 확률 통합
-- [ ] **자동 보고서 생성**: Markdown 형식 취약점 리포트 자동 작성
-- [ ] **의심 호스트 추적**: 위협 탐지 이력 기반 자동 재스캔
-
-###  중기 과제 (1-2개월)
-
-#### 성능 최적화
-- [ ] 핵심 병목 구간 Cython 변환 (패킷 처리 30% 속도 향상)
-- [ ] GPU 가속 지원 (RL 학습 10배 고속화)
-- [ ] 메모리 사용량 추가 15% 절감 (현재 160MB → 136MB)
-
-#### 시각화 및 모니터링
-- [ ] **웹 대시보드**: React 기반 실시간 시각화 인터페이스
-- [ ] **취약점 맵**: 네트워크 토폴로지 + 위험도 히트맵
-- [ ] **RL 정책 시각화**: 상태-액션 매핑 실시간 차트
-
-#### 배포 및 확장성
-- [ ] Docker 컨테이너화 (헤드리스 모드 지원)
-- [ ] pip 패키지 배포 (`pip install ips-agent`)
-- [ ] 멀티 네트워크 인터페이스 지원
-
-###  장기 연구 과제 (3-6개월)
-
-#### AI 모델 고도화
-- [ ] **Double DQN**: Q값 과대추정 추가 완화
-- [ ] **PPO 알고리즘**: 안전한 정책 업데이트 강화
-- [ ] **GNN 네트워크 분석**: 그래프 신경망 기반 공격 패턴 학습
-
-#### 자동화 확장
-- [ ] 적응형 임계값 자동 조정
-- [ ] 자가 치유 시스템 (Self-Healing)
-- [ ] 예측 기반 선제 차단 (Predictive Blocking)
-
-###  코드 품질 개선
-- [ ] 단위 테스트 커버리지 80% 달성
-- [ ] CI/CD 파이프라인 구축
-- [ ] 코드 리팩토링 및 모듈 분리 최적화
-- [ ] Linux 최적화 및 성능 벤치마크
-
----
-
-###  우선순위 요약
-
-| 우선순위 | 과제 | 예상 시간 | 영향도 |
-|---------|------|----------|--------|
-| **P0** | RL 상태 추출기 완성 | 3일 | 🔥 높음 |
-| **P0** | AI 우선순위 분석 | 5일 | 🔥 높음 |
-| **P1** | 웹 대시보드 | 2주 | 🔥 높음 |
-| **P1** | Docker 컨테이너화 | 1주 | ⚡ 중간 |
-| **P2** | Double DQN | 3주 | ⚡ 중간 |
-| **P3** | GNN 통합 | 6주 | 💡 낮음 |
 
 
