@@ -91,6 +91,15 @@ $RECYCLE.BIN/
 *.csv
 *.json
 *.txt
+
+# 예외: 중요한 설정 및 문서 파일은 포함
+!requirements.txt
+!IDS/requirements.txt
+!README.txt
+!LICENSE.txt
+!INSTALLATION_GUIDE.md
+!*.md
+
 data_set/
 logs/
 

@@ -59,7 +59,23 @@ if %errorLevel% == 0 (
 :: requirements.txt가 있는지 확인하고 설치
 echo.
 echo  [2/2] Python 패키지 설치 중...
-if exist IDS\requirements.txt (
+
+:: 현재 디렉토리에 requirements.txt가 있는지 확인
+if exist requirements.txt (
+    echo   루트 requirements.txt 발견 - 자동 설치 시작
+    pip install -r requirements.txt --quiet
+    if %errorLevel% == 0 (
+        echo   패키지 설치 완료
+    ) else (
+        echo   경고: 일부 패키지 설치 실패
+    )
+    
+    :: IDS 디렉토리의 추가 패키지도 설치
+    if exist IDS\requirements.txt (
+        echo   IDS\requirements.txt 추가 패키지 설치 중...
+        pip install -r IDS\requirements.txt --quiet
+    )
+) else if exist IDS\requirements.txt (
     echo   IDS\requirements.txt 발견 - 자동 설치 시작
     pip install -r IDS\requirements.txt --quiet
     if %errorLevel% == 0 (
@@ -67,16 +83,10 @@ if exist IDS\requirements.txt (
     ) else (
         echo   경고: 일부 패키지 설치 실패 (시스템은 계속 작동할 수 있습니다)
     )
-) else if exist requirements.txt (
-    echo   requirements.txt 발견 - 자동 설치 시작
-    pip install -r requirements.txt --quiet
-    if %errorLevel% == 0 (
-        echo   패키지 설치 완료
-    ) else (
-        echo   경고: 일부 패키지 설치 실패
-    )
 ) else (
     echo   requirements.txt 없음 - 개별 설치 시작
+    echo   경고: requirements.txt 파일을 찾을 수 없습니다.
+    echo.
     echo   [1/3] 핵심 패키지 설치 중...
     pip install colorama pandas numpy scikit-learn torch joblib scapy psutil --quiet
     echo   [2/3] 웹 서버 및 API 설치 중...
@@ -103,24 +113,42 @@ echo  디렉토리 생성 완료
 :: 필수 파일 확인
 echo.
 echo  필수 파일 확인 중...
+
+:: RF 모델 파일 확인 (우선순위: kisti > ips > random_forest)
+set RF_MODEL_FOUND=0
 if exist "IDS\kisti_random_forest_model.pkl" (
-    echo   KISTI RF 모델: 존재
-) else (
-    echo   경고: KISTI RF 모델 파일이 없습니다.
-    echo   경로: IDS\kisti_random_forest_model.pkl
-    echo   시스템이 자동으로 모델을 학습할 것입니다.
+    echo   KISTI RF 모델: 존재 (IDS\kisti_random_forest_model.pkl)
+    set RF_MODEL_FOUND=1
+) else if exist "IDS\ips_random_forest_model.pkl" (
+    echo   IPS RF 모델: 존재 (IDS\ips_random_forest_model.pkl)
+    set RF_MODEL_FOUND=1
+) else if exist "random_forest_model.pkl" (
+    echo   RF 모델: 존재 (루트 디렉토리)
+    echo   권장: IDS 디렉토리로 이동하세요
+    set RF_MODEL_FOUND=1
 )
 
+if "%RF_MODEL_FOUND%"=="0" (
+    echo   경고: RF 모델 파일을 찾을 수 없습니다.
+    echo   예상 경로: IDS\kisti_random_forest_model.pkl
+    echo   시스템이 자동으로 모델을 학습하거나 오류가 발생할 수 있습니다.
+)
+
+:: RL 에이전트 모델 확인
 if exist "IDS\defense_policy_agent.pth" (
-    echo   RL 에이전트 모델: 존재
+    echo   RL 에이전트 모델: 존재 (IDS\defense_policy_agent.pth)
 ) else (
     echo   경고: RL 에이전트 모델 파일이 없습니다.
     echo   경로: IDS\defense_policy_agent.pth
     echo   시스템이 자동으로 모델을 초기화할 것입니다.
 )
 
+:: 통합 설정 파일 확인
 if exist "IDS\config\unified_config.yaml" (
-    echo   통합 설정 파일: 존재
+    echo   통합 설정 파일: 존재 (IDS\config\unified_config.yaml)
+) else if exist "IDS\defense_config.json" (
+    echo   정보: 구 설정 파일 발견 (IDS\defense_config.json)
+    echo   시스템이 자동으로 YAML로 마이그레이션합니다.
 ) else (
     echo   정보: 통합 설정 파일이 없습니다.
     echo   시스템이 기본 설정으로 자동 생성할 것입니다.
