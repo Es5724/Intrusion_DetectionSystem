@@ -581,3 +581,11 @@
 2025-08-19 09:22:41,852 - DefenseMechanism - INFO - 알림 발송 성공: 192.168.45.137
 2025-08-19 09:22:41,853 - DefenseMechanism - INFO - 패킷 처리 완료: 192.168.45.137 (신뢰도: 0.90)
 2025-08-19 09:22:41,982 - DefenseMechanism - INFO - 중복 위협 무시: 192.168.45.137 (최근에 이미 대응함)
+2025-10-09 01:18:45,369 - DefenseMechanism - INFO - 트래픽 차단 시스템 초기화 완료
+2025-10-09 01:18:45,369 - DefenseMechanism - INFO - 알림 시스템 초기화 완료
+2025-10-09 01:18:45,370 - DefenseMechanism - INFO - 트래픽 차단 시스템 초기화 완료
+2025-10-09 01:18:45,370 - DefenseMechanism - INFO - 알림 시스템 초기화 완료
+2025-10-09 01:18:45,717 - DefenseMechanism - INFO - 위협 알림 시스템 초기화 완료
+2025-10-09 01:18:45,720 - DefenseMechanism - INFO - 포트 스캔 탐지 시스템 초기화 완료
+2025-10-09 01:18:45,720 - DefenseMechanism - INFO - 경량 모드로 실행 중입니다.
+2025-10-09 01:18:45,720 - DefenseMechanism - INFO - 방어 메커니즘 관리자 초기화 완료 (모드: lightweight)

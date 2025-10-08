@@ -530,15 +530,15 @@ def get_default_iface_and_ip():
             if not iface:
                 print("⚠️  Scapy 기본 인터페이스가 없음. 수동 검색 중...")
                 try:
-                import psutil
+                    import psutil
                     found_interfaces = []
                     
-                for interface, addrs in psutil.net_if_addrs().items():
-                    for addr in addrs:
-                        if addr.family == socket.AF_INET and addr.address == src_ip:
+                    for interface, addrs in psutil.net_if_addrs().items():
+                        for addr in addrs:
+                            if addr.family == socket.AF_INET and addr.address == src_ip:
                                 found_interfaces.append(interface)
                                 print(f"🎯 매칭된 인터페이스 발견: {interface} ({addr.address})")
-                                
+                    
                     if found_interfaces:
                         iface = found_interfaces[0]
                         print(f"✅ 선택된 인터페이스: {iface}")
@@ -547,17 +547,17 @@ def get_default_iface_and_ip():
                         # 활성화된 첫 번째 인터페이스 사용
                         for interface, stats in psutil.net_if_stats().items():
                             if stats.isup and interface != "lo" and not "loopback" in interface.lower():
-                            iface = interface
+                                iface = interface
                                 print(f"🔄 대체 인터페이스 사용: {iface}")
-                        break
-            
+                                break
+                
                 except ImportError:
                     print("⚠️  psutil 없음. 기본 인터페이스 검색 제한됨")
             
             # 4단계: 최종 검증
             if iface and src_ip != "127.0.0.1":
                 print(f"🎉 최종 결정: 인터페이스={iface}, IP={src_ip}")
-            return iface, src_ip
+                return iface, src_ip
             else:
                 print("⚠️  유효한 외부 인터페이스를 찾지 못함")
             
