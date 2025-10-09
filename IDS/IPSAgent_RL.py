@@ -993,7 +993,6 @@ def main():
         print()
         
         # 🔥 패킷 캡처 상태 확인 (5초 후)
-        import time
         time.sleep(5)
         initial_packet_count = packet_core.get_packet_count()
         if initial_packet_count == 0:
