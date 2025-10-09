@@ -535,8 +535,8 @@ def monitor_system_resources():
     
     Returns:
         str: 시스템 리소스 상태
-            - 'reduce_processing': CPU > 80% 또는 메모리 > 150MB (부하)
-            - 'can_increase': CPU < 50% 그리고 메모리 < 120MB (여유)
+            - 'reduce_processing': CPU > 80% 또는 메모리 > 800MB (부하)
+            - 'can_increase': CPU < 30% 그리고 메모리 < 500MB (여유)
             - 'maintain': 그 외 정상 범위 (보통)
     """
     try:
@@ -544,10 +544,11 @@ def monitor_system_resources():
         cpu_usage = psutil.cpu_percent(interval=0.1)
         memory_mb = psutil.Process().memory_info().rss / (1024 * 1024)
         
-        if cpu_usage > 80 or memory_mb > 150:
+        # 실제 시스템 메모리 사용량 고려 (PyTorch + scikit-learn = ~350MB 기본)
+        if cpu_usage > 80 or memory_mb > 800:
             logger.warning(f"리소스 부하 감지 - CPU: {cpu_usage:.1f}%, 메모리: {memory_mb:.1f}MB")
             return "reduce_processing"
-        elif cpu_usage < 50 and memory_mb < 120:
+        elif cpu_usage < 30 and memory_mb < 500:
             return "can_increase"
         else:
             return "maintain"
@@ -712,7 +713,7 @@ def main():
         hybrid_log_manager = HybridLogManager()
         hybrid_log_manager.start()
         logger.info("하이브리드 로그 관리자 초기화 완료")
-        print_colored("📊 하이브리드 로그 시스템 활성화됨", Fore.GREEN)
+        print_colored(" 하이브리드 로그 시스템 활성화됨", Fore.GREEN)
     except ImportError as e:
         logger.warning(f"하이브리드 로그 관리자 로드 실패: {e}")
         hybrid_log_manager = None
@@ -763,13 +764,13 @@ def main():
         
         # Colab 환경 확인
         colab_status = is_colab()
-        print_colored(f"🔍 환경 확인: {'Google Colab' if colab_status else '로컬 환경'}", Fore.CYAN)
+        print_colored(f" 환경 확인: {'Google Colab' if colab_status else '로컬 환경'}", Fore.CYAN)
         
         if colab_status:
             logger.info("Google Colab 환경에서 실행 중")
-            print_colored("⚠️  Google Colab 환경 감지", Fore.YELLOW, Style.BRIGHT)
-            print_colored("📚 머신러닝 모델 학습만 가능합니다", Fore.YELLOW)
-            print_colored("🚫 패킷 캡처 기능은 로컬 환경에서만 사용 가능", Fore.YELLOW)
+            print_colored("  Google Colab 환경 감지", Fore.YELLOW, Style.BRIGHT)
+            print_colored(" 머신러닝 모델 학습만 가능합니다", Fore.YELLOW)
+            print_colored(" 패킷 캡처 기능은 로컬 환경에서만 사용 가능", Fore.YELLOW)
             
             # 데이터 파일이 있는 경우에만 머신러닝 모델 학습 실행
             preprocessed_data_path = 'data_set/전처리데이터1.csv'
@@ -958,8 +959,13 @@ def main():
                 peak_packets_per_second = 0
                 total_threats_detected = 0
                 
+                # 큐 오버플로우 방지 변수
+                dropped_packets = 0
+                last_queue_warning_time = 0
+                max_queue_size = 50000  # 최대 큐 크기 (기존 10000에서 증가)
+                
                 # 조용히 시작 (로그에만 기록)
-                logger.info("강화된 실시간 대시보드 모니터링 시작 (객체 풀링 활성화)")
+                logger.info("강화된 실시간 대시보드 모니터링 시작 (객체 풀링 활성화, 최대 큐: 50000)")
                 
                 # 첫 번째 대시보드 즉시 표시
                 show_initial_dashboard = True
@@ -1032,8 +1038,25 @@ def main():
                         processed_queue_size = getattr(packet_core, 'processed_queue', queue.Queue()).qsize()
                         total_queue_size = packet_queue_size + processed_queue_size
                         
+                        #  큐 오버플로우 방지: 최대 크기 초과 시 오래된 패킷 드롭
+                        if total_queue_size > max_queue_size:
+                            overflow_count = total_queue_size - max_queue_size
+                            # 초과된 패킷을 packet_queue에서 먼저 드롭
+                            for _ in range(min(overflow_count, packet_queue_size)):
+                                try:
+                                    dropped_pkt = packet_core.packet_queue.get_nowait()
+                                    dropped_packets += 1
+                                    del dropped_pkt  # 메모리 해제
+                                except queue.Empty:
+                                    break
+                            
+                            # 경고 메시지 (10초마다 한 번만)
+                            if current_time - last_queue_warning_time > 10:
+                                logger.warning(f"🚨 큐 오버플로우! {dropped_packets}개 패킷 드롭됨 (큐 크기: {total_queue_size}/{max_queue_size})")
+                                last_queue_warning_time = current_time
+                        
                         # 적응형 처리에는 총 큐 크기 사용
-                        max_process_count = get_adaptive_process_count(total_queue_size)
+                        max_process_count = get_adaptive_process_count(total_queue_size, max_queue_size)
                         
                         #  개선된 로깅: 큐 상태 세부 정보 포함
                         if total_queue_size > 0 and int(elapsed_time) % 10 == 0:
@@ -1227,15 +1250,17 @@ def main():
                         print_colored("💡 명령어: h(도움말) s(상태) p(패킷) d(방어) m(모드) q(종료) | Enter: 명령 입력", Fore.YELLOW)
                         print()
                         
-                    time.sleep(0.5)  # 0.5초마다 체크 (절충안: 2배 빈번)
+                    time.sleep(1.0)  # 🔥 대시보드 업데이트 빈도 감소 (0.5 -> 1.0초)로 패킷 처리 우선
                 
                 # 스레드 종료 시 통계 딕셔너리 반환
                 stats_pool.put(protocol_stats)
                 logger.info("대시보드 스레드 종료 - 객체 풀에 반환 완료")
             
-            display_thread = threading.Thread(target=display_realtime_stats)
+            # 🔥 대시보드 스레드 - 낮은 우선순위
+            display_thread = threading.Thread(target=display_realtime_stats, name="Dashboard")
             display_thread.daemon = True
             display_thread.start()
+            logger.info("대시보드 스레드 시작됨 (낮은 우선순위)")
             
             # 상세 상태 모니터링 스레드 (백그라운드에서 로그만 기록)
             def monitor_capture_status():
@@ -1339,10 +1364,11 @@ def main():
                         
                         packet_buffer.append(pooled_packet)
                     except queue.Empty:
-                        # 큐가 비어있는 경우 - 정상적인 상황
+                        # 큐가 비어있는 경우 - CPU 사용량 감소를 위해 대기
+                        time.sleep(0.01)  # 10ms 대기
                         pass
                     except Exception as e:
-                        # 오류를 로그에만 기록 (화면 출력 없음)
+                        # 오류를 로그에만 기록 (화면 출력 없이)
                         logger.error(f"패킷 처리 중 오류: {str(e)}")
                         if DEBUG_MODE:
                             logger.debug(traceback.format_exc())
@@ -1455,11 +1481,13 @@ def main():
                             if not packet_buffer or (current_time - last_save_time) >= 120:
                                 last_save_time = current_time
                     
-                    time.sleep(0.05)  # CPU 사용량 감소를 위한 더 짧은 대기
+                    time.sleep(0.01)  # 🔥 패킷 처리 우선순위 향상 (0.05 -> 0.01)
             
-            process_thread = threading.Thread(target=process_and_save_packets)
+            # 🔥 패킷 처리 스레드 - 높은 우선순위
+            process_thread = threading.Thread(target=process_and_save_packets, name="PacketProcessor")
             process_thread.daemon = True
             process_thread.start()
+            logger.info("패킷 처리 스레드 시작됨 (높은 우선순위)")
             
             # GUI 컴포넌트 제거됨 - CLI 전용 모드
             

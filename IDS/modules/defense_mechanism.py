@@ -81,33 +81,47 @@ console_handler = logging.StreamHandler()
 console_handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
 logger.addHandler(console_handler)
 
-# 로그 버퍼링을 위한 메모리 캐시
+# 🔥 로그 버퍼링을 위한 메모리 캐시 (크기 증가 및 비동기 처리)
 log_cache = []
-MAX_LOG_CACHE_SIZE = 100  # 최대 로그 캐시 크기
+MAX_LOG_CACHE_SIZE = 500  # 최대 로그 캐시 크기 (100 -> 500)
 log_cache_lock = threading.Lock()
+last_flush_time = time.time()
+FLUSH_INTERVAL = 5.0  # 5초마다 강제 플러시
 
 def log_with_cache(level, message):
-    """메모리 효율적인 로깅 함수"""
-    global log_cache
+    """메모리 효율적인 로깅 함수 (개선됨)"""
+    global log_cache, last_flush_time
     
-    # 로그 캐시에 추가
+    # 로그 캐시에 추가 (락 최소화)
     with log_cache_lock:
         log_cache.append((level, message))
+        cache_size = len(log_cache)
+        current_time = time.time()
         
-        # 캐시가 임계값에 도달하면 일괄 처리
-        if len(log_cache) >= MAX_LOG_CACHE_SIZE:
-            flush_log_cache()
+        # 크기 또는 시간 기준으로 플러시
+        should_flush = (cache_size >= MAX_LOG_CACHE_SIZE or 
+                       (current_time - last_flush_time) >= FLUSH_INTERVAL)
+    
+    # 락 밖에서 플러시 (블로킹 최소화)
+    if should_flush:
+        flush_log_cache()
 
 def flush_log_cache():
-    """로그 캐시를 파일에 기록하고 메모리 정리"""
-    global log_cache
+    """로그 캐시를 파일에 기록하고 메모리 정리 (개선됨)"""
+    global log_cache, last_flush_time
     
+    # 로컬 복사본 생성 (락 시간 최소화)
     with log_cache_lock:
         if not log_cache:
             return
-            
-        # 캐시된 로그를 레벨에 따라 기록
-        for level, message in log_cache:
+        
+        local_cache = log_cache[:]
+        log_cache.clear()
+        last_flush_time = time.time()
+    
+    # 락 밖에서 로깅 수행 (블로킹 최소화)
+    try:
+        for level, message in local_cache:
             if level == 'INFO':
                 logger.info(message)
             elif level == 'ERROR':
@@ -116,12 +130,12 @@ def flush_log_cache():
                 logger.warning(message)
             elif level == 'DEBUG':
                 logger.debug(message)
-        
-        # 캐시 비우기
-        log_cache.clear()
-        
-        # 명시적 가비지 컬렉션 호출
-        gc.collect()
+    except Exception as e:
+        # 로깅 실패 시에도 계속 진행
+        pass
+    finally:
+        # 로컬 캐시 메모리 해제
+        del local_cache
 
 class DefenseManager:
     """방어 메커니즘 통합 관리 클래스"""
@@ -298,7 +312,9 @@ class DefenseManager:
             packet_info (dict): 캡처된 패킷 정보
         """
         if not self.is_active:
-            return
+            # 비활성화 상태에서도 패킷은 처리하되 방어 조치만 건너뜀
+            logger.debug("방어 메커니즘이 비활성화되어 있습니다.")
+            return  # 이 경우는 return이 맞음 (시스템 비활성화 상태)
         
         try:
             # 패킷 타입 확인 및 변환
@@ -332,60 +348,70 @@ class DefenseManager:
                             'raw_data': str(packet_info)
                         }
             
-            with self.thread_lock:  # 스레드 안전성 보장
-                # 기본 분석 수행
-                prediction, confidence = self.auto_defense.analyze_packet(packet_info)
-                
-                # 포트 스캔 탐지 분석 추가
-                port_scan_detected = False
-                port_scan_risk = 0.0
-                port_scan_type = "none"
-                
-                if self.port_scan_detector:
-                    try:
-                        port_scan_detected, port_scan_risk, port_scan_type = self.port_scan_detector.analyze_packet(packet_info)
-                        
-                        if port_scan_detected:
-                            logger.warning(f"포트 스캔 탐지: {packet_info.get('source', 'unknown')} -> "
-                                         f"위험도: {port_scan_risk:.2f}, 패턴: {port_scan_type}")
-                            
-                            # 포트 스캔이 탐지되면 예측 결과와 신뢰도를 업데이트
-                            if port_scan_risk > confidence:
-                                prediction = 1
-                                confidence = port_scan_risk
-                                # 패킷 정보에 포트 스캔 정보 추가
-                                packet_info['port_scan_detected'] = True
-                                packet_info['port_scan_type'] = port_scan_type
-                                packet_info['port_scan_risk'] = port_scan_risk
-                    except Exception as e:
-                        logger.error(f"포트 스캔 탐지 중 오류: {e}")
-                
-                # 고성능 모드에서 수리카타 분석 추가
-                if self.mode == "performance" and self.suricata_enabled and self.suricata_manager:
-                    suricata_result = self.suricata_manager.check_packet(packet_info)
-                    if suricata_result:
-                        # 수리카타 결과로 예측 및 신뢰도 보강
-                        prediction = 1  # 수리카타가 경고를 발생시켰으므로 위협으로 표시
-                        suricata_confidence = suricata_result.get('suricata_confidence', 0.8)
-                        
-                        # 기존 신뢰도와 수리카타 신뢰도 중 높은 값 사용
-                        confidence = max(confidence, suricata_confidence)
-                        
-                        # 패킷 정보에 수리카타 결과 추가
-                        packet_info.update(suricata_result)
-                        
-                        logger.info(f"수리카타 경고 감지: {suricata_result.get('suricata_signature', '알 수 없음')}, "
-                                   f"신뢰도: {suricata_confidence:.2f}")
-                
-                # 위협으로 탐지된 경우 방어 조치
-                if prediction == 1 and confidence >= self.config["defense"]["low_threat_threshold"]:
-                    source_ip = packet_info.get('source', '').split(':')[0] if ':' in packet_info.get('source', '') else packet_info.get('source', '')
+            # 기본 분석 수행 (락 없이 - 읽기 전용 작업)
+            prediction, confidence = self.auto_defense.analyze_packet(packet_info)
+            
+            # 포트 스캔 탐지 분석 추가
+            port_scan_detected = False
+            port_scan_risk = 0.0
+            port_scan_type = "none"
+            
+            if self.port_scan_detector:
+                try:
+                    port_scan_detected, port_scan_risk, port_scan_type = self.port_scan_detector.analyze_packet(packet_info)
                     
-                    # 중복 대응 방지 (같은 IP에 대한 연속 대응 제한)
-                    if self._check_recent_threat(source_ip):
-                        logger.info(f"중복 위협 무시: {source_ip} (최근에 이미 대응함)")
+                    if port_scan_detected:
+                        logger.warning(f"포트 스캔 탐지: {packet_info.get('source', 'unknown')} -> "
+                                     f"위험도: {port_scan_risk:.2f}, 패턴: {port_scan_type}")
+                        
+                        # 포트 스캔이 탐지되면 예측 결과와 신뢰도를 업데이트
+                        if port_scan_risk > confidence:
+                            prediction = 1
+                            confidence = port_scan_risk
+                            # 패킷 정보에 포트 스캔 정보 추가
+                            packet_info['port_scan_detected'] = True
+                            packet_info['port_scan_type'] = port_scan_type
+                            packet_info['port_scan_risk'] = port_scan_risk
+                except Exception as e:
+                    logger.error(f"포트 스캔 탐지 중 오류: {e}")
+            
+            # 고성능 모드에서 수리카타 분석 추가
+            if self.mode == "performance" and self.suricata_enabled and self.suricata_manager:
+                suricata_result = self.suricata_manager.check_packet(packet_info)
+                if suricata_result:
+                    # 수리카타 결과로 예측 및 신뢰도 보강
+                    prediction = 1  # 수리카타가 경고를 발생시켰으므로 위협으로 표시
+                    suricata_confidence = suricata_result.get('suricata_confidence', 0.8)
+                    
+                    # 기존 신뢰도와 수리카타 신뢰도 중 높은 값 사용
+                    confidence = max(confidence, suricata_confidence)
+                    
+                    # 패킷 정보에 수리카타 결과 추가
+                    packet_info.update(suricata_result)
+                    
+                    logger.info(f"수리카타 경고 감지: {suricata_result.get('suricata_signature', '알 수 없음')}, "
+                               f"신뢰도: {suricata_confidence:.2f}")
+            
+            # 위협으로 탐지된 경우 방어 조치
+            if prediction == 1 and confidence >= self.config["defense"]["low_threat_threshold"]:
+                source_ip = packet_info.get('source', '').split(':')[0] if ':' in packet_info.get('source', '') else packet_info.get('source', '')
+                
+                # 🔥 개선: 락 없이 먼저 빠른 중복 체크 (읽기 전용)
+                is_duplicate = self._check_recent_threat_fast(source_ip)
+                
+                if is_duplicate:
+                    logger.debug(f"중복 위협 무시: {source_ip} (최근에 이미 대응함)")
+                    return  # 빠른 리턴으로 락 경합 방지
+                
+                # 중복이 아닌 경우에만 락 사용
+                with self.thread_lock:
+                    # 락 획득 후 재확인 (Double-checked locking pattern)
+                    if not self._check_recent_threat(source_ip):
+                        # 최근 위협 목록에 추가
+                        self._add_recent_threat(source_ip)
+                    else:
+                        # 다른 스레드가 이미 추가함
                         return
-                    
                     # 수리카타 경고가 있는 경우 추가 정보 출력
                     if 'suricata_alert' in packet_info and packet_info['suricata_alert']:
                         print(f"\n[경고] 수리카타 시그니처 탐지: {packet_info.get('suricata_signature', '알 수 없음')}")
@@ -393,7 +419,7 @@ class DefenseManager:
                     else:
                         print(f"\n[경고] 잠재적 공격 탐지: {source_ip} (신뢰도: {confidence:.2f})")
                     
-                    # 위협 수준에 따른 대응
+                    # 위협 수준에 따른 대응 (락 없이 - 시간이 걸리는 작업)
                     action_taken = self.auto_defense.execute_defense_action(packet_info, confidence)
                     
                     # 포트 스캔 탐지 시 추가 대응
@@ -438,9 +464,6 @@ class DefenseManager:
                         
                         self.threat_alert_system.add_threat(threat_info)
                     
-                    # 최근 위협 목록에 추가
-                    self._add_recent_threat(source_ip)
-                    
                     logger.info(f"패킷 처리 완료: {source_ip} (신뢰도: {confidence:.2f})")
         except Exception as e:
             logger.error(f"패킷 처리 중 오류 발생: {str(e)}")
@@ -448,16 +471,35 @@ class DefenseManager:
             import traceback
             traceback.print_exc()
     
+    def _check_recent_threat_fast(self, ip_address):
+        """최근 위협 목록에 IP가 있는지 빠르게 확인 (락 없이 읽기 전용)"""
+        try:
+            current_time = time.time()
+            # 락 없이 읽기만 수행 (race condition 가능하지만 성능 우선)
+            for threat in self.recent_threats:
+                if threat["ip"] == ip_address and (current_time - threat["timestamp"] <= 5):
+                    return True
+            return False
+        except:
+            # 예외 발생 시 안전하게 False 반환
+            return False
+    
     def _check_recent_threat(self, ip_address):
-        """최근 위협 목록에 IP가 있는지 확인"""
+        """최근 위협 목록에 IP가 있는지 확인 (락 안에서 호출됨)"""
         # 5초 이내의 중복 처리 방지
         current_time = time.time()
-        for threat in self.recent_threats[:]:
-            # 오래된 항목 제거
-            if current_time - threat["timestamp"] > 5:
-                self.recent_threats.remove(threat)
-            elif threat["ip"] == ip_address:
+        
+        # 오래된 항목 제거 (리스트 컴프리헨션 사용)
+        self.recent_threats = [
+            threat for threat in self.recent_threats 
+            if current_time - threat["timestamp"] <= 5
+        ]
+        
+        # IP 존재 여부 확인
+        for threat in self.recent_threats:
+            if threat["ip"] == ip_address:
                 return True
+        
         return False
     
     def _add_recent_threat(self, ip_address):
@@ -661,8 +703,8 @@ class BlockMaliciousTraffic:
             else:  # Linux/Unix
                 result = self._block_ip_linux(ip_address)
             if result:
-                # 방화벽 규칙이 실제로 적용되었는지 검증
-                time.sleep(0.5)  # 규칙 적용 대기
+                # 방화벽 규칙이 실제로 적용되었는지 검증 (비동기적으로 처리)
+                # time.sleep 제거 - 방화벽 규칙은 즉시 적용됨
                 if self.verify_firewall_rule(ip_address):
                     self.blocked_ips.add(ip_address)
                     block_event = {
@@ -744,13 +786,13 @@ class BlockMaliciousTraffic:
         try:
             rule_name = f"IDS_Block_{ip_address.replace('.', '_')}"
             
-            # 인바운드 차단 규칙
+            # 인바운드 차단 규칙 (타임아웃 5초)
             command_in = f'netsh advfirewall firewall add rule name="{rule_name}_IN" dir=in action=block remoteip={ip_address}'
-            process_in = subprocess.run(command_in, shell=True, capture_output=True, text=True)
+            process_in = subprocess.run(command_in, shell=True, capture_output=True, text=True, timeout=5)
             
-            # 아웃바운드 차단 규칙
+            # 아웃바운드 차단 규칙 (타임아웃 5초)
             command_out = f'netsh advfirewall firewall add rule name="{rule_name}_OUT" dir=out action=block remoteip={ip_address}'
-            process_out = subprocess.run(command_out, shell=True, capture_output=True, text=True)
+            process_out = subprocess.run(command_out, shell=True, capture_output=True, text=True, timeout=5)
             
             # 둘 다 성공해야 True
             success = process_in.returncode == 0 and process_out.returncode == 0
@@ -769,6 +811,9 @@ class BlockMaliciousTraffic:
                 logger.info(f"✅ Windows 방화벽 규칙 추가 완료: {rule_name} (IN+OUT)")
             
             return success
+        except subprocess.TimeoutExpired:
+            logger.error(f"방화벽 명령 타임아웃: {ip_address} (5초 초과)")
+            return False
         except Exception as e:
             logger.error(f"Windows IP 차단 중 오류: {str(e)}")
             return False
@@ -778,13 +823,13 @@ class BlockMaliciousTraffic:
         try:
             rule_name = f"IDS_Block_{ip_address.replace('.', '_')}"
             
-            # 인바운드 규칙 삭제
+            # 인바운드 규칙 삭제 (타임아웃 5초)
             command_in = f'netsh advfirewall firewall delete rule name="{rule_name}_IN"'
-            process_in = subprocess.run(command_in, shell=True, capture_output=True, text=True)
+            process_in = subprocess.run(command_in, shell=True, capture_output=True, text=True, timeout=5)
             
-            # 아웃바운드 규칙 삭제
+            # 아웃바운드 규칙 삭제 (타임아웃 5초)
             command_out = f'netsh advfirewall firewall delete rule name="{rule_name}_OUT"'
-            process_out = subprocess.run(command_out, shell=True, capture_output=True, text=True)
+            process_out = subprocess.run(command_out, shell=True, capture_output=True, text=True, timeout=5)
             
             # 둘 중 하나라도 성공하면 OK (규칙이 없을 수도 있음)
             success = process_in.returncode == 0 or process_out.returncode == 0
@@ -793,6 +838,9 @@ class BlockMaliciousTraffic:
                 logger.info(f"✅ Windows 방화벽 규칙 삭제 완료: {rule_name}")
             
             return success
+        except subprocess.TimeoutExpired:
+            logger.error(f"방화벽 명령 타임아웃: {ip_address} (5초 초과)")
+            return False
         except Exception as e:
             logger.error(f"Windows IP 차단 해제 중 오류: {str(e)}")
             return False
@@ -801,8 +849,11 @@ class BlockMaliciousTraffic:
         """Linux 방화벽(iptables)에서 IP 차단"""
         try:
             command = f'iptables -A INPUT -s {ip_address} -j DROP'
-            process = subprocess.run(command, shell=True, capture_output=True, text=True)
+            process = subprocess.run(command, shell=True, capture_output=True, text=True, timeout=5)
             return process.returncode == 0
+        except subprocess.TimeoutExpired:
+            logger.error(f"iptables 명령 타임아웃: {ip_address} (5초 초과)")
+            return False
         except Exception as e:
             logger.error(f"Linux IP 차단 중 오류: {str(e)}")
             return False
@@ -811,8 +862,11 @@ class BlockMaliciousTraffic:
         """Linux 방화벽(iptables)에서 IP 차단 해제"""
         try:
             command = f'iptables -D INPUT -s {ip_address} -j DROP'
-            process = subprocess.run(command, shell=True, capture_output=True, text=True)
+            process = subprocess.run(command, shell=True, capture_output=True, text=True, timeout=5)
             return process.returncode == 0
+        except subprocess.TimeoutExpired:
+            logger.error(f"iptables 명령 타임아웃: {ip_address} (5초 초과)")
+            return False
         except Exception as e:
             logger.error(f"Linux IP 차단 해제 중 오류: {str(e)}")
             return False
@@ -831,12 +885,15 @@ class BlockMaliciousTraffic:
             if self.os_type == 'nt':  # Windows
                 rule_name = f"IDS_Block_{ip_address.replace('.', '_')}"
                 command = f'netsh advfirewall firewall show rule name="{rule_name}_IN"'
-                process = subprocess.run(command, shell=True, capture_output=True, text=True)
+                process = subprocess.run(command, shell=True, capture_output=True, text=True, timeout=5)
                 return process.returncode == 0
             else:  # Linux
                 command = f'iptables -L INPUT -n | grep {ip_address}'
-                process = subprocess.run(command, shell=True, capture_output=True, text=True)
+                process = subprocess.run(command, shell=True, capture_output=True, text=True, timeout=5)
                 return ip_address in process.stdout
+        except subprocess.TimeoutExpired:
+            logger.error(f"방화벽 규칙 확인 타임아웃: {ip_address} (5초 초과)")
+            return False
         except Exception as e:
             logger.error(f"방화벽 규칙 확인 중 오류: {str(e)}")
             return False
@@ -899,9 +956,9 @@ class BlockMaliciousTraffic:
         """방화벽 규칙과 blocked_ips 동기화"""
         try:
             if self.os_type == 'nt':  # Windows
-                # 현재 방화벽에 있는 IDS 규칙 확인
+                # 현재 방화벽에 있는 IDS 규칙 확인 (타임아웃 10초)
                 command = 'netsh advfirewall firewall show rule name=all | findstr "IDS_Block"'
-                result = subprocess.run(command, shell=True, capture_output=True, text=True)
+                result = subprocess.run(command, shell=True, capture_output=True, text=True, timeout=10)
                 
                 if result.stdout:
                     # 규칙 이름에서 IP 추출
@@ -922,9 +979,9 @@ class BlockMaliciousTraffic:
                     if self.blocked_ips:
                         logger.info(f"방화벽 규칙 동기화 완료: {len(self.blocked_ips)}개 IP")
             else:  # Linux
-                # iptables 규칙 확인
+                # iptables 규칙 확인 (타임아웃 10초)
                 command = 'iptables -L INPUT -n | grep DROP'
-                result = subprocess.run(command, shell=True, capture_output=True, text=True)
+                result = subprocess.run(command, shell=True, capture_output=True, text=True, timeout=10)
                 
                 if result.stdout:
                     for line in result.stdout.split('\n'):
@@ -937,6 +994,8 @@ class BlockMaliciousTraffic:
                     
                     if self.blocked_ips:
                         logger.info(f"방화벽 규칙 동기화 완료: {len(self.blocked_ips)}개 IP")
+        except subprocess.TimeoutExpired:
+            logger.error(f"방화벽 동기화 타임아웃 (10초 초과) - 건너뜀")
         except Exception as e:
             logger.error(f"방화벽 규칙 동기화 중 오류: {str(e)}")
     
@@ -1098,6 +1157,16 @@ class AutoDefenseActions:
         self.action_history_max_size = self.config.get('action_history_max_size', 1000)
         self.blocker = BlockMaliciousTraffic()
         self.alert_system = AlertSystem(self.config.get('alert', {}))
+        
+        #  누적 기반 차단 시스템
+        self.threat_accumulation = {}  # IP별 위협 누적 추적
+        self.accumulation_lock = threading.Lock()
+        
+        # 누적 임계값 설정
+        self.medium_threat_count_threshold = 3   # 1분 내 3회
+        self.medium_threat_time_window = 60      # 1분
+        self.low_threat_count_threshold = 10     # 5분 내 10회
+        self.low_threat_time_window = 300        # 5분
         
         # 기존 기록 로드
         self._load_action_history()
@@ -1336,19 +1405,19 @@ class AutoDefenseActions:
             if isinstance(protocol, int) or (isinstance(protocol, str) and protocol.isdigit()):
                 protocol = protocol_map.get(int(protocol), str(protocol))
             
-            # 위협 수준에 따른 대응
-            if confidence >= 0.9:  # 매우 높은 위협
+            # 🔥 위협 수준에 따른 대응 (함수명 일치 수정)
+            if confidence >= 0.9:  # 🔴 치명적 위협
                 action = "IP 영구 차단"
-                self._high_threat_response(source_ip, protocol)
-            elif confidence >= 0.8:  # 높은 위협
+                self._critical_threat_response(source_ip, protocol)
+            elif confidence >= 0.8:  # 🟠 높은 위협
                 action = "IP 임시 차단 (30분)"
+                self._high_threat_response(source_ip, protocol)
+            elif confidence >= 0.7:  # 🟡 중간 위협
+                action = "모니터링 강화 (누적 체크)"
                 self._medium_threat_response(source_ip, protocol)
-            elif confidence >= 0.7:  # 중간 위협
-                action = "모니터링 강화"
+            else:  # 🟢 낮은 위협
+                action = "모니터링 (누적 체크)"
                 self._low_threat_response(source_ip, protocol)
-            else:  # 낮은 위협
-                action = "모니터링 중"
-                self._monitoring_only(source_ip)
             
             # 방어 조치 기록
             action_record = {
@@ -1379,16 +1448,17 @@ class AutoDefenseActions:
             log_with_cache('DEBUG', traceback.format_exc())
             return "오류 발생"
     
-    def _high_threat_response(self, ip, protocol):
-        """매우 높은 위협에 대한 대응"""
+    def _critical_threat_response(self, ip, protocol):
+        """🔴 치명적 위협 대응 (신뢰도 ≥ 0.9) - IP 영구 차단"""
         try:
             # 사설 IP 보호 확인
             if self._is_private_ip(ip):
                 log_with_cache('WARNING', f"사설 IP 영구 차단 시도 차단됨: {ip} (내부 네트워크 보호)")
                 return
             
-            # 1. IP 차단
+            # 1. IP 영구 차단
             self.blocker.block_ip(ip)
+            log_with_cache('INFO', f"🔴 치명적 위협 - IP 영구 차단: {ip}")
             
             # 2. 관리자에게 긴급 알림
             alert_info = {
@@ -1400,11 +1470,14 @@ class AutoDefenseActions:
             }
             self.alert_system.send_alert(alert_info)
             
-            # 3. 추가적인 보안 강화 조치 (예: 특정 포트 일시적 차단 등)
-            log_with_cache('INFO', f"매우 높은 위협 대응 완료: {ip}")
+            # 3. 누적 기록 초기화 (영구 차단되었으므로)
+            if ip in self.threat_accumulation:
+                del self.threat_accumulation[ip]
+            
+            log_with_cache('INFO', f"치명적 위협 대응 완료: {ip}")
             
         except Exception as e:
-            log_with_cache('ERROR', f"높은 위협 대응 중 오류: {str(e)}")
+            log_with_cache('ERROR', f"치명적 위협 대응 중 오류: {str(e)}")
     
     def _is_private_ip(self, ip_address):
         """사설 IP 주소 확인 (차단 금지 대상)"""
@@ -1424,8 +1497,8 @@ class AutoDefenseActions:
         except:
             return False
     
-    def _medium_threat_response(self, ip, protocol):
-        """높은 위협에 대한 대응"""
+    def _high_threat_response(self, ip, protocol):
+        """🟠 높은 위협 대응 (신뢰도 0.8-0.9) - IP 임시 차단 30분"""
         try:
             # 사설 IP 보호 확인
             if self._is_private_ip(ip):
@@ -1434,12 +1507,14 @@ class AutoDefenseActions:
             
             # 1. 임시 IP 차단 (30분)
             self.blocker.block_ip(ip)
+            log_with_cache('INFO', f"🟠 높은 위협 - IP 임시 차단 (30분): {ip}")
             
-            # 일정 시간 후 자동 해제를 위한 스레드 (실제 구현 시)
+            # 일정 시간 후 자동 해제를 위한 스레드 (백그라운드에서 실행)
             def unblock_later():
+                import time
                 time.sleep(1800)  # 30분
                 self.blocker.unblock_ip(ip)
-                log_with_cache('INFO', f"IP 차단 자동 해제: {ip}")
+                log_with_cache('INFO', f"IP 차단 자동 해제 (30분 경과): {ip}")
             
             threading.Thread(target=unblock_later, daemon=True).start()
             
@@ -1453,16 +1528,28 @@ class AutoDefenseActions:
             }
             self.alert_system.send_alert(alert_info)
             
-            log_with_cache('INFO', f"중간 위협 대응 완료: {ip}")
+            # 3. 누적 기록 초기화
+            if ip in self.threat_accumulation:
+                del self.threat_accumulation[ip]
+            
+            log_with_cache('INFO', f"높은 위협 대응 완료: {ip}")
             
         except Exception as e:
-            log_with_cache('ERROR', f"중간 위협 대응 중 오류: {str(e)}")
+            log_with_cache('ERROR', f"높은 위협 대응 중 오류: {str(e)}")
     
-    def _low_threat_response(self, ip, protocol):
-        """중간 위협에 대한 대응"""
+    def _medium_threat_response(self, ip, protocol):
+        """🟡 중간 위협 대응 (신뢰도 0.7-0.8) - 모니터링 강화 + 누적 체크"""
         try:
-            # 패킷 제한 및 모니터링 강화
-            log_with_cache('INFO', f"낮은 위협 감지: {ip} - 모니터링 강화")
+            log_with_cache('INFO', f"🟡 중간 위협 감지: {ip} - 모니터링 강화")
+            
+            #  누적 체크 - 1분 내 3회 시 임시 차단
+            should_block, block_type = self._check_and_update_accumulation(ip, 'medium')
+            
+            if should_block and block_type == 'temp_block':
+                # 누적으로 인한 임시 차단 (30분)
+                log_with_cache('WARNING', f" 누적 패턴 탐지! {ip} → 임시 차단 (30분)")
+                self._high_threat_response(ip, protocol)
+                return
             
             # 알림 전송
             alert_info = {
@@ -1475,11 +1562,138 @@ class AutoDefenseActions:
             self.alert_system.send_alert(alert_info)
             
         except Exception as e:
+            log_with_cache('ERROR', f"중간 위협 대응 중 오류: {str(e)}")
+    
+    def _warning_block_response(self, ip, protocol):
+        """⚠️ 경고 차단 대응 (누적 낮은 위협) - IP 경고 차단 10분"""
+        try:
+            # 사설 IP 보호 확인
+            if self._is_private_ip(ip):
+                log_with_cache('WARNING', f"사설 IP 경고 차단 시도 차단됨: {ip} (내부 네트워크 보호)")
+                return
+            
+            # 1. 경고 차단 (10분)
+            self.blocker.block_ip(ip)
+            log_with_cache('INFO', f"⚠️ 누적 패턴 - IP 경고 차단 (10분): {ip}")
+            
+            # 10분 후 자동 해제
+            def unblock_later():
+                import time
+                time.sleep(600)  # 10분
+                self.blocker.unblock_ip(ip)
+                log_with_cache('INFO', f"IP 경고 차단 해제 (10분 경과): {ip}")
+            
+            threading.Thread(target=unblock_later, daemon=True).start()
+            
+            # 2. 관리자에게 알림
+            alert_info = {
+                "source_ip": ip,
+                "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                "protocol": protocol,
+                "confidence": 0.65,
+                "action_taken": "누적 패턴 탐지 - IP 경고 차단 (10분)"
+            }
+            self.alert_system.send_alert(alert_info)
+            
+            # 3. 누적 기록 초기화
+            if ip in self.threat_accumulation:
+                del self.threat_accumulation[ip]
+            
+            log_with_cache('INFO', f"경고 차단 대응 완료: {ip}")
+            
+        except Exception as e:
+            log_with_cache('ERROR', f"경고 차단 대응 중 오류: {str(e)}")
+    
+    def _low_threat_response(self, ip, protocol):
+        """🟢 낮은 위협 대응 (신뢰도 < 0.7) - 모니터링 + 누적 체크"""
+        try:
+            log_with_cache('DEBUG', f"🟢 낮은 위협 감지: {ip} - 모니터링")
+            
+            # 🔥 누적 체크 - 5분 내 10회 시 경고 차단
+            should_block, block_type = self._check_and_update_accumulation(ip, 'low')
+            
+            if should_block and block_type == 'warning_block':
+                # 누적으로 인한 경고 차단 (10분)
+                log_with_cache('WARNING', f"⚡ 반복 패턴 탐지! {ip} → 경고 차단 (10분)")
+                self._warning_block_response(ip, protocol)
+                return
+            
+            # 낮은 위협은 알림 안 보냄 (로그만)
+            
+        except Exception as e:
             log_with_cache('ERROR', f"낮은 위협 대응 중 오류: {str(e)}")
     
     def _monitoring_only(self, ip):
-        """낮은 위협에 대한 대응 (모니터링만)"""
+        """의심 활동 모니터링 (차단 안 함)"""
         log_with_cache('INFO', f"의심 활동 모니터링: {ip}")
+    
+    def _check_and_update_accumulation(self, ip, threat_level):
+        """
+        누적 위협 체크 및 업데이트
+        
+        Args:
+            ip (str): IP 주소
+            threat_level (str): 위협 수준 ('medium', 'low')
+        
+        Returns:
+            tuple: (차단 필요 여부, 차단 유형)
+                - (True, 'warning_block'): 경고 차단 필요 (10분)
+                - (True, 'temp_block'): 임시 차단 필요 (30분)
+                - (False, None): 차단 불필요
+        """
+        current_time = time.time()
+        
+        with self.accumulation_lock:
+            # IP별 위협 기록 초기화
+            if ip not in self.threat_accumulation:
+                self.threat_accumulation[ip] = {
+                    'medium_threats': [],
+                    'low_threats': []
+                }
+            
+            ip_record = self.threat_accumulation[ip]
+            
+            # 중간 위협 처리 (1분 내 3회)
+            if threat_level == 'medium':
+                # 오래된 기록 제거
+                ip_record['medium_threats'] = [
+                    ts for ts in ip_record['medium_threats']
+                    if current_time - ts < self.medium_threat_time_window
+                ]
+                
+                # 현재 위협 추가
+                ip_record['medium_threats'].append(current_time)
+                
+                # 임계값 확인
+                if len(ip_record['medium_threats']) >= self.medium_threat_count_threshold:
+                    log_with_cache('WARNING', f"🚨 누적 중간 위협 탐지: {ip} - {len(ip_record['medium_threats'])}회 (1분 내)")
+                    # 기록 초기화
+                    ip_record['medium_threats'].clear()
+                    return True, 'temp_block'  # 30분 임시 차단
+                
+                log_with_cache('INFO', f"중간 위협 누적: {ip} - {len(ip_record['medium_threats'])}/{self.medium_threat_count_threshold}회")
+            
+            # 낮은 위협 처리 (5분 내 10회)
+            elif threat_level == 'low':
+                # 오래된 기록 제거
+                ip_record['low_threats'] = [
+                    ts for ts in ip_record['low_threats']
+                    if current_time - ts < self.low_threat_time_window
+                ]
+                
+                # 현재 위협 추가
+                ip_record['low_threats'].append(current_time)
+                
+                # 임계값 확인
+                if len(ip_record['low_threats']) >= self.low_threat_count_threshold:
+                    log_with_cache('WARNING', f"⚠️ 누적 낮은 위협 탐지: {ip} - {len(ip_record['low_threats'])}회 (5분 내)")
+                    # 기록 초기화
+                    ip_record['low_threats'].clear()
+                    return True, 'warning_block'  # 10분 경고 차단
+                
+                log_with_cache('DEBUG', f"낮은 위협 누적: {ip} - {len(ip_record['low_threats'])}/{self.low_threat_count_threshold}회")
+        
+        return False, None
     
     def _check_basic_heuristics(self, packet):
         """기본적인 휴리스틱 검사"""

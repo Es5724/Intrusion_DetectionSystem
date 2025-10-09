@@ -239,7 +239,7 @@ def udp_flood(target_ip, packet_count, packet_size, stop_flag, spoof_ip=None, pr
     print(f"UDP 플러드 완료 - 총 {sent_count}개 패킷 전송")
 
 # HTTP Slowloris 공격을 수행하는 함수
-def http_slowloris(target_ip, packet_count, packet_size, stop_flag, spoof_ip=None):
+def http_slowloris(target_ip, packet_count, packet_size, stop_flag, spoof_ip=None, progress_callback=None):
     """HTTP Slowloris 공격 (느린 HTTP 요청으로 서버 리소스 고갈)"""
     # 개선된 모듈이 사용 가능한 경우 새 함수 사용
     if USE_IMPROVED_MODULES:
@@ -291,6 +291,11 @@ def http_slowloris(target_ip, packet_count, packet_size, stop_flag, spoof_ip=Non
                 send(packets, iface=iface, verbose=0, inter=0, realtime=False)
                 sent_count += len(packets)
                 
+                # 진행률 콜백 호출
+                if progress_callback:
+                    progress = int((i + 1) / packet_count * 100)
+                    progress_callback.emit(f"HTTP Slowloris 진행률: {progress}% ({sent_count}/{packet_count})")
+                
                 if sent_count % 100 == 0:
                     print(f"HTTP Slowloris 패킷 전송: {sent_count}/{packet_count}")
                 
@@ -307,7 +312,7 @@ def http_slowloris(target_ip, packet_count, packet_size, stop_flag, spoof_ip=Non
     gc.collect()
 
 # TCP 핸드셰이크 오용 공격을 수행하는 함수.
-def tcp_handshake_misuse(target_ip, packet_count, packet_size, stop_flag, spoof_ip=None):
+def tcp_handshake_misuse(target_ip, packet_count, packet_size, stop_flag, spoof_ip=None, progress_callback=None):
     # 개선된 모듈이 사용 가능한 경우 새 함수 사용
     if USE_IMPROVED_MODULES:
         try:
@@ -360,6 +365,11 @@ def tcp_handshake_misuse(target_ip, packet_count, packet_size, stop_flag, spoof_
                 time.sleep(0.01)
                 send(rst_packets, iface=iface, verbose=0, inter=0, realtime=False)
                 
+                # 진행률 콜백 호출
+                if progress_callback:
+                    progress = int((i + 1) / packet_count * 100)
+                    progress_callback.emit(f"TCP 핸드셰이크 오용 진행률: {progress}% ({sent_count}/{packet_count})")
+                
                 if sent_count % 100 == 0:
                     print(f"TCP 핸드셰이크 오용 패킷 전송: {sent_count}/{packet_count}")
                 
@@ -379,7 +389,7 @@ def tcp_handshake_misuse(target_ip, packet_count, packet_size, stop_flag, spoof_
     gc.collect()
 
 # SSL/TLS 트래픽을 생성하는 함수.
-def ssl_traffic(target_ip, count, packet_size, stop_flag):
+def ssl_traffic(target_ip, count, packet_size, stop_flag, progress_callback=None):
     """SSL/TLS 트래픽 생성 (실제 SSL 연결 대신 Scapy로 시뮬레이션)"""
     iface, src_ip = get_default_iface_and_ip()
     if not iface:
@@ -405,6 +415,11 @@ def ssl_traffic(target_ip, count, packet_size, stop_flag):
             send(syn_packet, iface=iface, verbose=0)
             sent_count += 1
             
+            # 진행률 콜백 호출
+            if progress_callback:
+                progress = int((i + 1) / count * 100)
+                progress_callback.emit(f"SSL/TLS 트래픽 진행률: {progress}% ({sent_count}/{count})")
+            
             if sent_count % 10 == 0:
                 print(f"SSL/TLS 패킷 전송: {sent_count}/{count}")
             
@@ -417,7 +432,7 @@ def ssl_traffic(target_ip, count, packet_size, stop_flag):
     print(f"✅ SSL/TLS 트래픽 완료: {sent_count}개 패킷 전송")
 
 # HTTP 요청을 변조하는 함수.
-def http_request_modification(target_ip, packet_count, packet_size, stop_flag):
+def http_request_modification(target_ip, packet_count, packet_size, stop_flag, progress_callback=None):
     """HTTP 요청 변조 공격 (Scapy로 악성 HTTP 패킷 생성)"""
     iface, src_ip = get_default_iface_and_ip()
     if not iface:
@@ -451,6 +466,11 @@ def http_request_modification(target_ip, packet_count, packet_size, stop_flag):
             send(packet, iface=iface, verbose=0)
             sent_count += 1
             
+            # 진행률 콜백 호출
+            if progress_callback:
+                progress = int((i + 1) / packet_count * 100)
+                progress_callback.emit(f"HTTP 요청 변조 진행률: {progress}% ({sent_count}/{packet_count})")
+            
             if sent_count % 10 == 0:
                 print(f"HTTP 변조 패킷 전송: {sent_count}/{packet_count}")
             
@@ -463,7 +483,7 @@ def http_request_modification(target_ip, packet_count, packet_size, stop_flag):
     print(f"✅ HTTP 요청 변조 완료: {sent_count}개 패킷 전송")
 
 # ARP 스푸핑 공격을 수행하는 함수.
-def arp_spoof(target_ip, spoof_ip, stop_flag):
+def arp_spoof(target_ip, spoof_ip, stop_flag, progress_callback=None):
     # 기존 함수 로직 (ARP 스푸핑은 아직 새 모듈에 구현되지 않음)
     # 현재 시스템의 기본 네트워크 인터페이스와 IP 주소 가져오기
     iface, src_ip = get_default_iface_and_ip()
@@ -508,6 +528,12 @@ def arp_spoof(target_ip, spoof_ip, stop_flag):
             # 미리 생성한 패킷들을 빠르게 전송
             send(arp_packets, iface=iface, verbose=0, inter=0)
             count += len(arp_packets)
+            
+            # 진행률 콜백 호출
+            if progress_callback:
+                progress = int((iteration + 1) / max_iterations * 100)
+                progress_callback.emit(f"ARP 스푸핑 진행률: {progress}% ({count}개 전송)")
+            
             # 로그 출력 빈도 감소 (매 10번째 반복마다)
             if iteration % 10 == 0:
                 print(f'ARP 스푸핑 패킷 {count}개 전송됨')
@@ -525,7 +551,7 @@ def arp_spoof(target_ip, spoof_ip, stop_flag):
     gc.collect()
 
 # ICMP 리다이렉트 공격을 수행하는 함수.
-def icmp_redirect(target_ip, new_gateway_ip, stop_flag):
+def icmp_redirect(target_ip, new_gateway_ip, stop_flag, progress_callback=None):
     # 기존 함수 로직 (ICMP 리다이렉트는 아직 새 모듈에 구현되지 않음)
     # 현재 시스템의 기본 네트워크 인터페이스와 IP 주소 가져오기
     iface, src_ip = get_default_iface_and_ip()
@@ -554,6 +580,11 @@ def icmp_redirect(target_ip, new_gateway_ip, stop_flag):
             # 패킷 전송
             send(redirect_packet, iface=iface, verbose=0)
             sent_count += 1
+            
+            # 진행률 콜백 호출
+            if progress_callback:
+                progress = int((iteration) / max_iterations * 100)
+                progress_callback.emit(f"ICMP 리다이렉트 진행률: {progress}% ({sent_count}/{max_iterations})")
             
             # 로그 출력 빈도 감소 (매 10번째 패킷마다)
             if sent_count % 10 == 0:
@@ -735,9 +766,8 @@ class TrafficGeneratorThread(QThread):
                     args_with_flag[i] = self.stop_flag
                     break
             
-            # progress_callback 추가 (함수가 지원하는 경우)
-            if self.attack_name in ["SYN 플러드", "UDP 플러드"]:
-                args_with_flag.append(self.progress)
+            # 🔥 모든 공격에 progress_callback 추가
+            args_with_flag.append(self.progress)
             
             self.progress.emit(f"{self.attack_name} 시작...")
             self.attack_func(*args_with_flag)
@@ -1056,9 +1086,9 @@ class TrafficGeneratorApp(QWidget):
         if self.tcp_handshake_misuse_checkbox.isChecked():
             selected_attacks.append(('TCP 핸드셰이크 오용', tcp_handshake_misuse, (target_ip, packet_count, packet_size, None, spoof_ip)))
         if self.ssl_traffic_checkbox.isChecked():
-            selected_attacks.append(('SSL/TLS 트래픽', ssl_traffic, (target_ip, packet_count, packet_size, None)))
+            selected_attacks.append(('SSL/TLS 트래픽', ssl_traffic, (target_ip, packet_count, packet_size, None)))  # progress_callback은 TrafficGeneratorThread에서 추가
         if self.http_request_modification_checkbox.isChecked():
-            selected_attacks.append(('HTTP 요청 변조', http_request_modification, (target_ip, packet_count, packet_size, None)))
+            selected_attacks.append(('HTTP 요청 변조', http_request_modification, (target_ip, packet_count, packet_size, None)))  # progress_callback은 TrafficGeneratorThread에서 추가
         
         # 2번 선택군 (네트워크 조작) 확인
         if self.arp_spoofing_checkbox.isChecked():
@@ -1069,14 +1099,14 @@ class TrafficGeneratorApp(QWidget):
                     QMessageBox.warning(self, '게이트웨이 오류', 'ARP 스푸핑을 위한 게이트웨이를 찾을 수 없습니다.')
                     return
                 spoof_ip = default_gateway
-            selected_attacks.append(('ARP 스푸핑', arp_spoof, (target_ip, spoof_ip, None)))
+            selected_attacks.append(('ARP 스푸핑', arp_spoof, (target_ip, spoof_ip, None)))  # progress_callback은 TrafficGeneratorThread에서 추가
         
         if self.icmp_redirect_checkbox.isChecked():
             default_gateway = get_default_gateway()
             if not default_gateway:
                 QMessageBox.warning(self, '게이트웨이 오류', '기본 게이트웨이를 찾을 수 없습니다.')
                 return
-            selected_attacks.append(('ICMP 리다이렉트', icmp_redirect, (target_ip, spoof_ip if spoof_ip else default_gateway, None)))
+            selected_attacks.append(('ICMP 리다이렉트', icmp_redirect, (target_ip, spoof_ip if spoof_ip else default_gateway, None)))  # progress_callback은 TrafficGeneratorThread에서 추가
         
         # 선택된 공격이 없는 경우
         if not selected_attacks:

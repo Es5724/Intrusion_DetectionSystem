@@ -32,13 +32,15 @@ class ThreatAlertSystem:
     def __init__(self, config=None):
         """위협 알림 시스템 초기화"""
         self.config = config or {}
-        self.alert_queue = queue.Queue()
+        self.alert_queue = queue.Queue(maxsize=100)  # 🔥 큐 크기 제한으로 블로킹 방지
         self.threat_history = deque(maxlen=1000)  # 최근 1000개 위협 기록
         self.is_running = True
         
-        # 알림 설정 (사운드 제거)
-        self.popup_enabled = self.config.get('popup_enabled', True)
-        self.dashboard_enabled = self.config.get('dashboard_enabled', True)
+        # 🔥 팝업 제한 설정 (과도한 팝업 방지)
+        self.popup_enabled = self.config.get('popup_enabled', False)  # 기본값을 False로 변경
+        self.dashboard_enabled = self.config.get('dashboard_enabled', False)  # 대시보드도 기본 비활성화
+        self.max_popups_per_minute = self.config.get('max_popups_per_minute', 3)  # 분당 최대 3개
+        self.popup_timestamps = deque(maxlen=self.max_popups_per_minute)
         
         # 위협 수준별 임계값
         self.thresholds = {
@@ -94,6 +96,11 @@ class ThreatAlertSystem:
         
         # 위협 기록에 추가
         self.threat_history.append(threat_info)
+        
+        # 🔥 큐가 가득 찬 경우 블로킹하지 않고 드롭
+        if self.alert_queue.full():
+            logger.warning(f"알림 큐 가득 참 - 위협 알림 드롭: {threat_info['source_ip']}")
+            return
         
         # 중간 위협의 경우 누적 처리
         if threat_level == ThreatLevel.MEDIUM:
@@ -169,14 +176,27 @@ class ThreatAlertSystem:
             self.dashboard.update_threat(threat_info)
     
     def _show_popup_alert(self, threat_info):
-        """팝업 알림 표시"""
+        """팝업 알림 표시 (비블로킹 방식)"""
+        # 🔥 팝업 제한 확인 (분당 최대 개수)
+        current_time = time.time()
+        # 1분 이내의 팝업만 카운트
+        recent_popups = [ts for ts in self.popup_timestamps if current_time - ts < 60]
+        
+        if len(recent_popups) >= self.max_popups_per_minute:
+            logger.debug(f"팝업 제한 도달 - 알림 건너뜀: {threat_info['source_ip']}")
+            return
+        
+        # 팝업 타임스탬프 기록
+        self.popup_timestamps.append(current_time)
+        
         def show_popup():
-            root = tk.Tk()
-            root.withdraw()  # 메인 윈도우 숨김
-            
-            # 메시지 구성
-            title = f"보안 경고 - {threat_info['threat_level']}"
-            message = f"""
+            try:
+                root = tk.Tk()
+                root.withdraw()  # 메인 윈도우 숨김
+                
+                # 메시지 구성
+                title = f"보안 경고 - {threat_info['threat_level']}"
+                message = f"""
 위협이 탐지되었습니다!
 
 출발지 IP: {threat_info['source_ip']}
@@ -186,16 +206,33 @@ class ThreatAlertSystem:
 시간: {threat_info['timestamp'].strftime('%Y-%m-%d %H:%M:%S')}
 
 조치: {threat_info.get('action_taken', '모니터링 중')}
-            """
-            
-            # 위협 수준에 따른 아이콘 선택
-            if threat_info['threat_level'] == ThreatLevel.CRITICAL:
-                icon = messagebox.ERROR
-            else:
-                icon = messagebox.WARNING
-            
-            messagebox.showwarning(title, message, icon=icon)
-            root.destroy()
+                """
+                
+                # 비블로킹 팝업 생성 (자동으로 3초 후 닫힘)
+                popup = tk.Toplevel(root)
+                popup.title(title)
+                popup.geometry("400x300")
+                popup.attributes('-topmost', True)  # 항상 위에 표시
+                
+                # 메시지 표시
+                label = tk.Label(popup, text=message, justify='left', padx=20, pady=20)
+                label.pack()
+                
+                # 확인 버튼
+                def close_popup():
+                    popup.destroy()
+                    root.destroy()
+                
+                btn = tk.Button(popup, text="확인", command=close_popup, width=10)
+                btn.pack(pady=10)
+                
+                # 3초 후 자동 닫기
+                popup.after(3000, close_popup)
+                
+                root.mainloop()
+                
+            except Exception as e:
+                logger.error(f"팝업 표시 오류: {e}")
         
         # 별도 스레드에서 팝업 표시
         popup_thread = threading.Thread(target=show_popup, daemon=True)
@@ -222,8 +259,26 @@ class ThreatAlertSystem:
 조치: {threat_info.get('action_taken', '모니터링 강화')}
             """
             
-            messagebox.showwarning(title, message)
-            root.destroy()
+            # 비블로킹 팝업 생성 (자동으로 3초 후 닫힘)
+            popup = tk.Toplevel(root)
+            popup.title(title)
+            popup.geometry("400x350")
+            popup.attributes('-topmost', True)
+            
+            label = tk.Label(popup, text=message, justify='left', padx=20, pady=20)
+            label.pack()
+            
+            def close_popup():
+                popup.destroy()
+                root.destroy()
+            
+            btn = tk.Button(popup, text="확인", command=close_popup, width=10)
+            btn.pack(pady=10)
+            
+            # 3초 후 자동 닫기
+            popup.after(3000, close_popup)
+            
+            root.mainloop()
         
         # 별도 스레드에서 팝업 표시
         popup_thread = threading.Thread(target=show_popup, daemon=True)

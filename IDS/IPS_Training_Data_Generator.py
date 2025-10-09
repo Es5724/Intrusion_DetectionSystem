@@ -35,7 +35,6 @@ from PyQt6.QtCore import Qt, QSize
 # 애플리케이션 모듈 임포트
 from scripts.components.packet_collector import PacketCapture, PacketCaptureCore, MainApp as PacketCollectorApp
 from scripts.components.TrafficGeneratorApp import TrafficGeneratorApp
-from scripts.components.DataPreprocessingApp import DataPreprocessingApp
 
 #
 def is_admin():
@@ -110,10 +109,6 @@ class MainApplication(QMainWindow):
         self.traffic_generator_app = TrafficGeneratorApp(self)
         self.stacked_widget.addWidget(self.traffic_generator_app)
         
-        # 데이터 전처리 화면 초기화
-        self.data_preprocessing_app = DataPreprocessingApp(self)
-        self.stacked_widget.addWidget(self.data_preprocessing_app)
-        
         # 시작 화면 표시
         self.show_main_screen()
     
@@ -154,7 +149,6 @@ class MainApplication(QMainWindow):
         # 메인 기능 버튼들 추가
         self.add_main_button(button_layout, "패킷 캡처", self.show_packet_collector)
         self.add_main_button(button_layout, "트래픽 생성", self.show_traffic_generator)
-        self.add_main_button(button_layout, "데이터 전처리", self.show_data_preprocessing)
         
         # 종료 버튼
         exit_button = self.add_main_button(button_layout, "종료", self.close)
@@ -229,10 +223,6 @@ class MainApplication(QMainWindow):
     def show_traffic_generator(self):
         """트래픽 생성 화면 표시"""
         self.stacked_widget.setCurrentWidget(self.traffic_generator_app)
-    
-    def show_data_preprocessing(self):
-        """데이터 전처리 화면 표시"""
-        self.stacked_widget.setCurrentWidget(self.data_preprocessing_app)
 
 def main():
     """메인 함수"""
