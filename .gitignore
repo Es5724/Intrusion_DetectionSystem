@@ -80,28 +80,53 @@ Desktop.ini
 $RECYCLE.BIN/
 *.lnk
 
-# Machine Learning Models
-*.pkl
+# Machine Learning Models (큰 임시 모델만 제외)
+# *.pkl  ← 주석 처리: 모델 파일은 git에 포함해야 함!
 *.joblib
 *.h5
 *.hdf5
 *.model
+# 예외: 필수 모델 파일은 포함
+!*_model.pkl
+!kisti_*.pkl
+!ips_*.pkl
+!random_forest_model.pkl
 
-# Data files (large datasets)
-*.csv
-*.json
-*.txt
+# Data files (large datasets) - 선택적 제외
+# 큰 CSV 파일만 제외 (캡처된 패킷 등)
+captured_packets_*.csv
+temp_*.csv
+test_*.csv
 
-# 예외: 중요한 설정 및 문서 파일은 포함
+# JSON 파일은 설정 파일이므로 포함해야 함!
+# *.json  ← 주석 처리!
+# 예외: 필수 설정 파일 포함
+!defense_config.json
+!*.json
+
+# TXT 파일도 필요
+# *.txt  ← 주석 처리!
 !requirements.txt
 !IDS/requirements.txt
 !README.txt
 !LICENSE.txt
-!INSTALLATION_GUIDE.md
+!*.txt
+
+# 문서 파일은 전부 포함
 !*.md
 
+# 🔥 데이터셋 완전 제외 (4.8GB - GitHub 용량 초과)
+# 이미 학습된 모델(*.pkl)이 포함되어 있어 즉시 실행 가능
 data_set/
-logs/
+
+# 🔥 전처리 데이터 CSV도 제외 (총 229MB)
+IDS/processed_data/*.csv
+processed_data/*.csv
+
+# 로그는 빈 디렉토리 유지
+logs/*.log
+logs/*.txt
+!logs/.gitkeep
 
 # Node.js
 node_modules/

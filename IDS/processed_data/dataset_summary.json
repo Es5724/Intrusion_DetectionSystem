@@ -1,0 +1,22 @@
+{
+  "dataset_name": "CIC-IDS-2017",
+  "processing_date": "2025-09-08T23:34:10.416477",
+  "total_samples": 553318,
+  "train_samples": 387322,
+  "val_samples": 55332,
+  "test_samples": 110664,
+  "features_count": 78,
+  "attack_types": [
+    "botnet",
+    "brute_force",
+    "ddos",
+    "dos",
+    "normal",
+    "port_scan",
+    "unknown"
+  ],
+  "class_weights": {
+    "0": 0.5511315127437476,
+    "1": 5.389352702176212
+  }
+}

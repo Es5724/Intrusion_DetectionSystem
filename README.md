@@ -57,6 +57,41 @@ Random Forest 기반 **실시간 위협 탐지**와 Conservative RL 기반 **지
 
 ## 프로그램 시작 및 사용법
 
+### 🚀 빠른 시작 (다른 컴퓨터에서 처음 실행 시)
+
+**1단계: 프로젝트 다운로드**
+```bash
+git clone <repository_url>
+cd Intrusion_DetectionSystem
+```
+
+**2단계: 시스템 진단 (필수!)**
+```bash
+# 관리자 권한으로 진단 스크립트 실행
+python IDS/system_diagnostic.py
+```
+이 스크립트가 자동으로 환경을 체크하고 문제를 알려줍니다!
+
+**3단계: 자동 수정 (문제 발견 시)**
+```bash
+# Windows (관리자 권한 필수)
+fix_system.bat
+
+# Linux/Mac
+sudo ./setup_and_run.sh
+```
+
+**4단계: IPS 시스템 실행**
+```bash
+# Windows (관리자 권한 필수)
+python IDS/IPSAgent_RL.py
+
+# Linux/Mac
+sudo python IDS/IPSAgent_RL.py
+```
+
+---
+
 ### 설치 요구사항
 
 - **Python**: 3.8 이상 (권장 3.9+)
@@ -64,7 +99,7 @@ Random Forest 기반 **실시간 위협 탐지**와 Conservative RL 기반 **지
 - **권한**: Windows에서는 관리자 권한 필요
 - **네트워크**: Npcap (Windows) 또는 libpcap (Linux/Mac) 설치 필요
 - **고급 기능**: 고성능 모드를 위한 Suricata 엔진 (선택사항)
-- **메모리**: 200MB 이상 RAM  (고성능 모드는 1GB 권장)
+- **메모리**: 400MB 이상 RAM  (고성능 모드는 1GB 권장)
 
 ### 의존성 설치
 
@@ -76,7 +111,7 @@ python -m pip install --upgrade pip
 pip install colorama pandas numpy scikit-learn torch joblib scapy matplotlib seaborn tqdm psutil
 
 # 또는 requirements.txt 사용
-pip install -r requirements.txt
+pip install -r IDS/requirements.txt
 ```
 
 ### 환경별 추가 설정
@@ -169,7 +204,7 @@ python IPSAgent_RL.py --debug               # 디버그 모드 실행
 - 모든 환경에서 실행 가능
 
 **2. 고성능 모드 (Performance Mode)**
-- 추천: 전문가, 고사양 시스템 환경
+- 추천: 고사양 시스템 환경
 - 수리카타(Suricata) 엔진 통합
 - 확장 특성 12개 사용
 - 더 높은 정확도의 탐지
@@ -200,39 +235,6 @@ python IPSAgent_RL.py --debug               # 디버그 모드 실행
 - **위협 탐지 현황**: 위험도별 탐지 결과
 - **방어 조치 현황**: 차단된 IP, 모니터링 대상
 - **AI/ML 엔진 상태**: 예측 수행, 모델 정확도, 업데이트 횟수
-
-#### 컬러 시스템
-
-터미널에서 다음과 같은 컬러 체계를 사용합니다:
-
-- **빨간색**: 오류 메시지, 위험 상태
-- **초록색**: 성공 메시지, 정상 상태
-- **파란색**: 정보 메시지, 고성능 모드
-- **노란색**: 경고 메시지, 경량 모드
-- **보라색**: 머신러닝 관련 정보
-- **청록색**: 헤더, 타이틀
-
-## 사용개발환경
-
-### 프론트엔드
-- **IDE**: WebStorm
-- **언어**: JavaScript, CSS
-- **프레임워크**: React (웹 시각화 대시보드)
-
-### 백엔드 
-- **IDE**: PyCharm
-- **언어**: Python
-- **프레임워크**: Flask (API 서버)
-
-### IDS 프로그램
-- **언어**: Python
-- **주요 라이브러리**: Scapy, PyTorch, scikit-learn
-
-### 기타 개발도구
-- **Google Colab**: 머신러닝 모델 실험 및 훈련
-- **VS Code**: 코드 편집 및 디버깅
-- **OpenAI Gym**: 강화학습 환경 구축
-- **VMware**: 가상환경
 
 ## 실습 및 테스트 환경
 
@@ -558,7 +560,7 @@ flowchart TD
 - 빠른 필터링: 확률 < 0.3 → 즉시 허용
 - RL 상태 입력으로 전달
 
-#### **4단계: RL 지능형 대응 (주 의사결정자)  NEW**
+#### **4단계: RL 지능형 대응 (주 의사결정자)**
 ```python
 state = [
     threat_probability,  # RF가 제공 (0.85)
@@ -1338,7 +1340,7 @@ IPSAgent_RL.py는 **ThreadManager**를 통해 6개의 백그라운드 스레드�
   - `unblock <IP>`: IP 차단 해제
   - `export`: 데이터 내보내기
 
-#### **Thread 6: 반응형 AI 통합 서비스**  NEW
+#### **Thread 6: 반응형 AI 통합 서비스**  
 - **주기**: 
   - OnlineRLTrainer: 10초마다 학습
   - VulnerabilityAutoScanner: 1시간마다 전체 스캔
@@ -1352,19 +1354,18 @@ IPSAgent_RL.py는 **ThreadManager**를 통해 6개의 백그라운드 스레드�
 
 ###  시스템 아키텍처 특징
 
-#### **1. 모듈식 설계 (P0/P1 개선 완료)**
+#### **1. 모듈식 설계**
 -  각 모듈이 독립적으로 동작하며 명확한 인터페이스 제공
 -  `SystemState`: 전역 상태 중앙 관리 (싱글톤)
 -  `ThreadManager`: 스레드 생명주기 통합 관리
--  `IPSAgent`: 메인 로직 클래스화 (1925줄 → 모듈화)
+-  `IPSAgent`: 메인 로직 클래스화
 -  `ConfigLoader`: YAML 기반 통합 설정
 
 #### **2. 멀티스레드 안전성**
 -  Queue 기반 스레드 간 통신
 -  threading.RLock을 사용한 재진입 가능 락
 -  Graceful shutdown (타임아웃 10초)
--  Race condition 방지 (테스트 검증 완료)
-
+-  Race condition 방지 
 #### **3. 실시간 처리 및 온라인 학습**
 - 패킷 단위 즉시 분석 및 대응 (0.438ms/패킷)
 - 10초 주기 온라인 RL 학습
@@ -1372,7 +1373,6 @@ IPSAgent_RL.py는 **ThreadManager**를 통해 6개의 백그라운드 스레드�
 - 실시간 보상 계산 및 경험 축적
 
 #### **4. 메모리 효율성**
-- Lazy Loading: 필요시에만 모듈 로드 (~150MB 절약)
 - Object Pooling: 패킷 객체 재사용
 - 청크 기반 처리: 200개 단위 배치
 - 명시적 메모리 관리: gc.collect() 주기적 호출

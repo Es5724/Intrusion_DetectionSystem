@@ -385,7 +385,7 @@ def show_startup_animation():
 def print_status_box(title, content, color=Fore.WHITE):
     """상태 박스 출력"""
     box_width = 60
-    title_line = f"📋 {title}"
+    title_line = f" {title}"
     
     print_colored("┌" + "─" * (box_width - 2) + "┐", color)
     print_colored(f"│ {title_line:<{box_width - 3}} │", color, Style.BRIGHT)
@@ -405,7 +405,7 @@ def analyze_threat_level(packet, defense_manager=None):
         defense_manager: 방어 메커니즘 관리자 (옵션)
         
     Returns:
-        str: 위협 수준 ('high', 'medium', 'low', 'safe')
+        str: 위협 수준 ('critical', 'high', 'medium', 'low', 'safe')
     """
     try:
         if not isinstance(packet, dict):
@@ -417,16 +417,16 @@ def analyze_threat_level(packet, defense_manager=None):
                 # AutoDefenseActions의 analyze_packet 메서드 활용
                 prediction, confidence = defense_manager.auto_defense.analyze_packet(packet)
                 
-                # 예측 결과와 신뢰도를 바탕으로 위협 수준 결정
+                #  예측 결과와 신뢰도를 바탕으로 위협 수준 결정 (5단계)
                 if prediction == 1:  # 공격으로 분류됨
                     if confidence >= 0.9:
-                        return 'high'
+                        return 'critical'  # 🔴 치명적
                     elif confidence >= 0.8:
-                        return 'medium'
+                        return 'high'      # 🟠 높음
                     elif confidence >= 0.7:
-                        return 'low'
+                        return 'medium'    # 🟡 중간
                     else:
-                        return 'safe'
+                        return 'low'       # 🟢 낮음
                 else:  # 정상으로 분류됨
                     # 정상이지만 신뢰도가 낮은 경우 의심스러운 것으로 판단
                     if confidence < 0.6:
@@ -482,15 +482,15 @@ def analyze_threat_level(packet, defense_manager=None):
             if length > 1500:
                 threat_score += 0.2
         
-        # 점수를 위협 수준으로 변환 (방어 모듈의 신뢰도 기준과 일치)
+        #  점수를 위협 수준으로 변환 (5단계 분류)
         if threat_score >= 0.9:
-            return 'high'
+            return 'critical'  # 🔴 치명적
         elif threat_score >= 0.8:
-            return 'medium'  
+            return 'high'      # 🟠 높음
         elif threat_score >= 0.7:
-            return 'low'
+            return 'medium'    # 🟡 중간
         else:
-            return 'safe'
+            return 'safe'      # ⚪ 안전
             
     except Exception as e:
         logger.debug(f"위협 분석 중 오류: {e}")
@@ -500,7 +500,7 @@ def show_help_menu():
     """도움말 메뉴"""
     print_header()
     
-    print_colored("📖 도움말", Fore.YELLOW, Style.BRIGHT)
+    print_colored(" 도움말", Fore.YELLOW, Style.BRIGHT)
     print_colored("=" * 60, Fore.YELLOW)
     
     help_content = [
@@ -702,8 +702,18 @@ def main():
     """
     # ========== 전역 변수 초기화 ==========
     global threat_stats, defense_stats, ml_stats, start_time, hybrid_log_manager
-    threat_stats = {'high': 0, 'medium': 0, 'low': 0, 'safe': 0}
-    defense_stats = {'blocked': 0, 'monitored': 0, 'alerts': 0}
+    #  치명적 위협 카테고리 추가 (5단계 분류)
+    threat_stats = {'critical': 0, 'high': 0, 'medium': 0, 'low': 0, 'safe': 0}
+    #  방어 통계에 차단 유형별 카운트 추가
+    defense_stats = {
+        'blocked': 0,           # 총 차단된 IP 수
+        'permanent_block': 0,   # 영구 차단
+        'temp_block': 0,        # 임시 차단 (30분)
+        'warning_block': 0,     # 경고 차단 (10분)
+        'monitored': 0,         # 모니터링 중
+        'alerts': 0,            # 발송된 알림 수
+        'accumulated_blocks': 0 # 누적 패턴으로 차단된 수
+    }
     ml_stats = {'predictions': 0, 'accuracy': 0.0, 'model_updates': 0}
     start_time = time.time()
     
@@ -731,14 +741,14 @@ def main():
             )
             web_api_server.start()
             logger.info(f"웹 API 서버 시작됨: http://{args.web_host}:{args.web_port}")
-            print_colored(f"🌐 웹 모니터링 활성화됨: http://{args.web_host}:{args.web_port}", Fore.CYAN, Style.BRIGHT)
+            print_colored(f" 웹 모니터링 활성화됨: http://{args.web_host}:{args.web_port}", Fore.CYAN, Style.BRIGHT)
             print_colored(f"📱 대시보드: http://{args.web_host}:{args.web_port}", Fore.CYAN)
         except ImportError as e:
             logger.warning(f"웹 API 서버 로드 실패: {e}")
-            print_colored("⚠️  웹 API 서버 로드 실패 - CLI 모드로만 실행", Fore.YELLOW)
+            print_colored("  웹 API 서버 로드 실패 - CLI 모드로만 실행", Fore.YELLOW)
         except Exception as e:
             logger.error(f"웹 API 서버 시작 실패: {e}")
-            print_colored(f"❌ 웹 서버 시작 실패: {e}", Fore.RED)
+            print_colored(f" 웹 서버 시작 실패: {e}", Fore.RED)
     
     try:
         # ========== 시작 애니메이션 및 UI 초기화 ==========
@@ -884,7 +894,25 @@ def main():
         
         # ========== 방어 메커니즘 초기화 ==========
         logger.info(f"{args.mode} 모드로 방어 메커니즘 초기화 중...")
-        defense_manager = create_defense_manager('defense_config.json', mode=args.mode)
+        
+        #  통계 업데이트 콜백 함수 정의
+        def update_defense_stats(stat_type):
+            """방어 통계 업데이트 콜백"""
+            global defense_stats
+            try:
+                if stat_type in defense_stats:
+                    defense_stats[stat_type] += 1
+                    
+                    # blocked 총계 업데이트
+                    defense_stats['blocked'] = (
+                        defense_stats.get('permanent_block', 0) +
+                        defense_stats.get('temp_block', 0) +
+                        defense_stats.get('warning_block', 0)
+                    )
+            except Exception as e:
+                logger.debug(f"통계 업데이트 오류: {e}")
+        
+        defense_manager = create_defense_manager('defense_config.json', mode=args.mode, stats_callback=update_defense_stats)
         
         # 패킷 캡처 코어에 방어 메커니즘 등록
         if register_to_packet_capture(defense_manager, packet_core):
@@ -938,10 +966,44 @@ def main():
         
         # ========== 패킷 캡처 시작 ==========
         print_colored(f"\n🔗 {selected_interface}에서 패킷 캡처를 시작합니다...", Fore.CYAN)
-        if packet_core.start_capture(selected_interface, max_packets=args.max_packets):
-            print_colored("✅ 패킷 캡처가 백그라운드에서 시작되었습니다.", Fore.GREEN)
-            print_colored("🎛️  실시간 대시보드 모드로 전환합니다.", Fore.YELLOW)
-            print()
+        
+        # 🔥 패킷 캡처 시작 시도
+        capture_started = packet_core.start_capture(selected_interface, max_packets=args.max_packets)
+        
+        if not capture_started:
+            # 패킷 캡처 실패 시 상세한 에러 정보 제공
+            print_colored("\n❌ 패킷 캡처 시작 실패!", Fore.RED, Style.BRIGHT)
+            print_colored("="*60, Fore.RED)
+            print_colored("\n가능한 원인:", Fore.YELLOW)
+            print_colored("  1. 관리자 권한 부족 (Windows: 우클릭 → 관리자 권한 실행)", Fore.WHITE)
+            print_colored("  2. Npcap/WinPcap 미설치 (https://npcap.com)", Fore.WHITE)
+            print_colored("  3. 네트워크 인터페이스 선택 오류", Fore.WHITE)
+            print_colored("  4. 다른 프로그램이 인터페이스 사용 중", Fore.WHITE)
+            print_colored("\n해결 방법:", Fore.YELLOW)
+            print_colored("  • 진단 스크립트 실행: python IDS/system_diagnostic.py", Fore.GREEN)
+            print_colored("  • 로그 확인: logs/ips_debug.log", Fore.GREEN)
+            print_colored("="*60, Fore.RED)
+            logger.error(f"패킷 캡처 시작 실패 - 인터페이스: {selected_interface}")
+            wait_for_enter()
+            return
+        
+        # 패킷 캡처 성공
+        print_colored("✅ 패킷 캡처가 백그라운드에서 시작되었습니다.", Fore.GREEN)
+        print_colored("🎛️  실시간 대시보드 모드로 전환합니다.", Fore.YELLOW)
+        print()
+        
+        # 🔥 패킷 캡처 상태 확인 (5초 후)
+        import time
+        time.sleep(5)
+        initial_packet_count = packet_core.get_packet_count()
+        if initial_packet_count == 0:
+            print_colored("⚠️ 주의: 5초 동안 패킷이 캡처되지 않았습니다.", Fore.YELLOW)
+            print_colored("   • 네트워크 트래픽이 없거나 인터페이스 설정 문제일 수 있습니다.", Fore.YELLOW)
+            print_colored("   • 대시보드는 계속 실행되지만 패킷이 표시되지 않을 수 있습니다.", Fore.YELLOW)
+            logger.warning(f"초기 패킷 캡처 없음 - 인터페이스: {selected_interface}")
+        else:
+            print_colored(f"✅ 패킷 캡처 정상 작동 중 ({initial_packet_count}개 캡처됨)", Fore.GREEN)
+            logger.info(f"패킷 캡처 정상 - 초기 {initial_packet_count}개")
             
             # ========== 실시간 대시보드 스레드 ==========
             def display_realtime_stats():
@@ -983,7 +1045,7 @@ def main():
                         last_packet_count = current_count
                         last_stats_time = current_time
                         
-                        # 🔥 하이브리드 로그 매니저에 실시간 데이터 전달
+                        #  하이브리드 로그 매니저에 실시간 데이터 전달
                         if hybrid_log_manager is not None:
                             hybrid_data = {
                                 'threat_stats': threat_stats.copy(),
@@ -1115,7 +1177,8 @@ def main():
                                         threat_level = analyze_threat_level(pooled_packet if isinstance(original_packet, dict) else original_packet, defense_manager=defense_manager)
                                         threat_stats[threat_level] += 1
                             
-                                        if threat_level in ['high', 'medium']:
+                                        #  치명적, 높음, 중간 위협을 모두 카운트
+                                        if threat_level in ['critical', 'high', 'medium']:
                                             total_threats_detected += 1
                                             
                                 except queue.Empty:
@@ -1142,13 +1205,8 @@ def main():
                     except Exception as e:
                         logger.debug(f"패킷 처리 중 오류: {e}")  # 조용히 처리
                     
-                    # 방어 메커니즘 통계 수집
-                    try:
-                        if 'defense_manager' in locals():
-                            defense_status = defense_manager.get_status()
-                            defense_stats['blocked'] = len(defense_status.get('blocked_ips', []))
-                    except:
-                        pass
+                    # 방어 메커니즘 통계 수집 (콜백으로 자동 업데이트되므로 추가 작업 불필요)
+                    # defense_stats는 방어 메커니즘 내부에서 콜백을 통해 자동 업데이트됨
                     
                     # 실시간 대시보드 출력 (처음 즉시, 이후 3초마다)
                     if show_initial_dashboard or (int(elapsed_time) % 3 == 0 and int(elapsed_time) != last_display_time):
@@ -1166,11 +1224,11 @@ def main():
                         print_colored("🛡️" + "="*78 + "🛡️", Fore.CYAN, Style.BRIGHT)
                         
                         # 시스템 상태 섹션
-                        print_colored(f"⏱️  시스템 가동시간: {runtime_str}  |  🛡️  운영모드: {args.mode.upper()}  |  📡 인터페이스: {selected_interface}", Fore.GREEN)
+                        print_colored(f"  시스템 가동시간: {runtime_str}  |  🛡️  운영모드: {args.mode.upper()}  |  📡 인터페이스: {selected_interface}", Fore.GREEN)
                         print_colored("-" * 80, Fore.WHITE)
                         
                         # 패킷 캡처 통계
-                        print_colored("📦 패킷 캡처 통계", Fore.YELLOW, Style.BRIGHT)
+                        print_colored(" 패킷 캡처 통계", Fore.YELLOW, Style.BRIGHT)
                         print_colored(f"   총 캡처: {current_count:,}개  |  초당 패킷: {packets_per_second}/s  |  최고 처리량: {peak_packets_per_second}/s", Fore.WHITE)
                         
                         # 적응형 큐 처리 정보 추가
@@ -1214,11 +1272,14 @@ def main():
                             print_colored("🚨 위협 탐지 현황", Fore.RED, Style.BRIGHT)
                             threat_percentage = (total_threats_detected / total_analyzed) * 100 if total_analyzed > 0 else 0
                             print_colored(f"   총 분석: {total_analyzed:,}개  |  위협 탐지: {total_threats_detected:,}개 ({threat_percentage:.2f}%)", Fore.WHITE)
-                            print_colored(f"   🔴 높음: {threat_stats['high']:,}  🟡 중간: {threat_stats['medium']:,}  🟢 낮음: {threat_stats['low']:,}  ⚪ 안전: {threat_stats['safe']:,}", Fore.WHITE)
+                            #  치명적 위협 추가 (5단계 표시)
+                            print_colored(f"   🔴 치명적: {threat_stats['critical']:,}  🟠 높음: {threat_stats['high']:,}  🟡 중간: {threat_stats['medium']:,}  🟢 낮음: {threat_stats['low']:,}  ⚪ 안전: {threat_stats['safe']:,}", Fore.WHITE)
                         
-                        # 방어 조치 통계
+                        #  방어 조치 통계 (상세 정보 추가)
                         print_colored("🛡️  방어 조치 현황", Fore.MAGENTA, Style.BRIGHT)
-                        print_colored(f"   차단된 IP: {defense_stats['blocked']:,}개  |  모니터링 중: {defense_stats['monitored']:,}개  |  발송 알림: {defense_stats['alerts']:,}개", Fore.WHITE)
+                        total_blocked = defense_stats.get('permanent_block', 0) + defense_stats.get('temp_block', 0) + defense_stats.get('warning_block', 0)
+                        print_colored(f"   총 차단: {total_blocked:,}개 (영구: {defense_stats.get('permanent_block', 0):,}, 임시: {defense_stats.get('temp_block', 0):,}, 경고: {defense_stats.get('warning_block', 0):,})  |  누적 차단: {defense_stats.get('accumulated_blocks', 0):,}개", Fore.WHITE)
+                        print_colored(f"   모니터링: {defense_stats.get('monitored', 0):,}개  |  발송 알림: {defense_stats.get('alerts', 0):,}개", Fore.WHITE)
                         
                         # 머신러닝 상태
                         print_colored("🤖 AI/ML 엔진 상태", Fore.GREEN, Style.BRIGHT)
@@ -1247,16 +1308,16 @@ def main():
                         
                         # 하단 정보
                         print_colored("="*80, Fore.CYAN)
-                        print_colored("💡 명령어: h(도움말) s(상태) p(패킷) d(방어) m(모드) q(종료) | Enter: 명령 입력", Fore.YELLOW)
+                        print_colored(" 명령어: h(도움말) s(상태) p(패킷) d(방어) m(모드) q(종료) | Enter: 명령 입력", Fore.YELLOW)
                         print()
                         
-                    time.sleep(1.0)  # 🔥 대시보드 업데이트 빈도 감소 (0.5 -> 1.0초)로 패킷 처리 우선
+                    time.sleep(1.0)  #  대시보드 업데이트 빈도 감소 (0.5 -> 1.0초)로 패킷 처리 우선
                 
                 # 스레드 종료 시 통계 딕셔너리 반환
                 stats_pool.put(protocol_stats)
                 logger.info("대시보드 스레드 종료 - 객체 풀에 반환 완료")
             
-            # 🔥 대시보드 스레드 - 낮은 우선순위
+            #  대시보드 스레드 - 낮은 우선순위
             display_thread = threading.Thread(target=display_realtime_stats, name="Dashboard")
             display_thread.daemon = True
             display_thread.start()
@@ -1481,9 +1542,9 @@ def main():
                             if not packet_buffer or (current_time - last_save_time) >= 120:
                                 last_save_time = current_time
                     
-                    time.sleep(0.01)  # 🔥 패킷 처리 우선순위 향상 (0.05 -> 0.01)
+                    time.sleep(0.01)  #  패킷 처리 우선순위 향상 (0.05 -> 0.01)
             
-            # 🔥 패킷 처리 스레드 - 높은 우선순위
+            #  패킷 처리 스레드 - 높은 우선순위
             process_thread = threading.Thread(target=process_and_save_packets, name="PacketProcessor")
             process_thread.daemon = True
             process_thread.start()
@@ -1523,7 +1584,7 @@ def main():
                             logger.info("데이터 파일 변경 감지 - 머신러닝 모델 학습 시작")
                             
                             try:
-                                # 🔥 지연 로딩: 필요한 시점에 머신러닝 모듈 로딩
+                                #  지연 로딩: 필요한 시점에 머신러닝 모듈 로딩
                                 if 'ml_modules' not in locals():
                                     ml_modules = lazy_importer.get_module('ml_models')
                                     train_random_forest = ml_modules['train_random_forest']
@@ -1553,7 +1614,7 @@ def main():
                                 import gc
                                 gc.collect()
                                 
-                                # 🔥 지연 로딩: 필요할 때만 강화학습 환경과 에이전트 초기화
+                                #  지연 로딩: 필요할 때만 강화학습 환경과 에이전트 초기화
                                 if env is None or agent is None:
                                     # Conservative RL 시스템 지연 로딩
                                     if rl_modules is None:
@@ -1674,7 +1735,7 @@ def main():
                     
                     # 온라인 학습 시작
                     online_trainer.start()
-                    print_colored("🧠 온라인 RL 학습 스레드 시작됨 (10초 주기)", Fore.MAGENTA)
+                    print_colored(" 온라인 RL 학습 스레드 시작됨 (10초 주기)", Fore.MAGENTA)
                     logger.info("온라인 RL 학습 스레드 시작됨")
                     
                     # 자동 취약점 스캐너 시작 (선택사항)
@@ -1704,7 +1765,7 @@ def main():
                     """명령어 프롬프트 표시"""
                     print()  # 대시보드와 구분을 위한 빈 줄
                     print_colored("=" * 60, Fore.CYAN)
-                    print_colored("💻 명령어 입력 모드", Fore.CYAN, Style.BRIGHT)
+                    print_colored(" 명령어 입력 모드", Fore.CYAN, Style.BRIGHT)
                     print_colored("사용 가능한 명령어: h(도움말), s(상태), p(패킷), d(방어), m(모드전환), q(종료)", Fore.WHITE)
                     print_colored("=" * 60, Fore.CYAN)
                     print_colored("명령어 > ", Fore.YELLOW, end="")
@@ -1735,10 +1796,10 @@ def main():
                     """패킷 통계 표시"""
                     packet_count = packet_core.get_packet_count()
                     stats_info = [
-                        f"📦 총 캡처된 패킷: {packet_count:,}개",
-                        f"📈 초당 패킷 수: 계산 중...",
-                        f"💾 큐 크기: {packet_core.packet_queue.qsize()}개",
-                        f"🔄 처리 상태: {'활성화' if packet_core.is_running else '중지됨'}"
+                        f" 총 캡처된 패킷: {packet_count:,}개",
+                        f" 초당 패킷 수: 계산 중...",
+                        f" 큐 크기: {packet_core.packet_queue.qsize()}개",
+                        f" 처리 상태: {'활성화' if packet_core.is_running else '중지됨'}"
                     ]
                     print_status_box("패킷 통계", stats_info, Fore.BLUE)
                 
@@ -1789,16 +1850,27 @@ def main():
                         elif user_input in ['d', 'defense']:
                             if 'defense_manager' in locals():
                                 defense_status = defense_manager.get_status()
+                                #  상세 방어 통계 표시
                                 defense_info = [
-                                    f"상태: {'활성화' if defense_status['is_active'] else '비활성화'}",
-                                    f"모드: {defense_status['mode'].upper()}",
-                                    f"차단된 IP 수: {len(defense_status.get('blocked_ips', []))}개"
+                                    f" 상태: {'활성화' if defense_status['is_active'] else '비활성화'}",
+                                    f" 모드: {defense_status['mode'].upper()}",
+                                    "",
+                                    " 차단 통계:",
+                                    f"  🔴 영구 차단: {defense_stats.get('permanent_block', 0)}개",
+                                    f"  🟠 임시 차단 (30분): {defense_stats.get('temp_block', 0)}개",
+                                    f"  ⚠️ 경고 차단 (10분): {defense_stats.get('warning_block', 0)}개",
+                                    f"   누적 패턴 차단: {defense_stats.get('accumulated_blocks', 0)}개",
+                                    f"   모니터링 중: {defense_stats.get('monitored', 0)}개",
+                                    "",
+                                    f" 발송 알림: {defense_stats.get('alerts', 0)}개",
+                                    f" 현재 차단 IP 수: {len(defense_status.get('blocked_ips', []))}개"
                                 ]
                                 if defense_status.get('blocked_ips'):
-                                    defense_info.append("차단된 IP 목록:")
+                                    defense_info.append("")
+                                    defense_info.append("차단된 IP 목록 (최근 5개):")
                                     for ip in defense_status['blocked_ips'][:5]:  # 최대 5개만 표시
-                                        defense_info.append(f"  🚫 {ip}")
-                                print_status_box("방어 메커니즘 상태", defense_info, Fore.RED)
+                                        defense_info.append(f"   {ip}")
+                                print_status_box("방어 메커니즘 상세 상태", defense_info, Fore.RED)
                             else:
                                 print_colored("❌ 방어 메커니즘이 초기화되지 않았습니다", Fore.RED)
                                 
@@ -1844,15 +1916,16 @@ def main():
                             print_status_box("머신러닝 상세 상태", ml_info, Fore.MAGENTA)
                             
                         elif user_input in ['threats', 't']:
-                            # 위협 탐지 상세 통계
+                            #  위협 탐지 상세 통계 (5단계 표시)
                             threat_info = [
-                                f"🔴 높은 위협: {threat_stats.get('high', 0):,}개",
+                                f"🔴 치명적 위협: {threat_stats.get('critical', 0):,}개",
+                                f"🟠 높은 위협: {threat_stats.get('high', 0):,}개",
                                 f"🟡 중간 위협: {threat_stats.get('medium', 0):,}개",
                                 f"🟢 낮은 위협: {threat_stats.get('low', 0):,}개",
                                 f"⚪ 안전: {threat_stats.get('safe', 0):,}개",
                                 "",
                                 f"총 분석 패킷: {sum(threat_stats.values()):,}개",
-                                f"위협 탐지율: {(threat_stats.get('high', 0) + threat_stats.get('medium', 0)) / max(sum(threat_stats.values()), 1) * 100:.2f}%"
+                                f"위협 탐지율: {(threat_stats.get('critical', 0) + threat_stats.get('high', 0) + threat_stats.get('medium', 0)) / max(sum(threat_stats.values()), 1) * 100:.2f}%"
                             ]
                             print_status_box("위협 탐지 상세 통계", threat_info, Fore.RED)
                             
@@ -1867,14 +1940,14 @@ def main():
                             
                         else:
                             print_colored(f"❌ 알 수 없는 명령어: '{user_input}'", Fore.RED)
-                            print_colored("💡 도움말을 보려면 'h'를 입력하세요", Fore.YELLOW)
+                            print_colored(" 도움말을 보려면 'h'를 입력하세요", Fore.YELLOW)
                         
                     except KeyboardInterrupt:
-                        print_colored("\n\n🛑 Ctrl+C 감지 - 프로그램을 종료합니다", Fore.YELLOW, Style.BRIGHT)
+                        print_colored("\n\n Ctrl+C 감지 - 프로그램을 종료합니다", Fore.YELLOW, Style.BRIGHT)
                         packet_core.stop_capture()
                         break
                     except EOFError:
-                        print_colored("\n\n👋 입력 종료 - 프로그램을 종료합니다", Fore.YELLOW)
+                        print_colored("\n\n 입력 종료 - 프로그램을 종료합니다", Fore.YELLOW)
                         packet_core.stop_capture()
                         break
                     
@@ -1905,16 +1978,16 @@ def main():
         try:
             packet_pool_stats = get_packet_pool().get_stats()
             dataframe_pool_stats = get_dataframe_pool().get_stats()
-            
-            print_colored("\n📊 메모리 최적화 최종 통계:", Fore.CYAN, Style.BRIGHT)
+        
+            print_colored("\n 메모리 최적화 최종 통계:", Fore.CYAN, Style.BRIGHT)
             print_colored("━" * 50, Fore.CYAN)
             
-            print_colored("📦 패킷 객체 풀링:", Fore.YELLOW, Style.BRIGHT)
+            print_colored(" 패킷 객체 풀링:", Fore.YELLOW, Style.BRIGHT)
             print_colored(f"  • 생성된 객체: {packet_pool_stats['total_created']:,}개", Fore.WHITE)
             print_colored(f"  • 재사용 횟수: {packet_pool_stats['total_reused']:,}회", Fore.WHITE)
             print_colored(f"  • 재사용률: {packet_pool_stats['reuse_rate']:.1f}%", Fore.GREEN if packet_pool_stats['reuse_rate'] > 80 else Fore.YELLOW)
             
-            print_colored("\n🔢 DataFrame 풀링:", Fore.BLUE, Style.BRIGHT)
+            print_colored("\n DataFrame 풀링:", Fore.BLUE, Style.BRIGHT)
             print_colored(f"  • 생성된 배열: {dataframe_pool_stats['total_created']:,}개", Fore.WHITE)
             print_colored(f"  • 재사용 횟수: {dataframe_pool_stats['total_reused']:,}회", Fore.WHITE)
             print_colored(f"  • 재사용률: {dataframe_pool_stats['reuse_rate']:.1f}%", Fore.GREEN if dataframe_pool_stats['reuse_rate'] > 60 else Fore.YELLOW)
@@ -1924,7 +1997,7 @@ def main():
             dataframe_savings = dataframe_pool_stats['total_reused'] * 5  # 5MB per DataFrame array
             total_savings = packet_savings + dataframe_savings
             
-            print_colored(f"\n💾 예상 메모리 절약량:", Fore.GREEN, Style.BRIGHT)
+            print_colored(f"\n 예상 메모리 절약량:", Fore.GREEN, Style.BRIGHT)
             print_colored(f"  • 패킷 풀링: {packet_savings:.1f}MB", Fore.WHITE)
             print_colored(f"  • DataFrame 풀링: {dataframe_savings:.1f}MB", Fore.WHITE)
             print_colored(f"  • 총 절약량: {total_savings:.1f}MB", Fore.GREEN, Style.BRIGHT)

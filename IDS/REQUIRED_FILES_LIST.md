@@ -57,7 +57,7 @@
 
 ##  **최소 배포 패키지**
 
-### **절대 필수 (7개 파일)**
+### **필수 (7개 파일)**
 ```
 ✅ install_and_run_fixed.bat
 ✅ requirements_safe.txt  

@@ -1,0 +1,28 @@
+{
+    "email": {
+        "enabled": false,
+        "smtp_server": "smtp.gmail.com",
+        "smtp_port": 587,
+        "username": "your_email@gmail.com",
+        "password": "your_app_password",
+        "recipient": "admin@example.com"
+    },
+    "defense": {
+        "auto_block": true,
+        "block_duration": 1800,
+        "high_threat_threshold": 0.9,
+        "medium_threat_threshold": 0.8,
+        "low_threat_threshold": 0.7
+    },
+    "threat_alert": {
+        "popup_enabled": true,
+        "dashboard_enabled": true,
+        "medium_threat_threshold": 5,
+        "comments": "medium_threat_threshold: 5분 이내에 중간 위협이 이 횟수만큼 누적되면 알림"
+    },
+    "monitoring": {
+        "log_all_packets": false,
+        "save_interval": 300,
+        "max_packet_buffer": 1000
+    }
+} 

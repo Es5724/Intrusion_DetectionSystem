@@ -1,0 +1,8 @@
+[
+  "source",
+  "destination",
+  "source_port",
+  "dest_port",
+  "protocol",
+  "packet_size"
+]

@@ -140,17 +140,19 @@ def flush_log_cache():
 class DefenseManager:
     """방어 메커니즘 통합 관리 클래스"""
     
-    def __init__(self, config_file=None, mode="lightweight"):
+    def __init__(self, config_file=None, mode="lightweight", stats_callback=None):
         """방어 메커니즘 초기화
         
         Args:
             config_file (str): 설정 파일 경로
             mode (str): 운영 모드 ('lightweight' 또는 'performance')
+            stats_callback (callable): 통계 업데이트 콜백 함수
         """
         self.mode = mode
         self.blocker = BlockMaliciousTraffic()
         self.alert_system = AlertSystem(config_file)
-        self.auto_defense = AutoDefenseActions(config_file, mode)
+        # 🔥 통계 콜백 전달
+        self.auto_defense = AutoDefenseActions(config_file, mode, stats_callback)
         self.is_active = True
         self.recent_threats = []
         self.thread_lock = threading.Lock()
@@ -1132,7 +1134,7 @@ class AlertSystem:
 class AutoDefenseActions:
     """위협 수준에 따른 자동 방어 조치 실행"""
     
-    def __init__(self, config=None, mode="lightweight"):
+    def __init__(self, config=None, mode="lightweight", stats_callback=None):
         # 설정 파일 로드
         self.config = {}
         
@@ -1157,6 +1159,9 @@ class AutoDefenseActions:
         self.action_history_max_size = self.config.get('action_history_max_size', 1000)
         self.blocker = BlockMaliciousTraffic()
         self.alert_system = AlertSystem(self.config.get('alert', {}))
+        
+        # 🔥 통계 업데이트 콜백 (대시보드 통계 연동)
+        self.stats_callback = stats_callback
         
         #  누적 기반 차단 시스템
         self.threat_accumulation = {}  # IP별 위협 누적 추적
@@ -1460,6 +1465,10 @@ class AutoDefenseActions:
             self.blocker.block_ip(ip)
             log_with_cache('INFO', f"🔴 치명적 위협 - IP 영구 차단: {ip}")
             
+            # 🔥 통계 업데이트
+            if self.stats_callback:
+                self.stats_callback('permanent_block')
+            
             # 2. 관리자에게 긴급 알림
             alert_info = {
                 "source_ip": ip,
@@ -1469,6 +1478,10 @@ class AutoDefenseActions:
                 "action_taken": "IP 영구 차단 및 긴급 알림"
             }
             self.alert_system.send_alert(alert_info)
+            
+            # 🔥 통계 업데이트 (알림)
+            if self.stats_callback:
+                self.stats_callback('alerts')
             
             # 3. 누적 기록 초기화 (영구 차단되었으므로)
             if ip in self.threat_accumulation:
@@ -1497,7 +1510,7 @@ class AutoDefenseActions:
         except:
             return False
     
-    def _high_threat_response(self, ip, protocol):
+    def _high_threat_response(self, ip, protocol, is_accumulated=False):
         """🟠 높은 위협 대응 (신뢰도 0.8-0.9) - IP 임시 차단 30분"""
         try:
             # 사설 IP 보호 확인
@@ -1508,6 +1521,12 @@ class AutoDefenseActions:
             # 1. 임시 IP 차단 (30분)
             self.blocker.block_ip(ip)
             log_with_cache('INFO', f"🟠 높은 위협 - IP 임시 차단 (30분): {ip}")
+            
+            # 🔥 통계 업데이트
+            if self.stats_callback:
+                self.stats_callback('temp_block')
+                if is_accumulated:
+                    self.stats_callback('accumulated_blocks')
             
             # 일정 시간 후 자동 해제를 위한 스레드 (백그라운드에서 실행)
             def unblock_later():
@@ -1524,9 +1543,13 @@ class AutoDefenseActions:
                 "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                 "protocol": protocol,
                 "confidence": 0.85,
-                "action_taken": "IP 임시 차단 (30분)"
+                "action_taken": "IP 임시 차단 (30분)" + (" (누적 패턴)" if is_accumulated else "")
             }
             self.alert_system.send_alert(alert_info)
+            
+            # 🔥 통계 업데이트 (알림)
+            if self.stats_callback:
+                self.stats_callback('alerts')
             
             # 3. 누적 기록 초기화
             if ip in self.threat_accumulation:
@@ -1547,9 +1570,13 @@ class AutoDefenseActions:
             
             if should_block and block_type == 'temp_block':
                 # 누적으로 인한 임시 차단 (30분)
-                log_with_cache('WARNING', f" 누적 패턴 탐지! {ip} → 임시 차단 (30분)")
-                self._high_threat_response(ip, protocol)
+                log_with_cache('WARNING', f"⚡ 누적 패턴 탐지! {ip} → 임시 차단 (30분)")
+                self._high_threat_response(ip, protocol, is_accumulated=True)
                 return
+            
+            # 🔥 통계 업데이트 (모니터링)
+            if self.stats_callback:
+                self.stats_callback('monitored')
             
             # 알림 전송
             alert_info = {
@@ -1560,6 +1587,10 @@ class AutoDefenseActions:
                 "action_taken": "모니터링 강화"
             }
             self.alert_system.send_alert(alert_info)
+            
+            # 🔥 통계 업데이트 (알림)
+            if self.stats_callback:
+                self.stats_callback('alerts')
             
         except Exception as e:
             log_with_cache('ERROR', f"중간 위협 대응 중 오류: {str(e)}")
@@ -1575,6 +1606,11 @@ class AutoDefenseActions:
             # 1. 경고 차단 (10분)
             self.blocker.block_ip(ip)
             log_with_cache('INFO', f"⚠️ 누적 패턴 - IP 경고 차단 (10분): {ip}")
+            
+            # 🔥 통계 업데이트 (경고 차단 + 누적 차단)
+            if self.stats_callback:
+                self.stats_callback('warning_block')
+                self.stats_callback('accumulated_blocks')
             
             # 10분 후 자동 해제
             def unblock_later():
@@ -1594,6 +1630,10 @@ class AutoDefenseActions:
                 "action_taken": "누적 패턴 탐지 - IP 경고 차단 (10분)"
             }
             self.alert_system.send_alert(alert_info)
+            
+            # 🔥 통계 업데이트 (알림)
+            if self.stats_callback:
+                self.stats_callback('alerts')
             
             # 3. 누적 기록 초기화
             if ip in self.threat_accumulation:
@@ -1849,9 +1889,9 @@ class AutoDefenseActions:
             self.action_history = []
 
 # 모듈 내보내기용 함수
-def create_defense_manager(config_file='defense_config.json', mode="lightweight"):
+def create_defense_manager(config_file='defense_config.json', mode="lightweight", stats_callback=None):
     """방어 메커니즘 관리자 생성"""
-    return DefenseManager(config_file, mode=mode)
+    return DefenseManager(config_file, mode=mode, stats_callback=stats_callback)
 
 def register_to_packet_capture(defense_manager, packet_capture_core):
     """패킷 캡처 코어에 방어 메커니즘 등록"""

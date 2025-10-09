@@ -1,0 +1,14 @@
+{
+  "total_samples": 55332,
+  "benign_samples": 35855,
+  "attack_samples": 19477,
+  "attack_types": {
+    "normal": 35855,
+    "dos": 9851,
+    "ddos": 9007,
+    "unknown": 500,
+    "port_scan": 70,
+    "botnet": 43,
+    "infiltration": 6
+  }
+}
