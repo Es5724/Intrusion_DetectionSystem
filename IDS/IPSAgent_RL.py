@@ -941,55 +941,65 @@ def main():
         
         selected_interface = None
         
-        # psutil로 실제 활성 인터페이스 확인
+        # 🔥 실제 연결된 인터페이스를 자동 감지 (기본 게이트웨이 사용 인터페이스)
         try:
             import psutil
-            active_interfaces = []
+            import socket
             
-            # 활성 상태이고 IP 주소가 있는 인터페이스만 선택
-            for iface_name, stats in psutil.net_if_stats().items():
-                if stats.isup:  # 활성 상태
-                    # IP 주소가 있는지 확인
-                    addrs = psutil.net_if_addrs().get(iface_name, [])
-                    has_ipv4 = any(addr.family == 2 for addr in addrs)  # AF_INET
+            # 방법 1: 인터넷 연결 테스트로 실제 사용 중인 인터페이스 찾기
+            def get_active_interface():
+                try:
+                    # Google DNS에 연결하여 사용 중인 인터페이스 IP 확인
+                    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+                    s.connect(("8.8.8.8", 80))
+                    active_ip = s.getsockname()[0]
+                    s.close()
                     
-                    if has_ipv4:
-                        # loopback 제외
-                        if not any(skip in iface_name.lower() for skip in ['loopback', 'lo']):
-                            active_interfaces.append(iface_name)
+                    # 해당 IP를 가진 인터페이스 찾기
+                    for iface_name, addrs in psutil.net_if_addrs().items():
+                        for addr in addrs:
+                            if addr.family == 2 and addr.address == active_ip:
+                                return iface_name, active_ip
+                    return None, None
+                except:
+                    return None, None
             
-            if active_interfaces:
-                # 활성 인터페이스 중에서 선택
-                # 1순위: 이더넷 (더 안정적)
-                ethernet_keywords = ['ethernet', 'eth', 'lan', 'local area connection', 'realtek']
-                for iface in active_interfaces:
-                    if any(keyword in iface.lower() for keyword in ethernet_keywords):
-                        selected_interface = iface
-                        print_colored(f"✅ 이더넷 인터페이스 자동 선택: {iface}", Fore.GREEN)
-                        break
+            active_iface, active_ip = get_active_interface()
+            
+            if active_iface:
+                selected_interface = active_iface
+                # 인터페이스 타입 판단
+                iface_lower = active_iface.lower()
+                if any(kw in iface_lower for kw in ['ethernet', 'eth', 'lan', 'realtek']):
+                    print_colored(f"✅ 이더넷 연결 감지: {active_iface} ({active_ip})", Fore.GREEN)
+                elif any(kw in iface_lower for kw in ['wifi', 'wireless', 'wlan']):
+                    print_colored(f"✅ WiFi 연결 감지: {active_iface} ({active_ip})", Fore.GREEN)
+                else:
+                    print_colored(f"✅ 활성 연결 감지: {active_iface} ({active_ip})", Fore.CYAN)
+            else:
+                # 방법 2: 바이트 카운트가 있는 인터페이스 선택
+                print_colored("⚠️ 기본 게이트웨이 확인 실패 - 트래픽 기준 선택", Fore.YELLOW)
+                io_counters = psutil.net_io_counters(pernic=True)
                 
-                # 2순위: WiFi
-                if not selected_interface:
-                    wifi_keywords = ['wifi', 'wireless', 'wi-fi', 'wlan', '802.11']
-                    for iface in active_interfaces:
-                        if any(keyword in iface.lower() for keyword in wifi_keywords):
-                            selected_interface = iface
-                            print_colored(f"✅ WiFi 인터페이스 자동 선택: {iface}", Fore.GREEN)
-                            break
+                # 트래픽이 있는 인터페이스만 선택
+                active_interfaces = []
+                for iface_name, counter in io_counters.items():
+                    if counter.bytes_sent > 0 or counter.bytes_recv > 0:
+                        # loopback 제외
+                        if 'loopback' not in iface_name.lower() and iface_name.lower() != 'lo':
+                            active_interfaces.append((iface_name, counter.bytes_sent + counter.bytes_recv))
                 
-                # 3순위: 첫 번째 활성 인터페이스
-                if not selected_interface and active_interfaces:
-                    selected_interface = active_interfaces[0]
-                    print_colored(f"✅ 활성 인터페이스 자동 선택: {selected_interface}", Fore.CYAN)
+                # 트래픽이 가장 많은 인터페이스 선택
+                if active_interfaces:
+                    active_interfaces.sort(key=lambda x: x[1], reverse=True)
+                    selected_interface = active_interfaces[0][0]
+                    print_colored(f"✅ 트래픽 기준 선택: {selected_interface}", Fore.CYAN)
             
         except ImportError:
-            print_colored("⚠️ psutil 없음 - 기본 선택 로직 사용", Fore.YELLOW)
-            # psutil 없이 기본 로직
-            ethernet_keywords = ['ethernet', 'eth', 'lan']
-            for interface in interfaces:
-                if any(keyword in interface.lower() for keyword in ethernet_keywords):
-                    selected_interface = interface
-                    break
+            print_colored("⚠️ psutil 없음 - 수동 선택 필요", Fore.YELLOW)
+        except Exception as e:
+            logger.warning(f"자동 인터페이스 선택 실패: {e}")
+            print_colored(f"⚠️ 자동 선택 실패: {e}", Fore.YELLOW)
         
         # 4단계: 자동 선택 실패 시 사용자 선택
         if not selected_interface:
