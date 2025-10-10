@@ -174,7 +174,7 @@ class DefenseManager:
             # 설정 파일이 있으면 해당 설정 사용
             if config_file and os.path.exists(config_file):
                 try:
-                    with open(config_file, 'r') as f:
+                    with open(config_file, 'r', encoding='utf-8') as f:
                         file_config = json.load(f)
                         if 'threat_alert' in file_config:
                             alert_config.update(file_config['threat_alert'])
@@ -295,7 +295,7 @@ class DefenseManager:
         
         if config_file and os.path.exists(config_file):
             try:
-                with open(config_file, 'r') as f:
+                with open(config_file, 'r', encoding='utf-8') as f:
                     config = json.load(f)
                     # 기본 설정과 병합
                     if "defense" in config:
@@ -930,7 +930,7 @@ class BlockMaliciousTraffic:
         """차단 기록 로드"""
         try:
             if os.path.exists('blocked_ips_history.json'):
-                with open('blocked_ips_history.json', 'r') as f:
+                with open('blocked_ips_history.json', 'r', encoding='utf-8') as f:
                     self.block_history = json.load(f)
                 
                 # 차단 기록에서 현재 차단된 IP 추출 (unblock되지 않은 IP만)
@@ -1004,8 +1004,8 @@ class BlockMaliciousTraffic:
     def _save_block_history(self):
         """차단 기록 저장"""
         try:
-            with open('blocked_ips_history.json', 'w') as f:
-                json.dump(self.block_history, f, indent=4)
+            with open('blocked_ips_history.json', 'w', encoding='utf-8') as f:
+                json.dump(self.block_history, f, indent=4, ensure_ascii=False)
         except Exception as e:
             logger.error(f"차단 기록 저장 중 오류: {str(e)}")
             
@@ -1108,15 +1108,15 @@ class AlertSystem:
     def _save_alerts(self):
         """알림 기록 저장"""
         try:
-            with open('security_alerts.json', 'w') as f:
-                json.dump(self.alerts, f, indent=4)
+            with open('security_alerts.json', 'w', encoding='utf-8') as f:
+                json.dump(self.alerts, f, indent=4, ensure_ascii=False)
         except Exception as e:
             logger.error(f"알림 기록 저장 중 오류: {str(e)}")
     
     def _load_config(self, config_file):
         """설정 파일에서 알림 설정 로드"""
         try:
-            with open(config_file, 'r') as f:
+            with open(config_file, 'r', encoding='utf-8') as f:
                 config = json.load(f)
                 if "email" in config:
                     self.email_config.update(config["email"])
@@ -1142,7 +1142,7 @@ class AutoDefenseActions:
         if isinstance(config, str):
             try:
                 if os.path.exists(config):
-                    with open(config, 'r') as f:
+                    with open(config, 'r', encoding='utf-8') as f:
                         self.config = json.load(f)
                     print(f"파일에서 설정 로드됨: {config}")
                 else:
@@ -1858,8 +1858,8 @@ class AutoDefenseActions:
                 os.rename(history_file, backup_file)
             
             # 새 파일에 기록
-            with open(history_file, 'w') as f:
-                json.dump(self.action_history, f, indent=2)
+            with open(history_file, 'w', encoding='utf-8') as f:
+                json.dump(self.action_history, f, indent=2, ensure_ascii=False)
                 
             # 로그 캐시 비우기
             flush_log_cache()
@@ -1872,7 +1872,7 @@ class AutoDefenseActions:
         try:
             history_file = 'defense_actions_history.json'
             if os.path.exists(history_file):
-                with open(history_file, 'r') as f:
+                with open(history_file, 'r', encoding='utf-8') as f:
                     history = json.load(f)
                     
                     # 최대 크기로 제한
