@@ -1,149 +1,65 @@
 [
     {
-        "source_ip": "192.168.0.31",
-        "timestamp": "2025-10-10 05:44:34",
+        "source_ip": "172.217.161.234",
+        "timestamp": "2025-10-11 03:52:05",
         "protocol": "UDP",
         "confidence": 0.75,
-        "action_taken": "\ubaa8\ub2c8\ud130\ub9c1 \uac15\ud654"
+        "action_taken": "모니터링 강화"
     },
     {
-        "source_ip": "192.168.0.32",
-        "timestamp": "2025-10-10 05:44:38",
+        "source_ip": "192.168.0.73",
+        "timestamp": "2025-10-11 03:52:05",
         "protocol": "UDP",
         "confidence": 0.75,
-        "action_taken": "\ubaa8\ub2c8\ud130\ub9c1 \uac15\ud654"
+        "action_taken": "모니터링 강화"
+    },
+    {
+        "source_ip": "192.168.0.31",
+        "timestamp": "2025-10-11 03:52:05",
+        "protocol": "UDP",
+        "confidence": 0.75,
+        "action_taken": "모니터링 강화"
     },
     {
         "source_ip": "219.250.36.130",
-        "timestamp": "2025-10-10 05:44:38",
+        "timestamp": "2025-10-11 03:52:05",
         "protocol": "UDP",
         "confidence": 0.75,
-        "action_taken": "\ubaa8\ub2c8\ud130\ub9c1 \uac15\ud654"
+        "action_taken": "모니터링 강화"
     },
     {
-        "source_ip": "192.168.0.31",
-        "timestamp": "2025-10-10 05:44:47",
+        "source_ip": "192.168.0.73",
+        "timestamp": "2025-10-11 03:52:12",
         "protocol": "UDP",
         "confidence": 0.75,
-        "action_taken": "\ubaa8\ub2c8\ud130\ub9c1 \uac15\ud654"
+        "action_taken": "모니터링 강화"
     },
     {
-        "source_ip": "192.168.0.32",
-        "timestamp": "2025-10-10 05:45:00",
+        "source_ip": "172.217.161.234",
+        "timestamp": "2025-10-11 03:52:12",
         "protocol": "UDP",
         "confidence": 0.75,
-        "action_taken": "\ubaa8\ub2c8\ud130\ub9c1 \uac15\ud654"
-    },
-    {
-        "source_ip": "219.250.36.130",
-        "timestamp": "2025-10-10 05:45:00",
-        "protocol": "UDP",
-        "confidence": 0.75,
-        "action_taken": "\ubaa8\ub2c8\ud130\ub9c1 \uac15\ud654"
-    },
-    {
-        "source_ip": "192.168.0.31",
-        "timestamp": "2025-10-10 05:45:11",
-        "protocol": "UDP",
-        "confidence": 0.75,
-        "action_taken": "\ubaa8\ub2c8\ud130\ub9c1 \uac15\ud654"
+        "action_taken": "모니터링 강화"
     },
     {
         "source_ip": "219.250.36.130",
-        "timestamp": "2025-10-10 05:45:15",
-        "protocol": "UDP",
-        "confidence": 0.85,
-        "action_taken": "IP \uc784\uc2dc \ucc28\ub2e8 (30\ubd84) (\ub204\uc801 \ud328\ud134)"
-    },
-    {
-        "source_ip": "192.168.0.31",
-        "timestamp": "2025-10-10 05:45:25",
+        "timestamp": "2025-10-11 03:52:13",
         "protocol": "UDP",
         "confidence": 0.75,
-        "action_taken": "\ubaa8\ub2c8\ud130\ub9c1 \uac15\ud654"
+        "action_taken": "모니터링 강화"
     },
     {
         "source_ip": "192.168.0.1",
-        "timestamp": "2025-10-10 05:45:27",
+        "timestamp": "2025-10-11 03:52:14",
         "protocol": "UDP",
         "confidence": 0.75,
-        "action_taken": "\ubaa8\ub2c8\ud130\ub9c1 \uac15\ud654"
+        "action_taken": "모니터링 강화"
     },
     {
         "source_ip": "192.168.0.31",
-        "timestamp": "2025-10-10 05:45:51",
+        "timestamp": "2025-10-11 03:52:15",
         "protocol": "UDP",
         "confidence": 0.75,
-        "action_taken": "\ubaa8\ub2c8\ud130\ub9c1 \uac15\ud654"
-    },
-    {
-        "source_ip": "192.168.0.31",
-        "timestamp": "2025-10-10 05:46:04",
-        "protocol": "UDP",
-        "confidence": 0.75,
-        "action_taken": "\ubaa8\ub2c8\ud130\ub9c1 \uac15\ud654"
-    },
-    {
-        "source_ip": "192.168.0.32",
-        "timestamp": "2025-10-10 05:46:15",
-        "protocol": "UDP",
-        "confidence": 0.75,
-        "action_taken": "\ubaa8\ub2c8\ud130\ub9c1 \uac15\ud654"
-    },
-    {
-        "source_ip": "219.250.36.130",
-        "timestamp": "2025-10-10 05:46:15",
-        "protocol": "UDP",
-        "confidence": 0.75,
-        "action_taken": "\ubaa8\ub2c8\ud130\ub9c1 \uac15\ud654"
-    },
-    {
-        "source_ip": "192.168.0.1",
-        "timestamp": "2025-10-10 05:46:27",
-        "protocol": "UDP",
-        "confidence": 0.75,
-        "action_taken": "\ubaa8\ub2c8\ud130\ub9c1 \uac15\ud654"
-    },
-    {
-        "source_ip": "192.168.0.31",
-        "timestamp": "2025-10-10 05:46:29",
-        "protocol": "UDP",
-        "confidence": 0.75,
-        "action_taken": "\ubaa8\ub2c8\ud130\ub9c1 \uac15\ud654"
-    },
-    {
-        "source_ip": "192.168.0.31",
-        "timestamp": "2025-10-10 05:46:42",
-        "protocol": "UDP",
-        "confidence": 0.75,
-        "action_taken": "\ubaa8\ub2c8\ud130\ub9c1 \uac15\ud654"
-    },
-    {
-        "source_ip": "192.168.0.31",
-        "timestamp": "2025-10-10 05:47:08",
-        "protocol": "UDP",
-        "confidence": 0.75,
-        "action_taken": "\ubaa8\ub2c8\ud130\ub9c1 \uac15\ud654"
-    },
-    {
-        "source_ip": "192.168.0.31",
-        "timestamp": "2025-10-10 05:47:13",
-        "protocol": "UDP",
-        "confidence": 0.75,
-        "action_taken": "\ubaa8\ub2c8\ud130\ub9c1 \uac15\ud654"
-    },
-    {
-        "source_ip": "192.168.0.32",
-        "timestamp": "2025-10-10 05:47:13",
-        "protocol": "UDP",
-        "confidence": 0.75,
-        "action_taken": "\ubaa8\ub2c8\ud130\ub9c1 \uac15\ud654"
-    },
-    {
-        "source_ip": "219.250.36.130",
-        "timestamp": "2025-10-10 05:47:13",
-        "protocol": "UDP",
-        "confidence": 0.75,
-        "action_taken": "\ubaa8\ub2c8\ud130\ub9c1 \uac15\ud654"
+        "action_taken": "모니터링 강화"
     }
 ]

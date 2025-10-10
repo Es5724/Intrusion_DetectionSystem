@@ -151,7 +151,7 @@ class DefenseManager:
         self.mode = mode
         self.blocker = BlockMaliciousTraffic()
         self.alert_system = AlertSystem(config_file)
-        # 🔥 통계 콜백 전달
+        # 통계 콜백 전달
         self.auto_defense = AutoDefenseActions(config_file, mode, stats_callback)
         self.is_active = True
         self.recent_threats = []
@@ -398,7 +398,7 @@ class DefenseManager:
             if prediction == 1 and confidence >= self.config["defense"]["low_threat_threshold"]:
                 source_ip = packet_info.get('source', '').split(':')[0] if ':' in packet_info.get('source', '') else packet_info.get('source', '')
                 
-                # 🔥 개선: 락 없이 먼저 빠른 중복 체크 (읽기 전용)
+                #  개선: 락 없이 먼저 빠른 중복 체크 (읽기 전용)
                 is_duplicate = self._check_recent_threat_fast(source_ip)
                 
                 if is_duplicate:
@@ -1160,7 +1160,7 @@ class AutoDefenseActions:
         self.blocker = BlockMaliciousTraffic()
         self.alert_system = AlertSystem(self.config.get('alert', {}))
         
-        # 🔥 통계 업데이트 콜백 (대시보드 통계 연동)
+        #  통계 업데이트 콜백 (대시보드 통계 연동)
         self.stats_callback = stats_callback
         
         #  누적 기반 차단 시스템
@@ -1410,7 +1410,7 @@ class AutoDefenseActions:
             if isinstance(protocol, int) or (isinstance(protocol, str) and protocol.isdigit()):
                 protocol = protocol_map.get(int(protocol), str(protocol))
             
-            # 🔥 위협 수준에 따른 대응 (함수명 일치 수정)
+            #  위협 수준에 따른 대응 (함수명 일치 수정)
             if confidence >= 0.9:  # 🔴 치명적 위협
                 action = "IP 영구 차단"
                 self._critical_threat_response(source_ip, protocol)
@@ -1465,7 +1465,7 @@ class AutoDefenseActions:
             self.blocker.block_ip(ip)
             log_with_cache('INFO', f"🔴 치명적 위협 - IP 영구 차단: {ip}")
             
-            # 🔥 통계 업데이트
+            #  통계 업데이트
             if self.stats_callback:
                 self.stats_callback('permanent_block')
             
@@ -1479,7 +1479,7 @@ class AutoDefenseActions:
             }
             self.alert_system.send_alert(alert_info)
             
-            # 🔥 통계 업데이트 (알림)
+            #  통계 업데이트 (알림)
             if self.stats_callback:
                 self.stats_callback('alerts')
             
@@ -1522,7 +1522,7 @@ class AutoDefenseActions:
             self.blocker.block_ip(ip)
             log_with_cache('INFO', f"🟠 높은 위협 - IP 임시 차단 (30분): {ip}")
             
-            # 🔥 통계 업데이트
+            #  통계 업데이트
             if self.stats_callback:
                 self.stats_callback('temp_block')
                 if is_accumulated:
@@ -1547,7 +1547,7 @@ class AutoDefenseActions:
             }
             self.alert_system.send_alert(alert_info)
             
-            # 🔥 통계 업데이트 (알림)
+            #  통계 업데이트 (알림)
             if self.stats_callback:
                 self.stats_callback('alerts')
             
@@ -1574,7 +1574,7 @@ class AutoDefenseActions:
                 self._high_threat_response(ip, protocol, is_accumulated=True)
                 return
             
-            # 🔥 통계 업데이트 (모니터링)
+            #  통계 업데이트 (모니터링)
             if self.stats_callback:
                 self.stats_callback('monitored')
             
@@ -1588,7 +1588,7 @@ class AutoDefenseActions:
             }
             self.alert_system.send_alert(alert_info)
             
-            # 🔥 통계 업데이트 (알림)
+            #  통계 업데이트 (알림)
             if self.stats_callback:
                 self.stats_callback('alerts')
             
@@ -1607,7 +1607,7 @@ class AutoDefenseActions:
             self.blocker.block_ip(ip)
             log_with_cache('INFO', f"⚠️ 누적 패턴 - IP 경고 차단 (10분): {ip}")
             
-            # 🔥 통계 업데이트 (경고 차단 + 누적 차단)
+            #  통계 업데이트 (경고 차단 + 누적 차단)
             if self.stats_callback:
                 self.stats_callback('warning_block')
                 self.stats_callback('accumulated_blocks')
@@ -1631,7 +1631,7 @@ class AutoDefenseActions:
             }
             self.alert_system.send_alert(alert_info)
             
-            # 🔥 통계 업데이트 (알림)
+            #  통계 업데이트 (알림)
             if self.stats_callback:
                 self.stats_callback('alerts')
             
@@ -1649,7 +1649,7 @@ class AutoDefenseActions:
         try:
             log_with_cache('DEBUG', f"🟢 낮은 위협 감지: {ip} - 모니터링")
             
-            # 🔥 누적 체크 - 5분 내 10회 시 경고 차단
+            #  누적 체크 - 5분 내 10회 시 경고 차단
             should_block, block_type = self._check_and_update_accumulation(ip, 'low')
             
             if should_block and block_type == 'warning_block':

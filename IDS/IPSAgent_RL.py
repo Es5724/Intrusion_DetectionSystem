@@ -767,7 +767,7 @@ def main():
         # 운영 모드 표시
         print_header()
         mode_color = Fore.GREEN if args.mode == "lightweight" else Fore.BLUE
-        mode_icon = "⚡" if args.mode == "lightweight" else "🔥"
+        mode_icon = "" if args.mode == "lightweight" else ""
         print_colored(f"{mode_icon} 선택된 운영 모드: {args.mode.upper()}", mode_color, Style.BRIGHT)
         logger.info(f"운영 모드 설정: {args.mode}")
         print()
@@ -888,7 +888,7 @@ def main():
                 reward_calculator = integrated_modules['get_reward_calculator']()
                 logger.info("✓ RL 상태 추출기 및 보상 계산기 로드됨")
                 
-                print_colored("🤖 반응형 AI 시스템 활성화됨", Fore.GREEN)
+                print_colored(" 반응형 AI 시스템 활성화됨", Fore.GREEN)
         except Exception as e:
             logger.warning(f"통합 모듈 로딩 실패 (기본 모드로 계속): {e}")
         
@@ -931,7 +931,7 @@ def main():
                 wait_for_enter()
                 return
         
-        # 🔥 네트워크 인터페이스 자동 선택 (활성 연결 우선)
+        #  네트워크 인터페이스 자동 선택 (활성 연결 우선)
         interfaces = packet_core.get_network_interfaces()
         
         if not interfaces:
@@ -941,7 +941,7 @@ def main():
         
         selected_interface = None
         
-        # 🔥 실제 연결된 인터페이스를 자동 감지 (기본 게이트웨이 사용 인터페이스)
+        #  실제 연결된 인터페이스를 자동 감지 (기본 게이트웨이 사용 인터페이스)
         try:
             import psutil
             import socket
@@ -1028,7 +1028,7 @@ def main():
         # ========== 패킷 캡처 시작 ==========
         print_colored(f"\n🔗 {selected_interface}에서 패킷 캡처를 시작합니다...", Fore.CYAN)
         
-        # 🔥 패킷 캡처 시작 시도
+        #  패킷 캡처 시작 시도
         capture_started = packet_core.start_capture(selected_interface, max_packets=args.max_packets)
         
         if not capture_started:
@@ -1053,7 +1053,7 @@ def main():
         print_colored("🎛️  실시간 대시보드 모드로 전환합니다.", Fore.YELLOW)
         print()
         
-        # 🔥 패킷 캡처 상태 확인 (5초 후)
+        #  패킷 캡처 상태 확인 (5초 후)
         time.sleep(5)
         initial_packet_count = packet_core.get_packet_count()
         if initial_packet_count == 0:
@@ -1174,7 +1174,7 @@ def main():
                             
                             # 경고 메시지 (10초마다 한 번만)
                             if current_time - last_queue_warning_time > 10:
-                                logger.warning(f"🚨 큐 오버플로우! {dropped_packets}개 패킷 드롭됨 (큐 크기: {total_queue_size}/{max_queue_size})")
+                                logger.warning(f" 큐 오버플로우 {dropped_packets}개 패킷 드롭됨 (큐 크기: {total_queue_size}/{max_queue_size})")
                                 last_queue_warning_time = current_time
                         
                         # 적응형 처리에는 총 큐 크기 사용
@@ -1279,12 +1279,12 @@ def main():
                         print("\n" * 2)  # 새 줄 추가
                         
                         # 메인 헤더
-                        print_colored("🛡️" + "="*78 + "🛡️", Fore.CYAN, Style.BRIGHT)
+                        print_colored("" + "="*78 + "", Fore.CYAN, Style.BRIGHT)
                         print_colored("                    IPS 실시간 모니터링 대시보드", Fore.CYAN, Style.BRIGHT)
-                        print_colored("🛡️" + "="*78 + "🛡️", Fore.CYAN, Style.BRIGHT)
+                        print_colored("" + "="*78 + "", Fore.CYAN, Style.BRIGHT)
                         
                         # 시스템 상태 섹션
-                        print_colored(f"  시스템 가동시간: {runtime_str}  |  🛡️  운영모드: {args.mode.upper()}  |  📡 인터페이스: {selected_interface}", Fore.GREEN)
+                        print_colored(f"  시스템 가동시간: {runtime_str}  |    운영모드: {args.mode.upper()}  |   인터페이스: {selected_interface}", Fore.GREEN)
                         print_colored("-" * 80, Fore.WHITE)
                         
                         # 패킷 캡처 통계
@@ -1318,7 +1318,7 @@ def main():
                         # 프로토콜 분석
                         total_protocols = sum(protocol_stats.values())
                         if total_protocols > 0:
-                            print_colored("🌐 프로토콜 분석", Fore.BLUE, Style.BRIGHT)
+                            print_colored(" 프로토콜 분석", Fore.BLUE, Style.BRIGHT)
                             protocol_line = "   "
                             for proto, count in protocol_stats.items():
                                 if count > 0:
@@ -1329,20 +1329,20 @@ def main():
                         # 위협 탐지 통계
                         total_analyzed = sum(threat_stats.values())
                         if total_analyzed > 0:
-                            print_colored("🚨 위협 탐지 현황", Fore.RED, Style.BRIGHT)
+                            print_colored(" 위협 탐지 현황", Fore.RED, Style.BRIGHT)
                             threat_percentage = (total_threats_detected / total_analyzed) * 100 if total_analyzed > 0 else 0
                             print_colored(f"   총 분석: {total_analyzed:,}개  |  위협 탐지: {total_threats_detected:,}개 ({threat_percentage:.2f}%)", Fore.WHITE)
                             #  치명적 위협 추가 (5단계 표시)
                             print_colored(f"   🔴 치명적: {threat_stats['critical']:,}  🟠 높음: {threat_stats['high']:,}  🟡 중간: {threat_stats['medium']:,}  🟢 낮음: {threat_stats['low']:,}  ⚪ 안전: {threat_stats['safe']:,}", Fore.WHITE)
                         
                         #  방어 조치 통계 (상세 정보 추가)
-                        print_colored("🛡️  방어 조치 현황", Fore.MAGENTA, Style.BRIGHT)
+                        print_colored(" 방어 조치 현황", Fore.MAGENTA, Style.BRIGHT)
                         total_blocked = defense_stats.get('permanent_block', 0) + defense_stats.get('temp_block', 0) + defense_stats.get('warning_block', 0)
                         print_colored(f"   총 차단: {total_blocked:,}개 (영구: {defense_stats.get('permanent_block', 0):,}, 임시: {defense_stats.get('temp_block', 0):,}, 경고: {defense_stats.get('warning_block', 0):,})  |  누적 차단: {defense_stats.get('accumulated_blocks', 0):,}개", Fore.WHITE)
                         print_colored(f"   모니터링: {defense_stats.get('monitored', 0):,}개  |  발송 알림: {defense_stats.get('alerts', 0):,}개", Fore.WHITE)
                         
                         # 머신러닝 상태
-                        print_colored("🤖 AI/ML 엔진 상태", Fore.GREEN, Style.BRIGHT)
+                        print_colored(" AI/ML 엔진 상태", Fore.GREEN, Style.BRIGHT)
                         
                         # 실제 시스템 리소스 사용량 측정
                         try:
