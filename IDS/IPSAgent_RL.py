@@ -912,7 +912,9 @@ def main():
             except Exception as e:
                 logger.debug(f"통계 업데이트 오류: {e}")
         
-        defense_manager = create_defense_manager('defense_config.json', mode=args.mode, stats_callback=update_defense_stats)
+        #  스크립트 위치 기준 경로로 수정 (어디서 실행해도 작동)
+        config_path = os.path.join(os.path.dirname(__file__), 'defense_config.json')
+        defense_manager = create_defense_manager(config_path, mode=args.mode, stats_callback=update_defense_stats)
         
         # 패킷 캡처 코어에 방어 메커니즘 등록
         if register_to_packet_capture(defense_manager, packet_core):
@@ -929,36 +931,60 @@ def main():
                 wait_for_enter()
                 return
         
-        # 네트워크 인터페이스 목록 가져오기
+        # 🔥 네트워크 인터페이스 자동 선택 (WiFi, 이더넷 모두 지원)
         interfaces = packet_core.get_network_interfaces()
         
-        # 와이파이 인터페이스 찾기
-        selected_interface = None
-        wifi_keywords = ['wifi', 'wireless', 'wi-fi', 'wlan']
+        if not interfaces:
+            print_colored("❌ 사용 가능한 네트워크 인터페이스를 찾을 수 없습니다!", Fore.RED)
+            wait_for_enter()
+            return
         
+        selected_interface = None
+        
+        # 1단계: WiFi 우선 탐색
+        wifi_keywords = ['wifi', 'wireless', 'wi-fi', 'wlan']
         for interface in interfaces:
-            interface_lower = interface.lower()
-            if any(keyword in interface_lower for keyword in wifi_keywords):
+            if any(keyword in interface.lower() for keyword in wifi_keywords):
                 selected_interface = interface
+                print_colored(f"✅ WiFi 인터페이스 자동 선택: {interface}", Fore.GREEN)
                 break
         
+        # 2단계: 이더넷 탐색
         if not selected_interface:
-            print("와이파이 인터페이스를 찾을 수 없습니다.")
-            print("사용 가능한 인터페이스 목록:")
+            ethernet_keywords = ['ethernet', 'eth', 'lan', 'local area connection']
+            for interface in interfaces:
+                if any(keyword in interface.lower() for keyword in ethernet_keywords):
+                    selected_interface = interface
+                    print_colored(f"✅ 이더넷 인터페이스 자동 선택: {interface}", Fore.GREEN)
+                    break
+        
+        # 3단계: 첫 번째 활성 인터페이스 사용 (loopback 제외)
+        if not selected_interface:
+            for interface in interfaces:
+                if 'loopback' not in interface.lower() and 'lo' != interface.lower():
+                    selected_interface = interface
+                    print_colored(f"✅ 기본 인터페이스 자동 선택: {interface}", Fore.CYAN)
+                    break
+        
+        # 4단계: 자동 선택 실패 시 사용자 선택
+        if not selected_interface:
+            print_colored("⚠️ 적합한 네트워크 인터페이스를 자동으로 찾을 수 없습니다.", Fore.YELLOW)
+            print_colored("\n사용 가능한 인터페이스 목록:", Fore.CYAN)
             for i, interface in enumerate(interfaces, 1):
-                print(f"{i}. {interface}")
+                print_colored(f"  {i}. {interface}", Fore.WHITE)
             
             # 사용자가 인터페이스 직접 선택
             try:
                 choice = int(input("\n사용할 인터페이스 번호를 입력하세요: "))
                 if 1 <= choice <= len(interfaces):
                     selected_interface = interfaces[choice-1]
+                    print_colored(f"✅ 수동 선택: {selected_interface}", Fore.GREEN)
                 else:
-                    print("잘못된 선택입니다.")
+                    print_colored("❌ 잘못된 선택입니다.", Fore.RED)
                     wait_for_enter()
                     return
             except ValueError:
-                print("숫자를 입력해야 합니다.")
+                print_colored("❌ 숫자를 입력해야 합니다.", Fore.RED)
                 wait_for_enter()
                 return
         
