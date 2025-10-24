@@ -51,11 +51,11 @@ logging.basicConfig(
 )
 
 # 콘솔 로거 추가 (실시간 대시보드 방해 방지를 위해 ERROR 레벨만 출력)
-console = logging.StreamHandler()
-console.setLevel(logging.ERROR)  # 콘솔에는 에러만 출력
+console_handler = logging.StreamHandler()
+console_handler.setLevel(logging.ERROR)  # 콘솔에는 에러만 출력
 formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
-console.setFormatter(formatter)
-logging.getLogger('').addHandler(console)
+console_handler.setFormatter(formatter)
+logging.getLogger('').addHandler(console_handler)
 
 logger = logging.getLogger('IPSAgent')
 logger.info("로깅 시스템 초기화 완료")
@@ -81,7 +81,7 @@ args = parser.parse_args()
 if args.debug:
     DEBUG_MODE = True
     # 디버그 모드에서도 콘솔에는 ERROR만 출력 (파일에는 DEBUG 레벨로 기록)
-    console.setLevel(logging.ERROR)
+    console_handler.setLevel(logging.ERROR)
     logger.info("디버그 모드 활성화됨")
 
 # 예외 처리 함수
@@ -92,15 +92,15 @@ def log_exception(e, message="예외 발생"):
         logger.debug(traceback.format_exc())
 
 # 모듈 경로를 적절히 추가
-current_dir = os.path.dirname(os.path.abspath(__file__))
-if os.path.exists(os.path.join(current_dir, 'Intrusion_DetectionSystem', 'modules')):
-    module_path = os.path.join(current_dir, 'Intrusion_DetectionSystem', 'modules')
-elif os.path.exists(os.path.join(current_dir, 'modules')):
-    module_path = os.path.join(current_dir, 'modules')
+script_directory = os.path.dirname(os.path.abspath(__file__))
+if os.path.exists(os.path.join(script_directory, 'Intrusion_DetectionSystem', 'modules')):
+    modules_directory_path = os.path.join(script_directory, 'Intrusion_DetectionSystem', 'modules')
+elif os.path.exists(os.path.join(script_directory, 'modules')):
+    modules_directory_path = os.path.join(script_directory, 'modules')
 else:
-    print("모듈 디렉토리를 찾을 수 없습니다. 현재 디렉토리:", current_dir)
+    print("모듈 디렉토리를 찾을 수 없습니다. 현재 디렉토리:", script_directory)
     potential_modules = []
-    for root, dirs, files in os.walk(current_dir):
+    for root, dirs, files in os.walk(script_directory):
         if 'modules' in dirs:
             potential_modules.append(os.path.join(root, 'modules'))
     
@@ -108,13 +108,13 @@ else:
         print("가능한 모듈 경로를 찾았습니다:")
         for path in potential_modules:
             print(f" - {path}")
-        module_path = potential_modules[0]
+        modules_directory_path = potential_modules[0]
     else:
         print("모듈 디렉토리를 찾을 수 없습니다.")
         sys.exit(1)
 
-sys.path.append(module_path)
-logger.info(f"모듈 경로 추가됨: {module_path}")
+sys.path.append(modules_directory_path)
+logger.info(f"모듈 경로 추가됨: {modules_directory_path}")
 
 # 필요한 모듈 임포트
 try:
@@ -142,6 +142,10 @@ try:
     from utils import is_colab, is_admin, run_as_admin, clear_screen, wait_for_enter
     from defense_mechanism import create_defense_manager, register_to_packet_capture
     from memory_optimization import get_packet_pool, get_stats_pool, get_batch_processor, get_dataframe_pool  # 객체 풀링 추가
+    
+    # 새로운 모듈 임포트 (Phase 1)
+    from constants import get_constants
+    from statistics_manager import get_statistics_manager
     
     # 지연 로딩 모듈들 등록
     lazy_importer = get_lazy_importer()
@@ -396,13 +400,14 @@ def print_status_box(title, content, color=Fore.WHITE):
     
     print_colored("└" + "─" * (box_width - 2) + "┘", color)
 
-def analyze_threat_level(packet, defense_manager=None):
+def analyze_threat_level(packet, defense_manager=None, constants=None):
     """
     방어 모듈 기반 패킷 위협 수준 분석
     
     Args:
         packet (dict): 분석할 패킷 정보
         defense_manager: 방어 메커니즘 관리자 (옵션)
+        constants: SystemConstants 인스턴스 (없으면 기본값 사용)
         
     Returns:
         str: 위협 수준 ('critical', 'high', 'medium', 'low', 'safe')
@@ -410,6 +415,26 @@ def analyze_threat_level(packet, defense_manager=None):
     try:
         if not isinstance(packet, dict):
             return 'safe'
+        
+        # Constants 인스턴스가 없으면 기본값 사용
+        if constants is None:
+            packet_size_critical = 8000
+            packet_size_high = 5000
+            packet_size_medium = 3000
+            packet_size_normal = 1500
+            score_critical = 0.9
+            score_high = 0.8
+            score_medium = 0.7
+            score_low = 0.6
+        else:
+            packet_size_critical = constants.PACKET_SIZE_CRITICAL
+            packet_size_high = constants.PACKET_SIZE_HIGH
+            packet_size_medium = constants.PACKET_SIZE_MEDIUM
+            packet_size_normal = constants.PACKET_SIZE_NORMAL
+            score_critical = constants.THREAT_SCORE_CRITICAL
+            score_high = constants.THREAT_SCORE_HIGH
+            score_medium = constants.THREAT_SCORE_MEDIUM
+            score_low = constants.THREAT_SCORE_LOW
         
         # 방어 메커니즘 관리자를 통한 분석 (우선순위 1)
         if defense_manager and hasattr(defense_manager, 'auto_defense'):
@@ -419,17 +444,17 @@ def analyze_threat_level(packet, defense_manager=None):
                 
                 #  예측 결과와 신뢰도를 바탕으로 위협 수준 결정 (5단계)
                 if prediction == 1:  # 공격으로 분류됨
-                    if confidence >= 0.9:
+                    if confidence >= score_critical:
                         return 'critical'  # 🔴 치명적
-                    elif confidence >= 0.8:
+                    elif confidence >= score_high:
                         return 'high'      # 🟠 높음
-                    elif confidence >= 0.7:
+                    elif confidence >= score_medium:
                         return 'medium'    # 🟡 중간
                     else:
                         return 'low'       # 🟢 낮음
                 else:  # 정상으로 분류됨
                     # 정상이지만 신뢰도가 낮은 경우 의심스러운 것으로 판단
-                    if confidence < 0.6:
+                    if confidence < score_low:
                         return 'low'
                     else:
                         return 'safe'
@@ -446,8 +471,8 @@ def analyze_threat_level(packet, defense_manager=None):
         
         threat_score = 0.0
         
-        # 즉시 고위험 조건들
-        if length > 8000:  # 비정상적으로 큰 패킷
+        # 즉시 고위험 조건들 (constants 사용)
+        if length > packet_size_critical:
             threat_score += 0.8
         
         if 'syn flood' in info or 'ddos' in info or 'attack' in info:
@@ -467,27 +492,27 @@ def analyze_threat_level(packet, defense_manager=None):
         if (protocol in ['TCP', '6'] or protocol == 'tcp') and 'syn' in info:
             threat_score += 0.6
         
-        # 비정상적인 패킷 크기 (방어 모듈과 동일한 로직)
-        if length > 5000:
+        # 비정상적인 패킷 크기 (constants 사용)
+        if length > packet_size_high:
             threat_score += 0.5
         
-        # 중간 크기 패킷
-        if length > 3000:
+        # 중간 크기 패킷 (constants 사용)
+        if length > packet_size_medium:
             threat_score += 0.3
         
-        # 외부 연결 분석
+        # 외부 연결 분석 (constants 사용)
         if source and not (source.startswith('192.168.') or source.startswith('10.') or 
                           source.startswith('172.16.') or source.startswith('127.') or
                           source.startswith('::1') or source.startswith('fe80')):
-            if length > 1500:
+            if length > packet_size_normal:
                 threat_score += 0.2
         
-        #  점수를 위협 수준으로 변환 (5단계 분류)
-        if threat_score >= 0.9:
+        #  점수를 위협 수준으로 변환 (5단계 분류, constants 사용)
+        if threat_score >= score_critical:
             return 'critical'  # 🔴 치명적
-        elif threat_score >= 0.8:
+        elif threat_score >= score_high:
             return 'high'      # 🟠 높음
-        elif threat_score >= 0.7:
+        elif threat_score >= score_medium:
             return 'medium'    # 🟡 중간
         else:
             return 'safe'      # ⚪ 안전
@@ -527,16 +552,19 @@ def show_help_menu():
     print_colored("계속하려면 Enter 키를 누르세요...", Fore.YELLOW)
     input()
 
-def monitor_system_resources():
+def monitor_system_resources(constants=None):
     """
     시스템 리소스 모니터링 및 상태 반환
     
     CPU와 메모리 사용량을 체크하여 시스템 부하 상태를 판단합니다.
     
+    Args:
+        constants: SystemConstants 인스턴스 (없으면 기본값 사용)
+    
     Returns:
         str: 시스템 리소스 상태
-            - 'reduce_processing': CPU > 80% 또는 메모리 > 800MB (부하)
-            - 'can_increase': CPU < 30% 그리고 메모리 < 500MB (여유)
+            - 'reduce_processing': CPU > 임계값 또는 메모리 > 임계값 (부하)
+            - 'can_increase': CPU < 임계값 그리고 메모리 < 임계값 (여유)
             - 'maintain': 그 외 정상 범위 (보통)
     """
     try:
@@ -544,11 +572,23 @@ def monitor_system_resources():
         cpu_usage = psutil.cpu_percent(interval=0.1)
         memory_mb = psutil.Process().memory_info().rss / (1024 * 1024)
         
+        # Constants 인스턴스가 없으면 기본값 사용
+        if constants is None:
+            cpu_high = 80
+            cpu_low = 30
+            memory_high = 800
+            memory_low = 500
+        else:
+            cpu_high = constants.CPU_HIGH_THRESHOLD
+            cpu_low = constants.CPU_LOW_THRESHOLD
+            memory_high = constants.MEMORY_HIGH_MB
+            memory_low = constants.MEMORY_LOW_MB
+        
         # 실제 시스템 메모리 사용량 고려 (PyTorch + scikit-learn = ~350MB 기본)
-        if cpu_usage > 80 or memory_mb > 800:
+        if cpu_usage > cpu_high or memory_mb > memory_high:
             logger.warning(f"리소스 부하 감지 - CPU: {cpu_usage:.1f}%, 메모리: {memory_mb:.1f}MB")
             return "reduce_processing"
-        elif cpu_usage < 30 and memory_mb < 500:
+        elif cpu_usage < cpu_low and memory_mb < memory_low:
             return "can_increase"
         else:
             return "maintain"
@@ -637,7 +677,7 @@ def cleanup_memory_completely():
     except Exception as e:
         print(f"메모리 정리 중 오류: {e}")
 
-def get_adaptive_process_count(queue_size, max_queue_size=10000):
+def get_adaptive_process_count(queue_size, max_queue_size=None, constants=None):
     """
     큐 크기와 시스템 리소스에 따른 적응형 처리 개수 계산
     
@@ -645,44 +685,59 @@ def get_adaptive_process_count(queue_size, max_queue_size=10000):
     
     Args:
         queue_size (int): 현재 큐 크기
-        max_queue_size (int): 최대 큐 크기 (기본값: 10000)
+        max_queue_size (int, optional): 최대 큐 크기 (None이면 constants에서 가져옴)
+        constants: SystemConstants 인스턴스 (없으면 기본값 사용)
     
     Returns:
-        int: 처리할 패킷 개수 (50~2000개)
-            - 큐 80% 이상: 최대 1500개 (과부하 상황)
-            - 큐 50~80%: 최대 800개 (경고 상황)
-            - 큐 50% 미만: 150개 (정상 상황)
-            - 리소스 상태에 따라 ±50% 조정
+        int: 처리할 패킷 개수
     """
     if queue_size <= 0:
         return 0
     
+    # Constants 인스턴스가 없으면 기본값 사용
+    if constants is None:
+        max_queue = max_queue_size if max_queue_size is not None else 50000
+        process_max = 1500
+        process_medium = 800
+        process_normal = 150
+        process_min = 50
+        util_high = 0.8
+        util_medium = 0.5
+    else:
+        max_queue = max_queue_size if max_queue_size is not None else constants.MAX_QUEUE_SIZE
+        process_max = constants.ADAPTIVE_PROCESS_MAX
+        process_medium = constants.ADAPTIVE_PROCESS_MEDIUM
+        process_normal = constants.ADAPTIVE_PROCESS_NORMAL
+        process_min = constants.ADAPTIVE_PROCESS_MIN
+        util_high = constants.QUEUE_UTILIZATION_HIGH
+        util_medium = constants.QUEUE_UTILIZATION_MEDIUM
+    
     # 시스템 리소스 상태 확인
-    resource_status = monitor_system_resources()
+    resource_status = monitor_system_resources(constants)
     
     # 큐 사용률 계산 (0.0 ~ 1.0)
-    queue_utilization = queue_size / max_queue_size
+    queue_utilization = queue_size / max_queue
     
     # 기본 처리량 계산 (절충안: 보수적 개선)
-    if queue_utilization >= 0.8:  # 80% 이상: 위험 상황
-        # 큐의 30%를 한 번에 처리하되 최대 1500개로 제한
-        base_process = min(1500, max(queue_size * 0.3, 300))
+    if queue_utilization >= util_high:  # 고부하: 위험 상황
+        # 큐의 30%를 한 번에 처리하되 최대값으로 제한
+        base_process = min(process_max, max(queue_size * 0.3, 300))
         logger.warning(f"큐 과부하 감지 - 처리량 증가: {int(base_process)}개 (큐 크기: {queue_size})")
     
-    elif queue_utilization >= 0.5:  # 50% 이상: 경고 상황  
-        # 큐의 20%를 한 번에 처리하되 최대 800개로 제한
-        base_process = min(800, max(queue_size * 0.2, 200))
+    elif queue_utilization >= util_medium:  # 중간 부하: 경고 상황  
+        # 큐의 20%를 한 번에 처리하되 중간값으로 제한
+        base_process = min(process_medium, max(queue_size * 0.2, 200))
         logger.info(f"큐 부하 증가 - 처리량 조정: {int(base_process)}개 (큐 크기: {queue_size})")
     
-    else:  # 50% 미만: 정상 상황
-        base_process = 150  # 기본값 3배 증가 (50 → 150)
+    else:  # 정상 상황
+        base_process = process_normal
     
     # 리소스 상태에 따른 조정
     if resource_status == "reduce_processing":
         # CPU/메모리 부하 시 처리량 50% 감소
         adjusted_process = int(base_process * 0.5)
         logger.info(f"리소스 보호 모드 - 처리량 감소: {adjusted_process}개")
-        return max(adjusted_process, 50)  # 최소 50개는 보장
+        return max(adjusted_process, process_min)  # 최소값은 보장
     
     elif resource_status == "can_increase":
         # 리소스 여유 시 처리량 50% 증가
@@ -700,22 +755,23 @@ def main():
     전체 시스템을 초기화하고 패킷 캡처, 위협 분석, 방어 메커니즘을 실행합니다.
     실시간 대시보드와 사용자 명령어 인터페이스를 제공합니다.
     """
-    # ========== 전역 변수 초기화 ==========
+    # ========== 시스템 상수 및 통계 관리자 초기화 ==========
+    try:
+        system_constants = get_constants()
+        stats_manager = get_statistics_manager()
+        logger.info("시스템 상수 및 통계 관리자 초기화 완료")
+    except Exception as e:
+        logger.error(f"시스템 초기화 실패: {e}")
+        print(f"시스템 초기화 실패: {e}")
+        return
+    
+    # ========== 전역 변수 초기화 (하위 호환성 유지) ==========
     global threat_stats, defense_stats, ml_stats, start_time, hybrid_log_manager
-    #  치명적 위협 카테고리 추가 (5단계 분류)
-    threat_stats = {'critical': 0, 'high': 0, 'medium': 0, 'low': 0, 'safe': 0}
-    #  방어 통계에 차단 유형별 카운트 추가
-    defense_stats = {
-        'blocked': 0,           # 총 차단된 IP 수
-        'permanent_block': 0,   # 영구 차단
-        'temp_block': 0,        # 임시 차단 (30분)
-        'warning_block': 0,     # 경고 차단 (10분)
-        'monitored': 0,         # 모니터링 중
-        'alerts': 0,            # 발송된 알림 수
-        'accumulated_blocks': 0 # 누적 패턴으로 차단된 수
-    }
-    ml_stats = {'predictions': 0, 'accuracy': 0.0, 'model_updates': 0}
-    start_time = time.time()
+    #  StatisticsManager에서 참조로 가져옴 (전역 변수와 동기화)
+    threat_stats = stats_manager.stats.threat_stats
+    defense_stats = stats_manager.stats.defense_stats
+    ml_stats = stats_manager.stats.ml_stats
+    start_time = stats_manager.stats.start_time
     
     # ========== 로그 시스템 초기화 ==========
     try:
@@ -865,10 +921,10 @@ def main():
         logger.info("패킷 캡처 코어 초기화 중...")
         
         if use_optimized_capture:
-            packet_core = OptimizedPacketCapture()
-            logger.info(f"멀티프로세싱 패킷 캡처 활성화 (워커: {packet_core.num_workers}개)")
+            packet_capture_core = OptimizedPacketCapture()
+            logger.info(f"멀티프로세싱 패킷 캡처 활성화 (워커: {packet_capture_core.num_workers}개)")
         else:
-            packet_core = PacketCaptureCore()
+            packet_capture_core = PacketCaptureCore()
         
         # ========== 반응형 AI 통합 시스템 초기화 ==========
         integrated_modules = None
@@ -917,7 +973,7 @@ def main():
         defense_manager = create_defense_manager(config_path, mode=args.mode, stats_callback=update_defense_stats)
         
         # 패킷 캡처 코어에 방어 메커니즘 등록
-        if register_to_packet_capture(defense_manager, packet_core):
+        if register_to_packet_capture(defense_manager, packet_capture_core):
             logger.info("방어 메커니즘이 패킷 캡처 시스템에 성공적으로 등록되었습니다.")
         else:
             logger.error("방어 메커니즘 등록 실패")
@@ -925,14 +981,14 @@ def main():
         # ========== 네트워크 인터페이스 설정 ==========
         # Windows에서 Npcap 확인
         if os.name == 'nt':
-            if not packet_core.check_npcap():
+            if not packet_capture_core.check_npcap():
                 print("Npcap이 설치되어 있지 않습니다. 패킷 캡처 기능을 사용할 수 없습니다.")
                 print("Npcap을 설치한 후 다시 시도해주세요.")
                 wait_for_enter()
                 return
         
         #  네트워크 인터페이스 자동 선택 (활성 연결 우선)
-        interfaces = packet_core.get_network_interfaces()
+        interfaces = packet_capture_core.get_network_interfaces()
         
         if not interfaces:
             print_colored("❌ 사용 가능한 네트워크 인터페이스를 찾을 수 없습니다!", Fore.RED)
@@ -1029,7 +1085,7 @@ def main():
         print_colored(f"\n🔗 {selected_interface}에서 패킷 캡처를 시작합니다...", Fore.CYAN)
         
         #  패킷 캡처 시작 시도
-        capture_started = packet_core.start_capture(selected_interface, max_packets=args.max_packets)
+        capture_started = packet_capture_core.start_capture(selected_interface, max_packets=args.max_packets)
         
         if not capture_started:
             # 패킷 캡처 실패 시 상세한 에러 정보 제공
@@ -1055,7 +1111,7 @@ def main():
         
         #  패킷 캡처 상태 확인 (5초 후)
         time.sleep(5)
-        initial_packet_count = packet_core.get_packet_count()
+        initial_packet_count = packet_capture_core.get_packet_count()
         if initial_packet_count == 0:
             print_colored("⚠️ 주의: 5초 동안 패킷이 캡처되지 않았습니다.", Fore.YELLOW)
             print_colored("   • 네트워크 트래픽이 없거나 인터페이스 설정 문제일 수 있습니다.", Fore.YELLOW)
@@ -1084,7 +1140,7 @@ def main():
                 # 큐 오버플로우 방지 변수
                 dropped_packets = 0
                 last_queue_warning_time = 0
-                max_queue_size = 50000  # 최대 큐 크기 (기존 10000에서 증가)
+                max_queue_size = system_constants.MAX_QUEUE_SIZE  # Constants에서 가져옴
                 
                 # 조용히 시작 (로그에만 기록)
                 logger.info("강화된 실시간 대시보드 모니터링 시작 (객체 풀링 활성화, 최대 큐: 50000)")
@@ -1092,8 +1148,8 @@ def main():
                 # 첫 번째 대시보드 즉시 표시
                 show_initial_dashboard = True
                 
-                while packet_core.is_running:
-                    current_count = packet_core.get_packet_count()
+                while packet_capture_core.is_running:
+                    current_count = packet_capture_core.get_packet_count()
                     current_time = time.time()
                     elapsed_time = current_time - start_time
                     
@@ -1156,8 +1212,8 @@ def main():
                     packet_pool = get_packet_pool()  # 패킷 풀 가져오기
                     try:
                         #  수정: 두 큐 모두 확인하여 총 큐 크기 계산
-                        packet_queue_size = packet_core.packet_queue.qsize()
-                        processed_queue_size = getattr(packet_core, 'processed_queue', queue.Queue()).qsize()
+                        packet_queue_size = packet_capture_core.packet_queue.qsize()
+                        processed_queue_size = getattr(packet_capture_core, 'processed_queue', queue.Queue()).qsize()
                         total_queue_size = packet_queue_size + processed_queue_size
                         
                         #  큐 오버플로우 방지: 최대 크기 초과 시 오래된 패킷 드롭
@@ -1166,7 +1222,7 @@ def main():
                             # 초과된 패킷을 packet_queue에서 먼저 드롭
                             for _ in range(min(overflow_count, packet_queue_size)):
                                 try:
-                                    dropped_pkt = packet_core.packet_queue.get_nowait()
+                                    dropped_pkt = packet_capture_core.packet_queue.get_nowait()
                                     dropped_packets += 1
                                     del dropped_pkt  # 메모리 해제
                                 except queue.Empty:
@@ -1177,16 +1233,16 @@ def main():
                                 logger.warning(f" 큐 오버플로우 {dropped_packets}개 패킷 드롭됨 (큐 크기: {total_queue_size}/{max_queue_size})")
                                 last_queue_warning_time = current_time
                         
-                        # 적응형 처리에는 총 큐 크기 사용
-                        max_process_count = get_adaptive_process_count(total_queue_size, max_queue_size)
+                        # 적응형 처리에는 총 큐 크기 사용 (constants 전달)
+                        max_process_count = get_adaptive_process_count(total_queue_size, max_queue_size, system_constants)
                         
                         #  개선된 로깅: 큐 상태 세부 정보 포함
                         if total_queue_size > 0 and int(elapsed_time) % 10 == 0:
                             logger.info(f"큐 상태 - 패킷큐: {packet_queue_size}, 처리큐: {processed_queue_size}, 총큐: {total_queue_size}, 처리량: {max_process_count}, 리소스: {monitor_system_resources()}")
                         elif total_queue_size == 0 and int(elapsed_time) % 60 == 0:
                             # 큐가 비어있을 때 1분마다 원인 진단 로깅
-                            total_captured = packet_core.get_packet_count()
-                            logger.warning(f"큐 비어있음 - 총 캡처: {total_captured}, 캡처 상태: {packet_core.is_running}")
+                            total_captured = packet_capture_core.get_packet_count()
+                            logger.warning(f"큐 비어있음 - 총 캡처: {total_captured}, 캡처 상태: {packet_capture_core.is_running}")
                         
                         processed_count = 0
                         
@@ -1194,11 +1250,11 @@ def main():
                         target_queue = None
                         queue_name = ""
                         
-                        if hasattr(packet_core, 'processed_queue') and not packet_core.processed_queue.empty():
-                            target_queue = packet_core.processed_queue
+                        if hasattr(packet_capture_core, 'processed_queue') and not packet_capture_core.processed_queue.empty():
+                            target_queue = packet_capture_core.processed_queue
                             queue_name = "processed_queue"
-                        elif not packet_core.packet_queue.empty():
-                            target_queue = packet_core.packet_queue
+                        elif not packet_capture_core.packet_queue.empty():
+                            target_queue = packet_capture_core.packet_queue
                             queue_name = "packet_queue"
                         
                         if target_queue:
@@ -1233,8 +1289,8 @@ def main():
                                         else:
                                             protocol_stats['Other'] += 1
                             
-                                        # 방어 모듈 기반 위협 수준 분석
-                                        threat_level = analyze_threat_level(pooled_packet if isinstance(original_packet, dict) else original_packet, defense_manager=defense_manager)
+                                        # 방어 모듈 기반 위협 수준 분석 (constants 전달)
+                                        threat_level = analyze_threat_level(pooled_packet if isinstance(original_packet, dict) else original_packet, defense_manager=defense_manager, constants=system_constants)
                                         threat_stats[threat_level] += 1
                             
                                         #  치명적, 높음, 중간 위협을 모두 카운트
@@ -1292,8 +1348,8 @@ def main():
                         print_colored(f"   총 캡처: {current_count:,}개  |  초당 패킷: {packets_per_second}/s  |  최고 처리량: {peak_packets_per_second}/s", Fore.WHITE)
                         
                         # 적응형 큐 처리 정보 추가
-                        current_packet_queue_size = packet_core.packet_queue.qsize()
-                        current_processed_queue_size = getattr(packet_core, 'processed_queue', queue.Queue()).qsize()
+                        current_packet_queue_size = packet_capture_core.packet_queue.qsize()
+                        current_processed_queue_size = getattr(packet_capture_core, 'processed_queue', queue.Queue()).qsize()
                         current_total_queue_size = current_packet_queue_size + current_processed_queue_size
                         current_process_count = get_adaptive_process_count(current_total_queue_size)
                         queue_utilization = (current_total_queue_size / 10000) * 100  # 백분율로 변환
@@ -1309,11 +1365,11 @@ def main():
                         else:
                             queue_color = Fore.GREEN  # 정상
                         
-                        # 리소스 상태 확인
-                        resource_status = monitor_system_resources()
+                        # 리소스 상태 확인 (constants 전달)
+                        resource_status = monitor_system_resources(system_constants)
                         status_text = {"can_increase": "여유", "maintain": "보통", "reduce_processing": "부하"}[resource_status]
                         
-                        print_colored(f"   큐 크기: {current_total_queue_size:,}개 ({queue_utilization:.1f}%) [{queue_detail}]  |  적응형 처리량: {current_process_count}개/회  |  리소스: {status_text}  |  처리 상태: {'활성' if packet_core.is_running else '중지'}", queue_color)
+                        print_colored(f"   큐 크기: {current_total_queue_size:,}개 ({queue_utilization:.1f}%) [{queue_detail}]  |  적응형 처리량: {current_process_count}개/회  |  리소스: {status_text}  |  처리 상태: {'활성' if packet_capture_core.is_running else '중지'}", queue_color)
                         
                         # 프로토콜 분석
                         total_protocols = sum(protocol_stats.values())
@@ -1354,11 +1410,11 @@ def main():
                             cpu_usage = psutil.cpu_percent(interval=0.1)
                         except:
                             memory_mb = 0
-                            memory_percent = packet_core.packet_queue.qsize() / 10000 * 100  # 추정치
+                            memory_percent = packet_capture_core.packet_queue.qsize() / 10000 * 100  # 추정치
                             cpu_usage = 0
                         
-                        # 리소스 상태 확인
-                        resource_status = monitor_system_resources()
+                        # 리소스 상태 확인 (constants 전달)
+                        resource_status = monitor_system_resources(system_constants)
                         status_color = Fore.GREEN if resource_status == "can_increase" else Fore.YELLOW if resource_status == "maintain" else Fore.RED
                         status_text = {"can_increase": "여유", "maintain": "보통", "reduce_processing": "부하"}[resource_status]
                         
@@ -1378,9 +1434,9 @@ def main():
                 logger.info("대시보드 스레드 종료 - 객체 풀에 반환 완료")
             
             #  대시보드 스레드 - 낮은 우선순위
-            display_thread = threading.Thread(target=display_realtime_stats, name="Dashboard")
-            display_thread.daemon = True
-            display_thread.start()
+            dashboard_display_thread = threading.Thread(target=display_realtime_stats, name="Dashboard")
+            dashboard_display_thread.daemon = True
+            dashboard_display_thread.start()
             logger.info("대시보드 스레드 시작됨 (낮은 우선순위)")
             
             # 상세 상태 모니터링 스레드 (백그라운드에서 로그만 기록)
@@ -1388,7 +1444,7 @@ def main():
                 last_log_time = time.time()
                 last_gc_time = time.time()
                 
-                while packet_core.is_running:
+                while packet_capture_core.is_running:
                     current_time = time.time()
                     
                     # 5분마다 강력한 메모리 정리 수행
@@ -1411,7 +1467,7 @@ def main():
                     
                     # 10분마다 상세 로그 기록
                     if current_time - last_log_time >= 600:  # 10분
-                        packet_count = packet_core.get_packet_count()
+                        packet_count = packet_capture_core.get_packet_count()
                         defense_status = defense_manager.get_status()
                         
                         logger.info(f"상태 보고 - 캡처된 패킷: {packet_count:,}개")
@@ -1429,9 +1485,9 @@ def main():
                     
                     time.sleep(30)  # 30초마다 체크 (로그 출력은 10분마다)
             
-            monitor_thread = threading.Thread(target=monitor_capture_status)
-            monitor_thread.daemon = True
-            monitor_thread.start()
+            capture_monitoring_thread = threading.Thread(target=monitor_capture_status)
+            capture_monitoring_thread.daemon = True
+            capture_monitoring_thread.start()
             
             # 실시간 패킷 처리 및 저장 스레드 (메모리 최적화)
             def process_and_save_packets():
@@ -1468,10 +1524,10 @@ def main():
                             'raw_data': str(packet)
                         }
                 
-                while packet_core.is_running:
+                while packet_capture_core.is_running:
                     # 패킷 큐에서 패킷 가져오기 (조용히 처리)
                     try:
-                        original_packet = packet_core.packet_queue.get_nowait()
+                        original_packet = packet_capture_core.packet_queue.get_nowait()
                         
                         # 풀에서 패킷 객체 가져오기
                         pooled_packet = packet_pool.get()
@@ -1605,9 +1661,9 @@ def main():
                     time.sleep(0.01)  #  패킷 처리 우선순위 향상 (0.05 -> 0.01)
             
             #  패킷 처리 스레드 - 높은 우선순위
-            process_thread = threading.Thread(target=process_and_save_packets, name="PacketProcessor")
-            process_thread.daemon = True
-            process_thread.start()
+            packet_processing_thread = threading.Thread(target=process_and_save_packets, name="PacketProcessor")
+            packet_processing_thread.daemon = True
+            packet_processing_thread.start()
             logger.info("패킷 처리 스레드 시작됨 (높은 우선순위)")
             
             # GUI 컴포넌트 제거됨 - CLI 전용 모드
@@ -1627,7 +1683,7 @@ def main():
                 agent = None
                 rl_modules = None  # 강화학습 모듈들도 필요할 때만 로딩
                 
-                while packet_core.is_running:
+                while packet_capture_core.is_running:
                     # 데이터 파일 확인
                     preprocessed_data_path = 'data_set/전처리데이터1.csv'
                     
@@ -1751,9 +1807,9 @@ def main():
                     # 학습하지 않을 때는 더 긴 간격으로 체크
                     time.sleep(300)  # 5분마다 확인으로 변경
             
-            train_thread = threading.Thread(target=monitor_and_train)
-            train_thread.daemon = True
-            train_thread.start()
+            model_training_thread = threading.Thread(target=monitor_and_train)
+            model_training_thread.daemon = True
+            model_training_thread.start()
             
             # ========== 6번째 스레드: 통합 서비스 시작 (반응형 AI) ==========
             if integrated_modules and state_extractor and reward_calculator:
@@ -1838,8 +1894,8 @@ def main():
                     # 시스템 상태
                     status_info = [
                         f" 운영 모드: {args.mode.upper()}",
-                        f" 캡처된 패킷: {packet_core.get_packet_count():,}개",
-                        f" 캡처 상태: {'실행 중' if packet_core.is_running else '중지됨'}",
+                        f" 캡처된 패킷: {packet_capture_core.get_packet_count():,}개",
+                        f" 캡처 상태: {'실행 중' if packet_capture_core.is_running else '중지됨'}",
                         f" 실행 시간: {datetime.now().strftime('%H:%M:%S')}"
                     ]
                     
@@ -1854,19 +1910,19 @@ def main():
                 
                 def show_packet_stats():
                     """패킷 통계 표시"""
-                    packet_count = packet_core.get_packet_count()
+                    packet_count = packet_capture_core.get_packet_count()
                     stats_info = [
                         f" 총 캡처된 패킷: {packet_count:,}개",
                         f" 초당 패킷 수: 계산 중...",
-                        f" 큐 크기: {packet_core.packet_queue.qsize()}개",
-                        f" 처리 상태: {'활성화' if packet_core.is_running else '중지됨'}"
+                        f" 큐 크기: {packet_capture_core.packet_queue.qsize()}개",
+                        f" 처리 상태: {'활성화' if packet_capture_core.is_running else '중지됨'}"
                     ]
                     print_status_box("패킷 통계", stats_info, Fore.BLUE)
                 
                 # 간단한 명령어 입력 처리 (조용히 백그라운드에서 대기)
                 logger.info("사용자 입력 스레드 시작")
                 
-                while packet_core.is_running:
+                while packet_capture_core.is_running:
                     try:
                         # 간단한 입력 대기
                         user_input = input().strip().lower()
@@ -1991,7 +2047,7 @@ def main():
                             
                         elif user_input in ['q', 'quit', 'exit']:
                             print_colored("\nIPS 시스템을 종료합니다...", Fore.YELLOW, Style.BRIGHT)
-                            packet_core.stop_capture()
+                            packet_capture_core.stop_capture()
                             break
                             
                         elif user_input == '':
@@ -2004,25 +2060,25 @@ def main():
                         
                     except KeyboardInterrupt:
                         print_colored("\n\n Ctrl+C 감지 - 프로그램을 종료합니다", Fore.YELLOW, Style.BRIGHT)
-                        packet_core.stop_capture()
+                        packet_capture_core.stop_capture()
                         break
                     except EOFError:
                         print_colored("\n\n 입력 종료 - 프로그램을 종료합니다", Fore.YELLOW)
-                        packet_core.stop_capture()
+                        packet_capture_core.stop_capture()
                         break
                     
                     time.sleep(0.1)
             
-            input_thread = threading.Thread(target=handle_user_input)
-            input_thread.daemon = True
-            input_thread.start()
+            user_input_thread = threading.Thread(target=handle_user_input)
+            user_input_thread.daemon = True
+            user_input_thread.start()
             
             try:
-                while packet_core.is_running:
+                while packet_capture_core.is_running:
                     time.sleep(1)
             except KeyboardInterrupt:
                 print("\n프로그램을 종료합니다...")
-                packet_core.stop_capture()
+                packet_capture_core.stop_capture()
         
         # 정상 종료 시 메모리 정리
         cleanup_memory_completely()

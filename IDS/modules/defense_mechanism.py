@@ -83,10 +83,25 @@ logger.addHandler(console_handler)
 
 # 🔥 로그 버퍼링을 위한 메모리 캐시 (크기 증가 및 비동기 처리)
 log_cache = []
-MAX_LOG_CACHE_SIZE = 500  # 최대 로그 캐시 크기 (100 -> 500)
+
+# Constants 로드 (설정 파일 기반)
+try:
+    # 상대 import 시도 -> 실패 시 절대 import
+    try:
+        from .constants import get_constants
+    except (ImportError, ValueError):
+        from constants import get_constants
+    
+    _def_constants = get_constants()
+    MAX_LOG_CACHE_SIZE = _def_constants.MAX_LOG_CACHE_SIZE
+    FLUSH_INTERVAL = _def_constants.LOG_FLUSH_INTERVAL
+except Exception as e:
+    # 로드 실패 시 기본값 사용
+    MAX_LOG_CACHE_SIZE = 500  # 최대 로그 캐시 크기 (기본값)
+    FLUSH_INTERVAL = 5.0  # 5초마다 강제 플러시 (기본값)
+
 log_cache_lock = threading.Lock()
 last_flush_time = time.time()
-FLUSH_INTERVAL = 5.0  # 5초마다 강제 플러시
 
 def log_with_cache(level, message):
     """메모리 효율적인 로깅 함수 (개선됨)"""

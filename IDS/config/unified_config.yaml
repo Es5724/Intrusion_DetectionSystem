@@ -44,6 +44,16 @@ machine_learning:
     action_size: 6
     mode: "standard"  # standard, conservative, aggressive
     
+    # 하이퍼파라미터
+    hyperparameters:
+      alpha_cql: 1.0        # Conservative 정규화 계수
+      tau: 0.005            # 타겟 네트워크 업데이트 비율
+      gamma: 0.99           # 할인율
+      learning_rate: 0.0001 # 학습률
+      epsilon: 0.1          # 초기 탐험률
+      epsilon_min: 0.01     # 최소 탐험률
+      epsilon_decay: 0.999  # 탐험률 감소율
+    
     # 학습 설정
     training:
       online_learning: true
@@ -75,6 +85,15 @@ defense:
     enabled: true
     duration_seconds: 1800  # 30분
     permanent_block_threshold: 5  # 5회 이상 차단 시 영구 차단
+  
+  # 방어 정책 환경 설정 (Defense Policy Environment)
+  policy_environment:
+    costs:
+      attack_prevention_value: 100.0  # 공격 차단 가치
+      false_positive_cost: 20.0       # 오탐 비용
+      system_impact_penalty: 10.0     # 시스템 영향 페널티
+      latency_penalty: 5.0            # 지연 페널티
+      service_disruption_cost: 50.0   # 서비스 중단 비용
   
   # 위협 수준 임계값
   threat_thresholds:
@@ -179,13 +198,50 @@ monitoring:
     save_interval_seconds: 300  # 5분
     max_packet_buffer: 1000
   
+  # 위협 분석 임계값
+  threat_analysis:
+    packet_size_critical: 8000  # 치명적 위협으로 분류할 패킷 크기
+    packet_size_high: 5000      # 높은 위협으로 분류할 패킷 크기
+    packet_size_medium: 3000    # 중간 위협으로 분류할 패킷 크기
+    packet_size_normal: 1500    # 정상 패킷 크기
+    threat_score_critical: 0.9  # 치명적 위협 점수 임계값
+    threat_score_high: 0.8      # 높은 위협 점수 임계값
+    threat_score_medium: 0.7    # 중간 위협 점수 임계값
+    threat_score_low: 0.6       # 낮은 위협 점수 임계값
+  
   # 성능 모니터링
   performance:
     enabled: true
     cpu_threshold_percent: 80
+    cpu_low_threshold: 30       # CPU 저부하 임계값
     memory_threshold_percent: 80
+    memory_high_mb: 800         # 메모리 고사용 임계값 (MB)
+    memory_low_mb: 500          # 메모리 저사용 임계값 (MB)
     disk_threshold_percent: 90
     alert_on_threshold: true
+  
+  # 큐 처리 설정
+  queue:
+    max_size: 50000             # 최대 큐 크기
+    adaptive_process_max: 1500  # 적응형 처리 최대 개수 (고부하 시)
+    adaptive_process_medium: 800  # 적응형 처리 중간 개수
+    adaptive_process_normal: 150  # 적응형 처리 기본 개수
+    adaptive_process_min: 50    # 적응형 처리 최소 개수
+    utilization_high: 0.8       # 큐 고사용률 임계값 (80%)
+    utilization_medium: 0.5     # 큐 중간 사용률 임계값 (50%)
+  
+  # 타이밍 설정
+  timing:
+    dashboard_refresh_seconds: 1.0  # 대시보드 갱신 주기
+    packet_process_sleep_ms: 10     # 패킷 처리 대기 시간 (밀리초)
+    memory_cleanup_interval_seconds: 60  # 메모리 정리 주기
+    stats_update_interval_seconds: 1.0   # 통계 업데이트 주기
+  
+  # 패킷 처리 설정
+  packet_processing:
+    chunk_size: 50              # 청크 크기 (개)
+    max_buffer_size: 500        # 최대 버퍼 크기 (개)
+    save_interval_seconds: 120  # 저장 주기 (초)
 
 # ====================================================================
 # 취약점 스캐닝 설정
@@ -310,8 +366,15 @@ advanced:
   memory:
     gc_enabled: true
     gc_interval_seconds: 60
+    gc_collection_rounds: 3     # 가비지 컬렉션 라운드 수
+    high_threshold_mb: 150      # 높은 메모리 사용량 임계값 (MB)
     object_pooling: true
     lazy_loading: true
+  
+  # 로깅 설정
+  logging:
+    max_cache_size: 500         # 최대 로그 캐시 크기
+    flush_interval_seconds: 5.0  # 로그 플러시 주기
   
   # 실험적 기능
   experimental:
